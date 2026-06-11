@@ -2180,7 +2180,7 @@ function renderTabla() {
       // Botón imprimir orden (solo si es hoy)
       if (esHoy) {
         const disabled = (asignado && !cuadranteBloqueado) ? '' : 'disabled';
-        const yaImpresa = _ordenesImpresas.has(`${v.matricula}|${turnoActual}|${fechaActual}`);
+        const yaImpresa = _ordenesImpresas.has(`${(v.matricula||'').trim().toUpperCase()}|${turnoActual.toUpperCase()}|${fechaActual}`);
         const claseOrden = yaImpresa ? 'impresa' : (asignado ? 'pendiente' : '');
         html += `<td><button class="btn-print-row ${claseOrden}" ${disabled}
           data-mat="${esc(v.matricula)}"
@@ -2604,6 +2604,7 @@ function _onVisibilityChange() {
 }
 
 let _syncCiclo = 0; // contador de ciclos para sincronizar flota cada N ciclos
+let _ultimoSyncOrdenes = 0; // timestamp del último sync de órdenes impresas
 
 async function syncSilencioso() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
@@ -2615,9 +2616,15 @@ async function syncSilencioso() {
   try {
     _syncCiclo++;
 
-    // ── Cada 6 ciclos (~30s) sincronizar también la flota y las órdenes impresas ──
+    // ── Cada 6 ciclos (~30s) sincronizar la flota ──
     if (_syncCiclo % 6 === 1) {
       await cargarFlotaDesdeSheets();
+    }
+
+    // ── Sincronizar órdenes impresas cada 15s ──
+    const ahora = Date.now();
+    if (ahora - _ultimoSyncOrdenes > 15000) {
+      _ultimoSyncOrdenes = ahora;
       await sincronizarOrdenesImpresas();
     }
 
@@ -2965,10 +2972,10 @@ function imprimirOrden(matricula, operario, emp, rutas) {
 
   frame.onload = function() {
     // Marcar la matrícula como orden impresa
-    const _impKey = `${matricula}|${turnoActual}|${fechaActual}`;
+    const _impKey = `${(matricula||'').trim().toUpperCase()}|${turnoActual.toUpperCase()}|${fechaActual}`;
     _ordenesImpresas.add(_impKey);
     // Actualizar el botón de esa fila sin re-renderizar toda la tabla
-    const btns = document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape(matricula)}"]`);
+    const btns = document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape((matricula||''). trim().toUpperCase())}"]`);
     btns.forEach(b => {
       b.classList.add('impresa');
       b.title = '✓ Orden ya impresa';
@@ -3004,24 +3011,42 @@ async function sincronizarOrdenesImpresas() {
     // Reconstruir el Set desde cero con lo que hay en Sheets
     _ordenesImpresas.clear();
     filas.forEach(f => {
-      if (f.matricula && f.turno && f.fecha) {
-        _ordenesImpresas.add(`${f.matricula}|${f.turno}|${f.fecha}`);
-      } else if (f.matricula && f.turno) {
-        _ordenesImpresas.add(`${f.matricula}|${f.turno}|${fechaActual}`);
+      const turnoLog = (f.turno || '').trim().toUpperCase();
+      const matLog   = (f.matricula || '').trim().toUpperCase();
+      if (!matLog || !turnoLog) return;
+
+      // La fecha puede llegar como YYYY-MM-DD, como ISO timestamp, o vacía
+      // Sheets a veces devuelve fechas como "2026-06-10T22:00:00.000Z"
+      // Necesitamos extraer siempre YYYY-MM-DD en hora local española (UTC+1/+2)
+      let fechaFinal = fechaActual;
+      const fechaRaw = (f.fecha || '').trim();
+      if (fechaRaw) {
+        if (fechaRaw.includes('T')) {
+          // Es un ISO timestamp — convertir a fecha local sumando offset
+          const d = new Date(fechaRaw);
+          // Usar fecha local en España (Europe/Madrid) — o simplemente sumar 1 día si es T22:xx UTC
+          // Método robusto: formatear como YYYY-MM-DD en zona local
+          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+          fechaFinal = local.toISOString().slice(0, 10);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)) {
+          fechaFinal = fechaRaw;
+        }
       }
+      _ordenesImpresas.add(`${matLog}|${turnoLog}|${fechaFinal}`);
     });
+
 
     // Actualizar visualmente los botones de orden sin re-renderizar toda la tabla
     document.querySelectorAll('.btn-print-row').forEach(btn => {
-      const mat = btn.dataset.mat;
+      const mat = (btn.dataset.mat || '').trim().toUpperCase();
       if (!mat) return;
-      const impresa = _ordenesImpresas.has(`${mat}|${turnoActual}|${fechaActual}`);
+      const impresa = _ordenesImpresas.has(`${mat}|${turnoActual.toUpperCase()}|${fechaActual}`);
       const asignado = !!(datos[`${mat}|${turnoActual}|${fechaActual}`] || {}).operario;
       btn.classList.toggle('impresa', impresa);
       btn.classList.toggle('pendiente', !impresa && asignado);
       btn.title = impresa ? '✓ Orden ya impresa' : (asignado ? 'Pendiente de imprimir' : 'Imprimir orden de trabajo');
     });
-  } catch(e) { /* silencioso — no interrumpir el sync */ }
+  } catch(e) { console.warn('sincronizarOrdenesImpresas error:', e); }
 }
 
 async function registrarLog(matricula, operario, empresa, ruta) {

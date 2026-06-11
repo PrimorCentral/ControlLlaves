@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.7.4">
+  <meta name="app-version" content="1.8.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -3668,6 +3668,7 @@ async function eliminarIncidencia(idx) {
   if (!confirm(`¿Eliminar esta incidencia?\n\n"${desc}${desc.length >= 60 ? '…' : ''}"\n\nEsta acción no se puede deshacer.`)) return;
   if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
   try {
+    // 1. Borrar de la hoja Incidencias
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain' },
@@ -3675,6 +3676,33 @@ async function eliminarIncidencia(idx) {
     });
     const json = await resp.json();
     if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+
+    // 2. Limpiar el campo "incidencias" en la hoja Registros para que
+    //    desaparezca el botón Ver/Editar del cuadrante
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          accion: 'guardarFila',
+          fila: {
+            fecha:       inc.fecha,
+            turno:       inc.turno,
+            matricula:   inc.matricula,
+            incidencias: ''
+          }
+        })
+      });
+    } catch(e2) { console.warn('No se pudo limpiar Registros:', e2); }
+
+    // 3. Actualizar memoria local si el cuadrante abierto coincide con la fecha/turno
+    const key = `${inc.matricula}|${turnoActual}|${fechaActual}`;
+    if (datos[key] && inc.fecha === fechaActual &&
+        (inc.turno === turnoActual || (inc.turno === 'MANANA' && turnoActual === 'MANANA'))) {
+      datos[key].incidencias = '';
+      renderizarTabla();
+    }
+
     incidenciasCache.splice(idx, 1);
     renderTabIncidencias();
     mostrarToast('✓ Incidencia eliminada', 'success');

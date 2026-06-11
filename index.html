@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.0.3">
+  <meta name="app-version" content="1.0.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -2825,9 +2825,10 @@ function renderAdminVehiculos() {
       if (v.itv_fin) {
         const fin = new Date(v.itv_fin + 'T00:00:00');
         const diffDias = Math.ceil((fin - hoy) / 86400000);
-        let itvColor = '#2ecc71', itvBg = '#eafaf1', itvLabel = `ITV: ${v.itv_fin}`;
-        if (diffDias <= 0)  { itvColor = '#e84545'; itvBg = '#fff0f0'; itvLabel = `⛔ ITV CADUCADA (${v.itv_fin})`; }
+        let itvColor, itvBg, itvLabel;
+        if (diffDias <= 0)       { itvColor = '#e84545'; itvBg = '#fff0f0'; itvLabel = `⛔ ITV CADUCADA (${v.itv_fin})`; }
         else if (diffDias <= 30) { itvColor = '#f39c12'; itvBg = '#fff8ec'; itvLabel = `⚠️ ITV vence en ${diffDias}d (${v.itv_fin})`; }
+        else                     { itvColor = '#2ecc71'; itvBg = '#eafaf1'; itvLabel = `✅ En vigor (${v.itv_fin})`; }
         itvBadge = `<span style="font-size:9px;font-weight:700;color:${itvColor};background:${itvBg};border:1px solid ${itvColor}33;border-radius:5px;padding:2px 7px;margin-left:6px;">${itvLabel}</span>`;
       } else {
         itvBadge = `<span style="font-size:9px;font-weight:700;color:#aaa;background:#f5f5f5;border:1px solid #ddd;border-radius:5px;padding:2px 7px;margin-left:6px;">Sin ITV</span>`;

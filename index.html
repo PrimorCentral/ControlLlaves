@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.8.4">
+  <meta name="app-version" content="1.9.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -3554,11 +3554,12 @@ function abrirModalIncidencia(matricula) {
     const btn = overlay.querySelector('#btn-guardar-incidencia');
     btn.disabled = true; btn.textContent = '⏳ Guardando…';
 
-    // Guardar en cuadrante local
-    setDato(matricula, 'incidencias', texto);
-    programarGuardado();
+    // Actualizar memoria local SIN marcar como pendiente de guardar en Registros
+    const key = `${matricula}|${turnoActual}|${fechaActual}`;
+    if (!datos[key]) datos[key] = {};
+    datos[key].incidencias = texto;
 
-    // Guardar en hoja Incidencias de Sheets
+    // Guardar SOLO en hoja Incidencias de Sheets (no en Registros)
     await registrarIncidenciaEnSheets(matricula, texto);
 
     document.body.removeChild(overlay);
@@ -3677,25 +3678,7 @@ async function eliminarIncidencia(idx) {
     const json = await resp.json();
     if (!json.ok) throw new Error(json.error || 'Error en Sheets');
 
-    // 2. Limpiar el campo "incidencias" en la hoja Registros para que
-    //    desaparezca el botón Ver/Editar del cuadrante
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', redirect: 'follow',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          accion: 'guardarFila',
-          fila: {
-            fecha:       inc.fecha,
-            turno:       inc.turno,
-            matricula:   inc.matricula,
-            incidencias: ''
-          }
-        })
-      });
-    } catch(e2) { console.warn('No se pudo limpiar Registros:', e2); }
-
-    // 3. Actualizar memoria local si el cuadrante abierto coincide con la fecha/turno
+    // 2. Actualizar memoria local si el cuadrante abierto coincide con la fecha/turno
     const key = `${inc.matricula}|${turnoActual}|${fechaActual}`;
     if (datos[key] && inc.fecha === fechaActual &&
         (inc.turno === turnoActual || (inc.turno === 'MANANA' && turnoActual === 'MANANA'))) {

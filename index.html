@@ -612,6 +612,41 @@
       width: 0%; transition: width 0.5s ease;
     }
 
+    /* ─── MODAL GENERANDO ORDEN ─── */
+    #modal-generando-orden {
+      display: none; position: fixed; inset: 0; z-index: 9500;
+      background: rgba(10,12,30,0.80); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    #modal-generando-orden.visible { display: flex; }
+    #modal-generando-orden .gen-box {
+      background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 20px;
+      padding: 38px 44px 32px; display: flex; flex-direction: column;
+      align-items: center; gap: 16px; box-shadow: 0 32px 80px rgba(0,0,0,0.65);
+      min-width: 300px; animation: carga-in 0.25s cubic-bezier(.34,1.56,.64,1);
+    }
+    .gen-icono-wrap { position: relative; width: 64px; height: 64px; }
+    .gen-icono-wrap svg { animation: carga-giro 1.1s linear infinite; }
+    .gen-icono-centro {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center; font-size: 24px;
+    }
+    .gen-titulo {
+      font-size: 14px; font-weight: 900; color: #e2e8f0;
+      letter-spacing: 0.3px; text-align: center;
+    }
+    .gen-sub {
+      font-size: 11px; font-weight: 600; color: #6b7a94;
+      text-align: center; line-height: 1.5;
+    }
+    .gen-dots { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+    .gen-dots span {
+      width: 6px; height: 6px; border-radius: 50%; background: #e84545; opacity: 0.3;
+      animation: dot-bounce 1.2s ease-in-out infinite;
+    }
+    .gen-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .gen-dots span:nth-child(3) { animation-delay: 0.4s; }
+
     @media print {
       body { overflow: visible !important; }
       .sidebar, .main-header, .toast, #splash { display: none !important; }
@@ -640,6 +675,24 @@
       <div class="carga-barra" id="carga-barra"></div>
     </div>
     <div class="carga-paso" id="carga-paso">Iniciando…</div>
+  </div>
+</div>
+
+<!-- MODAL GENERANDO ORDEN -->
+<div id="modal-generando-orden">
+  <div class="gen-box">
+    <div class="gen-icono-wrap">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="28" stroke="#252545" stroke-width="4"/>
+        <path d="M32 4 A28 28 0 0 1 60 32" stroke="#e84545" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <div class="gen-icono-centro">🖨️</div>
+    </div>
+    <div class="gen-titulo">Generando orden de trabajo</div>
+    <div class="gen-sub">Preparando el documento,<br>un momento…</div>
+    <div class="gen-dots">
+      <span></span><span></span><span></span>
+    </div>
   </div>
 </div>
 
@@ -2797,17 +2850,17 @@ async function ejecutarOrden() {
     return;
   }
 
-  const btnImpr = document.querySelector('.btn-modal-imprimir');
-  if (btnImpr) { btnImpr.disabled = true; btnImpr.textContent = '⏳ Registrando…'; }
+  // Mostrar modal de carga y cerrar el modal de orden
+  const modalGen = document.getElementById('modal-generando-orden');
+  if (modalGen) modalGen.classList.add('visible');
+  cerrarModalOrden();
 
   // Registrar log por cada ruta seleccionada
   for (const ruta of rutas) {
     await registrarLog(ordenActual.matricula, ordenActual.operario, emp.label, ruta.label);
   }
 
-  if (btnImpr) { btnImpr.disabled = false; btnImpr.textContent = '🖨️ Imprimir orden'; }
   imprimirOrden(ordenActual.matricula, ordenActual.operario, emp, rutas);
-  cerrarModalOrden();
 }
 
 function imprimirOrden(matricula, operario, emp, rutas) {
@@ -2863,8 +2916,16 @@ function imprimirOrden(matricula, operario, emp, rutas) {
       </div>`;
   }).join('');
 
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head>
+  // Usar iframe oculto en lugar de window.open (evita bloqueo de popups)
+  let frame = document.getElementById('print-orden-frame');
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = 'print-orden-frame';
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;visibility:hidden;';
+    document.body.appendChild(frame);
+  }
+
+  const htmlContent = `<!DOCTYPE html><html><head>
     <meta charset="utf-8">
     <title>Orden de Trabajo · ${matricula}</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -2895,19 +2956,27 @@ function imprimirOrden(matricula, operario, emp, rutas) {
       .firma-box { border-top:2px solid #ccc; padding-top:8px; text-align:center; min-height:60px; display:flex; align-items:flex-end; justify-content:center; }
       .firma-label { font-size:10px; font-weight:700; color:#aaa; letter-spacing:1px; text-transform:uppercase; }
     </style>
-  </head><body>${bloques}</body></html>`);
-  win.document.close();
-  win.focus();
-  // Marcar la matrícula como orden impresa
-  const _impKey = `${matricula}|${turnoActual}|${fechaActual}`;
-  _ordenesImpresas.add(_impKey);
-  // Actualizar el botón de esa fila sin re-renderizar toda la tabla
-  const btns = document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape(matricula)}"]`);
-  btns.forEach(b => {
-    b.classList.add('impresa');
-    b.title = '✓ Orden ya impresa';
-  });
-  setTimeout(() => win.print(), 500);
+  </head><body>${bloques}</body></html>`;
+
+  frame.onload = function() {
+    // Marcar la matrícula como orden impresa
+    const _impKey = `${matricula}|${turnoActual}|${fechaActual}`;
+    _ordenesImpresas.add(_impKey);
+    // Actualizar el botón de esa fila sin re-renderizar toda la tabla
+    const btns = document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape(matricula)}"]`);
+    btns.forEach(b => {
+      b.classList.add('impresa');
+      b.title = '✓ Orden ya impresa';
+    });
+    frame.contentWindow.focus();
+    // Ocultar modal de carga justo antes de abrir el diálogo de impresión
+    const _mg = document.getElementById('modal-generando-orden');
+    if (_mg) _mg.classList.remove('visible');
+    frame.contentWindow.print();
+    frame.onload = null;
+  };
+
+  frame.srcdoc = htmlContent;
 }
 
 // ════════════════════════════════════════════════════════════════════════════

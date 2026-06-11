@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.0.1">
+  <meta name="app-version" content="1.0.2">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -858,6 +858,7 @@
           </select>
           <input type="text" id="add-grupo" placeholder="Nave (ej: GAITE)">
           <input type="text" id="add-nota" placeholder="Propiedad o alquiler">
+          <input type="date" id="add-itv-fin" placeholder="Fin ITV" title="Fecha fin ITV">
           <button class="btn-add-item" onclick="añadirVehiculo()">+ Añadir</button>
         </div>
         <div class="nota-restriccion">⚠️ Los vehículos <strong>Restringido</strong> solo podrán asignarse a personas autorizadas.</div>
@@ -910,7 +911,7 @@
           <thead><tr>
             <th>Fecha</th><th>Turno</th><th>Matrícula</th><th>Tipo</th>
             <th>Operario</th><th>Resp. Entrega</th><th>Resp. Recibe</th>
-            <th>H. Gasoil</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>Cinchas</th><th>C. Entrega</th>
+            <th>H. Gasoil</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th>
           </tr></thead>
           <tbody id="hist-tbody"></tbody>
         </table>
@@ -1190,8 +1191,8 @@ const COLUMNAS = [
   { key: 'hora_entrega',    label: 'H. Entrega',         clase: 'hora' },
   { key: 'hora_devolucion', label: 'H. Devolución',      clase: 'hora' },
   { key: 'num_tarjeta',     label: 'Nº Tarjeta',         clase: 'num' },
-  { key: 'cinchas',         label: 'Cinchas (cant.)',     clase: 'num' },
-  { key: 'cinchas_entrega', label: 'C. Entregadas',      clase: 'num' },
+  { key: 'itv',             label: 'ITV',                clase: 'num' },
+  { key: 'incidencias',    label: 'Incidencias',         clase: '' },
 ];
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1321,8 +1322,8 @@ async function iniciarPrecarga() {
             hora_entrega:    fila.hora_entrega||'',
             hora_devolucion: fila.hora_devolucion||'',
             num_tarjeta:     fila.num_tarjeta||'',
-            cinchas:         fila.cinchas||'',
-            cinchas_entrega: fila.cinchas_entrega||'',
+            itv:             fila.itv||'',
+            incidencias:     fila.incidencias||'',
           };
         });
       }
@@ -1757,6 +1758,15 @@ function _procesarSeleccionOperario(mat, nombre) {
     return;
   }
 
+  // ── Bloquear si ITV caducada ──────────────────────────────────────────────
+  const itv = itvCaducada(mat);
+  if (itv.caducada) {
+    mostrarModalITVCaducada(mat, itv.fecha);
+    const inp = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
+    if (inp) inp.value = '';
+    return;
+  }
+
   const respEntrega = (usuarioActual && usuarioActual.nombre)
     ? usuarioActual.nombre
     : (usuarioActual ? usuarioActual.numUsuario : '—');
@@ -1871,6 +1881,26 @@ function renderTabla() {
         // Campos que SIEMPRE son solo lectura (se rellenan automáticamente)
         const CAMPOS_AUTO = ['resp_entrega', 'resp_recibe', 'hora_entrega', 'hora_devolucion'];
         const esCampoAuto = CAMPOS_AUTO.includes(col.key);
+
+        // ── Campo INCIDENCIAS: siempre botón que abre modal ───────────────
+        if (col.key === 'incidencias') {
+          const tieneIncid = val && val.trim();
+          html += `<td><button class="btn-print-row" style="background:${tieneIncid?'#fff8ec':'#f8f9fc'};color:${tieneIncid?'#c47d00':'#8899aa'};border-color:${tieneIncid?'#fde68a':'#dde1ea'};font-size:10px;padding:4px 8px;"
+            onclick="abrirModalIncidencia('${esc(v.matricula)}')"
+            title="${tieneIncid ? esc(val) : 'Registrar incidencia'}">
+            ${tieneIncid ? '⚠️ Ver/Editar' : '+ Incidencia'}
+          </button></td>`;
+          return;
+        }
+
+        // ── Campo ITV: mostrar badge si está caducada ─────────────────────
+        if (col.key === 'itv') {
+          const itvInfo = itvCaducada(v.matricula);
+          if (itvInfo.caducada) {
+            html += `<td><span style="font-size:9px;font-weight:700;color:#e84545;background:#fff0f0;border:1px solid #fcc;border-radius:5px;padding:2px 6px;">⛔ Caducada</span></td>`;
+            return;
+          }
+        }
 
         if (cuadranteBloqueado || asignado || esCampoAuto) {
           // Placeholder y estilo según si tiene valor o no
@@ -1995,8 +2025,8 @@ function pedirReasignacion(matricula) {
           hora_entrega:    dActual.hora_entrega    || '',
           hora_devolucion: horaReasig,   // ← hora exacta de la reasignación
           num_tarjeta:     dActual.num_tarjeta     || '',
-          cinchas:         dActual.cinchas         || '',
-          cinchas_entrega: dActual.cinchas_entrega || '',
+          itv:             dActual.itv             || '',
+          incidencias:     dActual.incidencias     || '',
           reasignado:      'SI',
         };
         await guardarSnapshotReasignacion(snapshot);
@@ -2011,8 +2041,8 @@ function pedirReasignacion(matricula) {
       setDato(matricula, 'resp_recibe', '');
       setDato(matricula, 'hora_devolucion', '');
       setDato(matricula, 'num_tarjeta', '');
-      setDato(matricula, 'cinchas', '');
-      setDato(matricula, 'cinchas_entrega', '');
+      setDato(matricula, 'itv', '');
+      setDato(matricula, 'incidencias', '');
 
       // 4) Guardar cuadrante activo — la fila vacía se borra de Registros (el snapshot ya está guardado)
       clearTimeout(saveTimer);
@@ -2096,8 +2126,8 @@ async function cargarCuadrante() {
           hora_entrega:    fila.hora_entrega||'',
           hora_devolucion: fila.hora_devolucion||'',
           num_tarjeta:     fila.num_tarjeta||'',
-          cinchas:         fila.cinchas||'',
-          cinchas_entrega: fila.cinchas_entrega||'',
+          itv:             fila.itv||'',
+          incidencias:     fila.incidencias||'',
         };
       });
       mostrarToast(`✓ Cuadrante cargado — ${json.filas.length} vehículo(s) con datos`, 'success');
@@ -2144,8 +2174,8 @@ async function guardarFilaUpsert(matricula, mostrarErrores) {
     hora_entrega:    d.hora_entrega    || '',
     hora_devolucion: d.hora_devolucion || '',
     num_tarjeta:     d.num_tarjeta     || '',
-    cinchas:         d.cinchas         || '',
-    cinchas_entrega: d.cinchas_entrega || '',
+    itv:             d.itv             || '',
+    incidencias:     d.incidencias     || '',
   };
 
   const MAX_INTENTOS = 3;
@@ -2275,7 +2305,7 @@ async function syncSilencioso() {
 
     let hayNovedades = false;
     const campos = ['operario','resp_entrega','resp_recibe','hora_entrega',
-                    'hora_devolucion','num_tarjeta','cinchas','cinchas_entrega'];
+                    'hora_devolucion','num_tarjeta','itv','incidencias'];
 
     // ── Actualizar filas con datos remotos más recientes ──────────────────
     json.filas.forEach(fila => {
@@ -2309,7 +2339,7 @@ async function syncSilencioso() {
         datos[key] = {
           operario: '', resp_entrega: '', resp_recibe: '',
           hora_entrega: '', hora_devolucion: '',
-          num_tarjeta: '', cinchas: '', cinchas_entrega: ''
+          num_tarjeta: '', itv: '', incidencias: ''
         };
         hayNovedades = true;
       }
@@ -2340,7 +2370,7 @@ async function cargarFlotaDesdeSheets() {
       json.flota.forEach(v => {
         let g = GRUPOS.find(g => g.nombre === v.grupo);
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
-        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI' });
+        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'' });
       });
     } else {
       // Sheets vacío: subir los vehículos locales por defecto
@@ -2356,7 +2386,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -2764,14 +2794,28 @@ async function eliminarResponsable(idx) {
 function renderAdminVehiculos() {
   const lista = document.getElementById('admin-lista-vehiculos');
   let html = '';
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
   GRUPOS.forEach((grupo, gi) => {
     html += `<div style="font-size:9px;font-weight:800;letter-spacing:2px;color:#8899aa;text-transform:uppercase;padding:8px 4px 4px;border-top:${gi>0?'1px solid #eee':'none'}">${grupo.nombre}</div>`;
     grupo.vehiculos.forEach((v, vi) => {
+      // ITV badge
+      let itvBadge = '';
+      if (v.itv_fin) {
+        const fin = new Date(v.itv_fin + 'T00:00:00');
+        const diffDias = Math.ceil((fin - hoy) / 86400000);
+        let itvColor = '#2ecc71', itvBg = '#eafaf1', itvLabel = `ITV: ${v.itv_fin}`;
+        if (diffDias <= 0)  { itvColor = '#e84545'; itvBg = '#fff0f0'; itvLabel = `⛔ ITV CADUCADA (${v.itv_fin})`; }
+        else if (diffDias <= 30) { itvColor = '#f39c12'; itvBg = '#fff8ec'; itvLabel = `⚠️ ITV vence en ${diffDias}d (${v.itv_fin})`; }
+        itvBadge = `<span style="font-size:9px;font-weight:700;color:${itvColor};background:${itvBg};border:1px solid ${itvColor}33;border-radius:5px;padding:2px 7px;margin-left:6px;">${itvLabel}</span>`;
+      } else {
+        itvBadge = `<span style="font-size:9px;font-weight:700;color:#aaa;background:#f5f5f5;border:1px solid #ddd;border-radius:5px;padding:2px 7px;margin-left:6px;">Sin ITV</span>`;
+      }
       html += `<div class="admin-item">
         <div class="admin-item-mat ${v.restringido?'restringido':''}">${esc(v.matricula)}</div>
         <div class="admin-item-tipo">${esc(v.tipo)}</div>
-        <div class="admin-item-nota">${esc(v.nota||'')}</div>
+        <div class="admin-item-nota">${esc(v.nota||'')}${itvBadge}</div>
         <div class="admin-item-actions">
+          <button class="btn-item-action" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV" style="background:#f0f4ff;color:#3b5bdb;border-color:#c5d0ff">📋 ITV</button>
           <button class="btn-item-action restrict ${v.restringido?'active':''}" onclick="toggleRestringido(${gi},${vi})">
             ${v.restringido?'🔒 Restringido':'🔓 Libre'}
           </button>
@@ -2802,6 +2846,65 @@ function toggleRestringido(gi, vi) {
   mostrarToast('Restricción actualizada', 'success');
 }
 
+function editarITV(gi, vi) {
+  const v = GRUPOS[gi].vehiculos[vi];
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;padding:28px 28px 22px;width:360px;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;">
+      <div style="font-size:22px;margin-bottom:8px;">📋</div>
+      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">Fecha fin de ITV</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:16px;">Vehículo: <strong>${esc(v.matricula)}</strong></div>
+      <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Fin de ITV</label>
+      <input type="date" id="itv-fecha-input" value="${v.itv_fin||''}"
+        style="width:100%;padding:10px;border:1.5px solid #dde1ea;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;color:#1a1a2e;outline:none;margin-bottom:18px;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="this.closest('.itv-overlay').remove()" style="padding:9px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="btn-guardar-itv" style="padding:9px 20px;background:#3b5bdb;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">Guardar ITV</button>
+      </div>
+    </div>`;
+  overlay.classList.add('itv-overlay');
+  document.body.appendChild(overlay);
+  overlay.querySelector('#btn-guardar-itv').onclick = () => {
+    const fecha = document.getElementById('itv-fecha-input').value;
+    GRUPOS[gi].vehiculos[vi].itv_fin = fecha;
+    document.body.removeChild(overlay);
+    renderAdminVehiculos(); renderTabla();
+    sincronizarVehiculosConSheets();
+    mostrarToast('✓ Fecha ITV guardada', 'success');
+  };
+}
+
+// Comprueba si la ITV de un vehículo está caducada hoy
+function itvCaducada(matricula) {
+  for (const g of GRUPOS) {
+    const v = g.vehiculos.find(x => x.matricula === matricula);
+    if (v && v.itv_fin) {
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
+      const fin = new Date(v.itv_fin + 'T00:00:00');
+      if (fin <= hoy) return { caducada: true, fecha: v.itv_fin };
+    }
+  }
+  return { caducada: false };
+}
+
+function mostrarModalITVCaducada(matricula, fechaITV) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:36px 32px 28px;width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.3s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:52px;margin-bottom:10px;">⛔</div>
+      <div style="font-size:18px;font-weight:900;color:#e84545;margin-bottom:8px;">ITV CADUCADA</div>
+      <div style="font-size:13px;color:#1a1a2e;font-weight:700;margin-bottom:6px;">${esc(matricula)}</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:18px;">La ITV de este vehículo caducó el <strong style="color:#e84545">${fechaITV}</strong>.<br>No se puede asignar hasta renovarla.</div>
+      <button onclick="this.closest('div[style*=fixed]').remove()"
+        style="width:100%;padding:13px;background:#1a1a2e;color:white;border:none;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:1px;">
+        Entendido
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
 function eliminarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   if (!confirm(`¿Eliminar ${v.matricula}?`)) return;
@@ -2816,13 +2919,15 @@ function añadirVehiculo() {
   const tipo  = document.getElementById('add-tipo').value;
   const grupo = document.getElementById('add-grupo').value.trim().toUpperCase() || tipo+'S';
   const nota  = document.getElementById('add-nota').value.trim();
+  const itv_fin = document.getElementById('add-itv-fin').value.trim();
   if (!mat) { mostrarToast('Introduce la matrícula', 'error'); return; }
   if (GRUPOS.some(g => g.vehiculos.some(v => v.matricula===mat))) { mostrarToast('Esa matrícula ya existe', 'error'); return; }
   let g = GRUPOS.find(g => g.nombre.toUpperCase()===grupo);
   if (!g) { g = { nombre: grupo, vehiculos: [] }; GRUPOS.push(g); }
-  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false });
+  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false, itv_fin });
   document.getElementById('add-matricula').value = '';
   document.getElementById('add-nota').value = '';
+  document.getElementById('add-itv-fin').value = '';
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
   mostrarToast(`✓ ${mat} añadido`, 'success');
@@ -2938,7 +3043,7 @@ function renderHistorial() {
     tbody.innerHTML = '<tr><td colspan="12" class="hist-empty">Sin registros.</td></tr>';
     return;
   }
-  const campos = ['fecha','turno','matricula','tipo','operario','resp_entrega','resp_recibe','hora_entrega','hora_devolucion','num_tarjeta','cinchas','cinchas_entrega'];
+  const campos = ['fecha','turno','matricula','tipo','operario','resp_entrega','resp_recibe','hora_entrega','hora_devolucion','num_tarjeta','itv','incidencias'];
   tbody.innerHTML = historialCache.map(f =>
     `<tr>${campos.map(c => `<td class="${c==='matricula'?'mat':''}${!f[c]?' vacio':''}">${f[c]||'—'}</td>`).join('')}</tr>`
   ).join('');
@@ -2946,7 +3051,7 @@ function renderHistorial() {
 
 function exportarCSV() {
   if (!historialCache.length) { mostrarToast('Sin datos', 'info'); return; }
-  const campos = ['fecha','turno','matricula','tipo','operario','resp_entrega','resp_recibe','hora_entrega','hora_devolucion','num_tarjeta','cinchas','cinchas_entrega'];
+  const campos = ['fecha','turno','matricula','tipo','operario','resp_entrega','resp_recibe','hora_entrega','hora_devolucion','num_tarjeta','itv','incidencias'];
   const csv = [campos.join(';'), ...historialCache.map(f => campos.map(c => `"${(f[c]||'').replace(/"/g,'""')}"`).join(';'))].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
@@ -3286,8 +3391,75 @@ async function hashStr(s) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Nota: los sellos (imágenes base64 de JD y LD) se pueden añadir en
-// SELLOS.JD y SELLOS.LD al principio del script.
+// INCIDENCIAS
+// ════════════════════════════════════════════════════════════════════════════
+function abrirModalIncidencia(matricula) {
+  const d = getDato(matricula);
+  const textoActual = d.incidencias || '';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:460px;max-width:96vw;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:30px;margin-bottom:8px;">⚠️</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">Registrar incidencia</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:18px;">Vehículo: <strong style="color:#1a1a2e">${esc(matricula)}</strong> · ${fechaActual} · ${turnoActual === 'MANANA' ? 'Mañana' : 'Tarde'}</div>
+      <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Descripción de la incidencia</label>
+      <textarea id="incid-texto" rows="4"
+        style="width:100%;padding:10px 12px;border:1.5px solid #dde1ea;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;color:#1a1a2e;resize:vertical;outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='#e84545'" onblur="this.style.borderColor='#dde1ea'"
+        placeholder="Describe la incidencia con el mayor detalle posible…">${esc(textoActual)}</textarea>
+      <div style="font-size:10px;color:#aaa;margin-top:5px;margin-bottom:18px;">Se guardará en el cuadrante y en la hoja <strong>Incidencias</strong> de Google Sheets.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="this.closest('div[style*=fixed]').remove()"
+          style="padding:10px 20px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="btn-guardar-incidencia"
+          style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">
+          ✓ Guardar incidencia
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-guardar-incidencia').onclick = async () => {
+    const texto = document.getElementById('incid-texto').value.trim();
+    if (!texto) { mostrarToast('Escribe la incidencia antes de guardar', 'error'); return; }
+    const btn = overlay.querySelector('#btn-guardar-incidencia');
+    btn.disabled = true; btn.textContent = '⏳ Guardando…';
+
+    // Guardar en cuadrante local
+    setDato(matricula, 'incidencias', texto);
+    programarGuardado();
+
+    // Guardar en hoja Incidencias de Sheets
+    await registrarIncidenciaEnSheets(matricula, texto);
+
+    document.body.removeChild(overlay);
+    renderTabla();
+    mostrarToast('✓ Incidencia registrada', 'success');
+  };
+}
+
+async function registrarIncidenciaEnSheets(matricula, descripcion) {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        accion: 'registrarIncidencia',
+        incidencia: {
+          timestamp:   new Date().toISOString(),
+          fecha:       fechaActual,
+          turno:       turnoActual,
+          matricula:   matricula,
+          descripcion: descripcion,
+          responsable: respUsuario
+        }
+      })
+    });
+  } catch(e) { console.warn('No se pudo guardar incidencia en Sheets:', e); }
+}
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════
 </script>

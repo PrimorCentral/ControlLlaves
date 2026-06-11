@@ -572,6 +572,46 @@
     @keyframes splash-progress { 0%{width:0%} 60%{width:75%} 100%{width:90%} }
     .splash-msg { font-size: 11px; color: #445; font-weight: 600; letter-spacing: 0.5px; min-height: 16px; }
 
+    /* ─── MODAL CARGA CUADRANTE ─── */
+    #modal-cargando {
+      display: none; position: fixed; inset: 0; z-index: 9000;
+      background: rgba(10,12,30,0.72); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    #modal-cargando.visible { display: flex; }
+    #modal-cargando .carga-box {
+      background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 20px;
+      padding: 36px 40px 30px; display: flex; flex-direction: column;
+      align-items: center; gap: 18px; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      min-width: 280px; animation: carga-in 0.2s ease-out;
+    }
+    @keyframes carga-in {
+      from { transform: scale(0.92) translateY(10px); opacity: 0; }
+      to   { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .carga-anillo { position: relative; width: 56px; height: 56px; }
+    .carga-anillo svg { animation: carga-giro 1s linear infinite; }
+    @keyframes carga-giro { to { transform: rotate(360deg); } }
+    .carga-icono {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center; font-size: 20px;
+    }
+    .carga-titulo {
+      font-size: 13px; font-weight: 800; color: #e2e8f0;
+      letter-spacing: 0.3px; text-align: center;
+    }
+    .carga-paso {
+      font-size: 11px; font-weight: 600; color: #6b7a94;
+      text-align: center; min-height: 16px; transition: color 0.2s;
+    }
+    .carga-barra-wrap {
+      width: 180px; height: 3px; background: #252545; border-radius: 2px; overflow: hidden;
+    }
+    .carga-barra {
+      height: 100%; background: #e84545; border-radius: 2px;
+      width: 0%; transition: width 0.5s ease;
+    }
+
     @media print {
       body { overflow: visible !important; }
       .sidebar, .main-header, .toast, #splash { display: none !important; }
@@ -584,6 +624,24 @@
   </style>
 </head>
 <body>
+
+<!-- MODAL CARGA CUADRANTE -->
+<div id="modal-cargando">
+  <div class="carga-box">
+    <div class="carga-anillo">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="28" cy="28" r="24" stroke="#252545" stroke-width="4"/>
+        <path d="M28 4 A24 24 0 0 1 52 28" stroke="#e84545" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <div class="carga-icono">🔑</div>
+    </div>
+    <div class="carga-titulo" id="carga-titulo">Cargando cuadrante…</div>
+    <div class="carga-barra-wrap">
+      <div class="carga-barra" id="carga-barra"></div>
+    </div>
+    <div class="carga-paso" id="carga-paso">Iniciando…</div>
+  </div>
+</div>
 
 <!-- SPLASH -->
 <div id="splash">
@@ -1929,16 +1987,21 @@ function renderTabla() {
   document.getElementById('stat-asignados').textContent = asignados;
   document.getElementById('stat-total').textContent = total;
 
+  const esHoy = esFechaHoy();
   let html = `<table><thead><tr>
     <th class="col-mat" style="width:185px">Matrícula</th>
     <th style="min-width:175px">Operario / Chofer</th>
-    ${COLUMNAS.map(c => `<th>${c.label}</th>`).join('')}
-    <th>Orden</th>
+    ${COLUMNAS.map(c => {
+      if (c.key === 'itv' && !esHoy) return '';
+      return `<th>${c.label}</th>`;
+    }).join('')}
+    ${esHoy ? '<th>Orden</th>' : ''}
   </tr></thead><tbody>`;
 
+  const colCount = 2 + COLUMNAS.filter(c => !(c.key === 'itv' && !esHoy)).length + (esHoy ? 1 : 0);
   let hayRestringidos = false;
   GRUPOS.forEach((grupo, gi) => {
-    html += `<tr class="group-header ${gi===0?'first':''}"><td colspan="${3+COLUMNAS.length}">${grupo.nombre}</td></tr>`;
+    html += `<tr class="group-header ${gi===0?'first':''}"><td colspan="${colCount}">${grupo.nombre}</td></tr>`;
     grupo.vehiculos.forEach(v => {
       const d        = getDato(v.matricula);
       const asignado = d.operario && d.operario.trim();
@@ -1996,19 +2059,33 @@ function renderTabla() {
         const CAMPOS_AUTO = ['resp_entrega', 'resp_recibe', 'hora_entrega', 'hora_devolucion'];
         const esCampoAuto = CAMPOS_AUTO.includes(col.key);
 
-        // ── Campo INCIDENCIAS: siempre botón que abre modal ───────────────
+        // ── Campo INCIDENCIAS: solo botón "Ver" si tiene incidencia (solo editable si es hoy) ─
         if (col.key === 'incidencias') {
           const tieneIncid = val && val.trim();
-          html += `<td><button class="btn-print-row" style="background:${tieneIncid?'#fff8ec':'#f8f9fc'};color:${tieneIncid?'#c47d00':'#8899aa'};border-color:${tieneIncid?'#fde68a':'#dde1ea'};font-size:10px;padding:4px 8px;"
-            onclick="abrirModalIncidencia('${esc(v.matricula)}')"
-            title="${tieneIncid ? esc(val) : 'Registrar incidencia'}">
-            ${tieneIncid ? '⚠️ Ver' : '+ Incidencia'}
-          </button></td>`;
+          if (tieneIncid) {
+            // Siempre mostrar "Ver" si hay incidencia registrada
+            html += `<td><button class="btn-print-row" style="background:#fff8ec;color:#c47d00;border-color:#fde68a;font-size:10px;padding:4px 8px;"
+              onclick="abrirModalIncidencia('${esc(v.matricula)}')"
+              title="${esc(val)}">
+              ⚠️ Ver
+            </button></td>`;
+          } else if (esHoy) {
+            // Solo mostrar botón "+ Incidencia" si es hoy y no hay incidencia
+            html += `<td><button class="btn-print-row" style="background:#f8f9fc;color:#8899aa;border-color:#dde1ea;font-size:10px;padding:4px 8px;"
+              onclick="abrirModalIncidencia('${esc(v.matricula)}')"
+              title="Registrar incidencia">
+              + Incidencia
+            </button></td>`;
+          } else {
+            // Cuadrante de otro día y sin incidencia: celda vacía
+            html += `<td></td>`;
+          }
           return;
         }
 
-        // ── Campo ITV: mostrar badge según estado ────────────────────────
+        // ── Campo ITV: mostrar badge según estado (solo si es hoy) ──────
         if (col.key === 'itv') {
+          if (!esHoy) return; // no mostrar columna ITV en cuadrantes de otro día
           const itvInfo = itvCaducada(v.matricula);
           if (itvInfo.caducada) {
             html += `<td><span style="font-size:9px;font-weight:700;color:#e84545;background:#fff0f0;border:1px solid #fcc;border-radius:5px;padding:2px 6px;">⛔ Caducada</span></td>`;
@@ -2047,21 +2124,23 @@ function renderTabla() {
         }
       });
 
-      // Botón imprimir orden
-      const disabled = (asignado && !cuadranteBloqueado) ? '' : 'disabled';
-      const yaImpresa = _ordenesImpresas.has(`${v.matricula}|${turnoActual}|${fechaActual}`);
-      const claseOrden = yaImpresa ? 'impresa' : (asignado ? 'pendiente' : '');
-      html += `<td><button class="btn-print-row ${claseOrden}" ${disabled}
-        data-mat="${esc(v.matricula)}"
-        onclick="abrirModalOrden('${esc(v.matricula)}', false)"
-        title="${yaImpresa ? '✓ Orden ya impresa' : (asignado ? 'Pendiente de imprimir' : 'Imprimir orden de trabajo')}">🖨️ Orden</button></td>`;
+      // Botón imprimir orden (solo si es hoy)
+      if (esHoy) {
+        const disabled = (asignado && !cuadranteBloqueado) ? '' : 'disabled';
+        const yaImpresa = _ordenesImpresas.has(`${v.matricula}|${turnoActual}|${fechaActual}`);
+        const claseOrden = yaImpresa ? 'impresa' : (asignado ? 'pendiente' : '');
+        html += `<td><button class="btn-print-row ${claseOrden}" ${disabled}
+          data-mat="${esc(v.matricula)}"
+          onclick="abrirModalOrden('${esc(v.matricula)}', false)"
+          title="${yaImpresa ? '✓ Orden ya impresa' : (asignado ? 'Pendiente de imprimir' : 'Imprimir orden de trabajo')}">🖨️ Orden</button></td>`;
+      }
 
       html += `</tr>`;
     });
   });
 
   if (hayRestringidos) {
-    html += `<tr class="nota-row"><td colspan="${3+COLUMNAS.length}">⚠️ Las matriculas con fondo ROJO solo lo podrán utilizar las personas AUTORIZADAS.</td></tr>`;
+    html += `<tr class="nota-row"><td colspan="${colCount}">⚠️ Las matriculas con fondo ROJO solo lo podrán utilizar las personas AUTORIZADAS.</td></tr>`;
   }
   html += `</tbody></table>`;
   wrap.innerHTML = html;
@@ -2213,30 +2292,51 @@ function programarGuardado() {
 // ════════════════════════════════════════════════════════════════════════════
 // GOOGLE SHEETS
 // ════════════════════════════════════════════════════════════════════════════
+// ── Helpers del modal de carga ───────────────────────────────────────────────
+function mostrarCargando(titulo, paso, pct) {
+  const modal = document.getElementById('modal-cargando');
+  document.getElementById('carga-titulo').textContent = titulo || 'Cargando cuadrante…';
+  document.getElementById('carga-paso').textContent   = paso  || '';
+  document.getElementById('carga-barra').style.width  = (pct || 0) + '%';
+  modal.classList.add('visible');
+}
+function actualizarCargando(paso, pct) {
+  document.getElementById('carga-paso').textContent  = paso || '';
+  document.getElementById('carga-barra').style.width = (pct || 0) + '%';
+}
+function ocultarCargando() {
+  document.getElementById('carga-barra').style.width = '100%';
+  setTimeout(() => {
+    document.getElementById('modal-cargando').classList.remove('visible');
+    document.getElementById('carga-barra').style.width = '0%';
+  }, 300);
+}
+
 async function cargarCuadrante() {
   if (!APPS_SCRIPT_URL) { ocultarSplash(); return; }
-  const wrap = document.getElementById('table-wrap');
-  const overlay = document.createElement('div');
-  overlay.className = 'loading-overlay';
-  overlay.innerHTML = '<div class="spinner"></div>';
-  wrap.appendChild(overlay);
 
-  // ✅ Limpiar SIEMPRE el estado local antes de cargar desde Sheets
-  // así los datos borrados en la BD no persisten en memoria
+  // Mostrar modal de carga ANTES de cualquier await
+  const fechaLabel = fechaActual
+    ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    : '';
+  const turnoLabel = turnoActual === 'MANANA' ? 'Mañana' : 'Tarde';
+  mostrarCargando(fechaActual ? `${fechaActual.split('-').reverse().join('-')} · ${turnoLabel}` : 'Cargando cuadrante', 'Iniciando…', 5);
+
+  // Limpiar estado local
   datos = {};
   pendientesGuardar.clear();
 
   try {
-    // 1) Cargar flota (vehículos y grupos)
-    setSplashMsg('Cargando flota de vehículos…');
+    // 1) Cargar flota
+    actualizarCargando('Cargando flota de vehículos…', 20);
     await cargarFlotaDesdeSheets();
 
-    // 1b) Cargar conductores
-    setSplashMsg('Cargando conductores…');
+    // 2) Cargar conductores
+    actualizarCargando('Cargando conductores…', 45);
     await cargarConductoresDesdeSheets();
 
-    // 2) Cargar registros del cuadrante — siempre desde Sheets, nunca de caché
-    setSplashMsg('Cargando cuadrante del día…');
+    // 3) Cargar cuadrante del día
+    actualizarCargando('Cargando asignaciones del día…', 65);
     const url = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
     const resp = await fetch(url, { redirect: 'follow' });
     const json = await resp.json();
@@ -2260,7 +2360,8 @@ async function cargarCuadrante() {
       mostrarToast('Cuadrante vacío para hoy — puedes empezar a asignar', 'info');
     }
 
-    // Cargar incidencias del día desde hoja Incidencias (para mostrar ⚠️ Ver correctamente)
+    // 4) Cargar incidencias
+    actualizarCargando('Cargando incidencias…', 85);
     try {
       const urlIncid = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
       const respIncid = await fetch(urlIncid, { redirect: 'follow' });
@@ -2273,17 +2374,18 @@ async function cargarCuadrante() {
           if (f.descripcion) datos[key].incidencias = f.descripcion;
         });
       }
-    } catch(e) { console.warn('No se pudieron cargar incidencias desde hoja Incidencias:', e); }
+    } catch(e) { console.warn('No se pudieron cargar incidencias:', e); }
 
   } catch(e) {
     console.error(e);
     mostrarToast('⚠️ Error al conectar: ' + e.message, 'error');
   } finally {
-    overlay.remove();
+    actualizarCargando('Renderizando tabla…', 95);
     renderTabla();
-    actualizarBloqueoCuadrante(); // SIEMPRE después de renderTabla (renderTabla borra el banner)
+    actualizarBloqueoCuadrante();
     verificarConfig();
     ocultarSplash();
+    ocultarCargando();
   }
 }
 

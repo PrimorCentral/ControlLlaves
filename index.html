@@ -422,7 +422,7 @@
 
     /* Panel izquierdo: marca */
     .login-brand {
-      width: 42%; background: #1a1a2e; display: flex; flex-direction: column;
+      width: 220px; background: #1a1a2e; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 0; padding: 48px 40px;
       position: relative; overflow: hidden;
     }
@@ -463,13 +463,27 @@
 
     /* Panel derecho: formulario */
     .login-form-panel {
-     flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 48px 56px;
-      gap: 0;
-      background-image: url('IMAGENTRANSPORTE.png');
-      background-size: cover;
-      background-position: center;
-    }
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 48px 56px;
+  gap: 0;
+  background-image: url('IMAGENTRANSPORTE.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.login-form-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 0;
+}
+
+.login-form-panel > * {
+  position: relative;
+  z-index: 1;
+}
     .login-form-box {
       width: 100%; max-width: 360px; background: white;
       border-radius: 18px; padding: 36px 32px;

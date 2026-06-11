@@ -3411,8 +3411,8 @@ async function hashStr(s) {
   }
 
   // ── Iniciar comprobaciones periódicas ────────────────────────────────────
-  // Primera comprobación a los 5 segundos de cargar la página
-  setTimeout(comprobarVersion, 5000);
+  // Primera comprobación nada más cargar la página (500ms para que el DOM termine de renderizar)
+  setTimeout(comprobarVersion, 500);
 
   // Comprobaciones periódicas cada CHECK_INTERVAL_MS
   var checkTimer = setInterval(comprobarVersion, CHECK_INTERVAL_MS);

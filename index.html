@@ -2414,7 +2414,7 @@ async function cargarCuadrante() {
     }
 
     // 4) Cargar incidencias
-    actualizarCargando('Cargando incidencias…', 85);
+    actualizarCargando('Cargando incidencias…', 80);
     try {
       const urlIncid = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
       const respIncid = await fetch(urlIncid, { redirect: 'follow' });
@@ -2429,11 +2429,15 @@ async function cargarCuadrante() {
       }
     } catch(e) { console.warn('No se pudieron cargar incidencias:', e); }
 
+    // 5) Sincronizar órdenes impresas desde el log
+    actualizarCargando('Verificando órdenes impresas…', 90);
+    await sincronizarOrdenesImpresas();
+
   } catch(e) {
     console.error(e);
     mostrarToast('⚠️ Error al conectar: ' + e.message, 'error');
   } finally {
-    actualizarCargando('Renderizando tabla…', 95);
+    actualizarCargando('Renderizando tabla…', 97);
     renderTabla();
     actualizarBloqueoCuadrante();
     verificarConfig();
@@ -2611,9 +2615,10 @@ async function syncSilencioso() {
   try {
     _syncCiclo++;
 
-    // ── Cada 6 ciclos (~30s) sincronizar también la flota (vehículos, ITV, etc.) ──
+    // ── Cada 6 ciclos (~30s) sincronizar también la flota y las órdenes impresas ──
     if (_syncCiclo % 6 === 1) {
       await cargarFlotaDesdeSheets();
+      await sincronizarOrdenesImpresas();
     }
 
     const url = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
@@ -2982,6 +2987,43 @@ function imprimirOrden(matricula, operario, emp, rutas) {
 // ════════════════════════════════════════════════════════════════════════════
 // LOG DE IMPRESIONES
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// SINCRONIZAR ÓRDENES IMPRESAS DESDE SHEETS
+// Consulta el log del día/turno actual y actualiza _ordenesImpresas
+// Se llama al cargar el cuadrante y en cada ciclo de sync
+// ════════════════════════════════════════════════════════════════════════════
+async function sincronizarOrdenesImpresas() {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    const url = `${APPS_SCRIPT_URL}?accion=cargarLog&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
+    const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) return;
+    const json = await resp.json();
+    const filas = json.filas || [];
+
+    // Reconstruir el Set desde cero con lo que hay en Sheets
+    _ordenesImpresas.clear();
+    filas.forEach(f => {
+      if (f.matricula && f.turno && f.fecha) {
+        _ordenesImpresas.add(`${f.matricula}|${f.turno}|${f.fecha}`);
+      } else if (f.matricula && f.turno) {
+        _ordenesImpresas.add(`${f.matricula}|${f.turno}|${fechaActual}`);
+      }
+    });
+
+    // Actualizar visualmente los botones de orden sin re-renderizar toda la tabla
+    document.querySelectorAll('.btn-print-row').forEach(btn => {
+      const mat = btn.dataset.mat;
+      if (!mat) return;
+      const impresa = _ordenesImpresas.has(`${mat}|${turnoActual}|${fechaActual}`);
+      const asignado = !!(datos[`${mat}|${turnoActual}|${fechaActual}`] || {}).operario;
+      btn.classList.toggle('impresa', impresa);
+      btn.classList.toggle('pendiente', !impresa && asignado);
+      btn.title = impresa ? '✓ Orden ya impresa' : (asignado ? 'Pendiente de imprimir' : 'Imprimir orden de trabajo');
+    });
+  } catch(e) { /* silencioso — no interrumpir el sync */ }
+}
+
 async function registrarLog(matricula, operario, empresa, ruta) {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
   try {

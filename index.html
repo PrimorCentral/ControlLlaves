@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.1.4">
+  <meta name="app-version" content="2.1.5">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -363,7 +363,7 @@
     .modal-login-admin .btn-cancelar:hover { background: #eaecf2; }
 
     /* ─── PANEL ADMIN ─── */
-    .modal-admin { background: white; border-radius: 14px; padding: 26px 30px; width: 1100px; max-width: 97vw; max-height: 95vh; box-shadow: 0 24px 64px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 14px; }
+    .modal-admin { background: white; border-radius: 14px; padding: 26px 30px; width: 1100px; max-width: 97vw; height: 90vh; max-height: 90vh; box-shadow: 0 24px 64px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 14px; }
     .admin-header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     .admin-header h2 { font-size: 16px; font-weight: 900; color: #1a1a2e; letter-spacing: 1px; }
     .btn-cerrar-admin { padding: 7px 14px; border-radius: 8px; border: 1.5px solid #dde1e8; background: white; color: #556; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
@@ -373,7 +373,7 @@
     .admin-tab:hover { color: #1a1a2e; background: #f4f5f8; }
     .admin-tab.active { color: #e84545; border-bottom-color: #e84545; background: #fff0f0; }
     .admin-tab-panel { display: none; flex: 1; min-height: 0; overflow-y: auto; }
-    .admin-tab-panel.active { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+    .admin-tab-panel.active { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 14px; padding-top: 14px; overflow-y: auto; }
     .admin-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-shrink: 0; }
     .admin-stat-card { background: white; border: 1px solid #dde1e8; border-radius: 10px; padding: 12px 14px; }
     .admin-stat-num { font-size: 26px; font-weight: 900; color: #1a1a2e; }
@@ -916,7 +916,7 @@
           <thead><tr>
             <th>Fecha</th><th>Turno</th><th>Matrícula</th><th>Tipo</th>
             <th>Operario</th><th>Resp. Entrega</th><th>Resp. Recibe</th>
-            <th>H. Gasoil</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th>
+            <th>H. Entrega</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th>
           </tr></thead>
           <tbody id="hist-tbody"></tbody>
         </table>
@@ -3164,9 +3164,51 @@ function renderHistorial() {
     tbody.innerHTML = '<tr><td colspan="12" class="hist-empty">Sin registros.</td></tr>';
     return;
   }
+
+  // Normaliza hora: acepta "9:43", "09:43", ISO con T, descarta fechas puras
+  function fmtHora(val) {
+    if (!val) return '';
+    const s = String(val).trim();
+    if (!s || s === '0' || s === '00:00:00' || s === '00:00') return '';
+    // Descartar si parece una fecha pura YYYY-MM-DD (sin hora)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+    // Ya es HH:MM o H:MM (con o sin segundos)
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s.substring(0, 5);
+    // ISO con T: puede ser epoch 1899 de Sheets o fecha completa con hora
+    if (s.includes('T')) {
+      try {
+        const d = new Date(s);
+        if (!isNaN(d)) {
+          // Epoch de Google Sheets: 1899-12-30 → usar UTC
+          const useUTC = s.startsWith('1899');
+          const h = String(useUTC ? d.getUTCHours() : d.getHours()).padStart(2,'0');
+          const m = String(useUTC ? d.getUTCMinutes() : d.getMinutes()).padStart(2,'0');
+          return (h === '00' && m === '00') ? '' : `${h}:${m}`;
+        }
+      } catch(e) {}
+    }
+    return '';
+  }
+
+  // Formatea fecha YYYY-MM-DD → DD/MM/AAAA
+  function fmtFecha(val) {
+    if (!val) return '';
+    const s = String(val).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return s;
+  }
+
+  const CAMPOS_HORA  = ['hora_entrega','hora_devolucion'];
   const campos = ['fecha','turno','matricula','tipo','operario','resp_entrega','resp_recibe','hora_entrega','hora_devolucion','num_tarjeta','itv','incidencias'];
   tbody.innerHTML = historialCache.map(f =>
-    `<tr>${campos.map(c => `<td class="${c==='matricula'?'mat':''}${!f[c]?' vacio':''}">${f[c]||'—'}</td>`).join('')}</tr>`
+    `<tr>${campos.map(c => {
+      let val;
+      if (c === 'fecha')            val = fmtFecha(f[c]);
+      else if (CAMPOS_HORA.includes(c)) val = fmtHora(f[c]);
+      else                          val = f[c] || '';
+      return `<td class="${c==='matricula'?'mat':''}${!val?' vacio':''}">${val||'—'}</td>`;
+    }).join('')}</tr>`
   ).join('');
 }
 

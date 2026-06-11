@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.0.2">
+  <meta name="app-version" content="1.0.3">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -838,6 +838,7 @@
       <button class="admin-tab" id="tab-btn-conductores" onclick="cambiarTab('conductores')">🧑‍✈️ Conductores</button>
       <button class="admin-tab" id="tab-btn-historial" onclick="cambiarTab('historial')">📋 Historial</button>
       <button class="admin-tab" id="tab-btn-log" onclick="cambiarTab('log')">📝 Log Órdenes</button>
+      <button class="admin-tab" id="tab-btn-incidencias" onclick="cambiarTab('incidencias')">⚠️ Incidencias</button>
       <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')">👥 Responsables</button>
       <button class="admin-tab" id="tab-btn-config" onclick="cambiarTab('config')">⚙️ Config</button>
     </div>
@@ -934,6 +935,27 @@
             <th>Vehículo</th><th>Operario</th><th>Empresa</th><th>Ruta</th><th>Turno</th>
           </tr></thead>
           <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: INCIDENCIAS -->
+    <div class="admin-tab-panel" id="tab-panel-incidencias" style="flex-direction:column;gap:10px">
+      <div class="hist-filters">
+        <input type="date" id="incid-fecha-desde">
+        <input type="date" id="incid-fecha-hasta">
+        <input type="text" id="incid-filtro-matricula" placeholder="Filtrar matrícula…">
+        <button class="btn-add-item" onclick="cargarTabIncidencias()" style="background:#3498db">🔍 Buscar</button>
+        <button class="btn-add-item" onclick="exportarIncidenciasCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="cargarTabIncidencias()" style="background:#2ecc71" title="Recargar desde Sheets">🔄 Recargar</button>
+      </div>
+      <div class="hist-table-wrap">
+        <table class="hist-table">
+          <thead><tr>
+            <th>Fecha/Hora</th><th>Fecha</th><th>Turno</th>
+            <th>Matrícula</th><th>Responsable</th><th style="min-width:260px">Descripción</th>
+          </tr></thead>
+          <tbody id="incid-tbody"><tr><td colspan="6" class="hist-empty">Usa el filtro para buscar incidencias.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -3253,7 +3275,7 @@ function cerrarAdmin() {
 }
 
 function cambiarTab(tab) {
-  ['vehiculos','conductores','historial','log','responsables','config'].forEach(t => {
+  ['vehiculos','conductores','historial','log','incidencias','responsables','config'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
   });
@@ -3270,6 +3292,13 @@ function cambiarTab(tab) {
       document.getElementById('log-fecha-hasta').value = fechaActual;
     }
     cargarLog();
+  }
+  if (tab === 'incidencias') {
+    if (!document.getElementById('incid-fecha-desde').value) {
+      document.getElementById('incid-fecha-desde').value = fechaActual;
+      document.getElementById('incid-fecha-hasta').value = fechaActual;
+    }
+    cargarTabIncidencias();
   }
   if (tab === 'responsables') cargarResponsables();
   if (tab === 'conductores') renderAdminConductores();
@@ -3459,6 +3488,76 @@ async function registrarIncidenciaEnSheets(matricula, descripcion) {
       })
     });
   } catch(e) { console.warn('No se pudo guardar incidencia en Sheets:', e); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PESTAÑA INCIDENCIAS (Panel Admin)
+// ════════════════════════════════════════════════════════════════════════════
+let incidenciasCache = [];
+
+async function cargarTabIncidencias() {
+  const tbody = document.getElementById('incid-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">⏳ Cargando desde Sheets…</td></tr>';
+
+  const desde    = document.getElementById('incid-fecha-desde').value;
+  const hasta    = document.getElementById('incid-fecha-hasta').value;
+  const matricula = (document.getElementById('incid-filtro-matricula').value || '').trim();
+
+  if (!APPS_SCRIPT_URL) {
+    tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">⚠️ Sin URL de Apps Script configurada.</td></tr>';
+    return;
+  }
+
+  try {
+    let url = `${APPS_SCRIPT_URL}?accion=cargarIncidencias`;
+    if (desde)    url += `&desde=${desde}`;
+    if (hasta)    url += `&hasta=${hasta}`;
+    if (matricula) url += `&matricula=${encodeURIComponent(matricula)}`;
+    const resp = await fetch(url, { redirect: 'follow' });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+    incidenciasCache = json.filas || [];
+    renderTabIncidencias();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="hist-empty">Error al cargar: ${e.message}</td></tr>`;
+  }
+}
+
+function renderTabIncidencias() {
+  const tbody = document.getElementById('incid-tbody');
+  if (!tbody) return;
+  if (!incidenciasCache.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">Sin incidencias en el rango seleccionado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = incidenciasCache.map(f => {
+    // Formatear timestamp a hora legible
+    let hora = '—';
+    try { hora = new Date(f.timestamp).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e){}
+    const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
+    return `<tr>
+      <td style="white-space:nowrap;font-size:11px">${hora}</td>
+      <td style="white-space:nowrap">${f.fecha||'—'}</td>
+      <td><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;background:${f.turno==='MANANA'?'#fffbeb':'#fff5f0'};color:${f.turno==='MANANA'?'#92600a':'#9a3412'}">${turnoLabel}</span></td>
+      <td><strong>${f.matricula||'—'}</strong></td>
+      <td style="font-size:11px">${f.responsable||'—'}</td>
+      <td style="font-size:12px;line-height:1.5;max-width:320px;word-break:break-word">${esc(f.descripcion||'—')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportarIncidenciasCSV() {
+  if (!incidenciasCache.length) { mostrarToast('Sin datos para exportar', 'info'); return; }
+  const campos = ['timestamp','fecha','turno','matricula','responsable','descripcion'];
+  const cabeceras = ['Fecha/Hora','Fecha','Turno','Matrícula','Responsable','Descripción'];
+  const csv = [cabeceras.join(';'), ...incidenciasCache.map(f =>
+    campos.map(c => `"${(f[c]||'').replace(/"/g,'""')}"`).join(';')
+  )].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `incidencias_${fechaActual}.csv`;
+  a.click();
 }
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════

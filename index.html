@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.2.4">
+  <meta name="app-version" content="1.3.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -1228,6 +1228,7 @@ let datos = {};
 let saveTimer = null;
 let guardandoAhora = false;
 let pendientesGuardar = new Set();
+let _enVuelo = new Set(); // matrículas cuyo guardado está en curso (no borrar en sync)
 let usuarioActual = null;
 let ordenActual = { matricula: '', operario: '' };
 let _ordenEmpresaKey = 'JD';
@@ -2275,9 +2276,13 @@ async function _ejecutarGuardado(mostrarErrores) {
   const matriculas = [...snap].map(k => k.split('|')[0]);
   const fallidas   = [];
 
+  // Marcar como "en vuelo" para que el sync no las borre mientras se guardan
+  snap.forEach(k => _enVuelo.add(k));
+
   for (const mat of matriculas) {
     const ok = await guardarFilaUpsert(mat, mostrarErrores);
     if (!ok) fallidas.push(`${mat}|${turnoActual}|${fechaActual}`);
+    _enVuelo.delete(`${mat}|${turnoActual}|${fechaActual}`);
   }
 
   if (fallidas.length === 0) {
@@ -2371,6 +2376,7 @@ async function syncSilencioso() {
     json.filas.forEach(fila => {
       const key = `${fila.matricula}|${turnoActual}|${fechaActual}`;
       if (pendientesGuardar.has(key)) return; // mis cambios pendientes mandan
+      if (_enVuelo.has(key)) return; // guardado en curso — no sobreescribir
 
       const local = datos[key] || {};
       let cambio  = false;
@@ -2391,6 +2397,7 @@ async function syncSilencioso() {
     GRUPOS.forEach(g => g.vehiculos.forEach(v => {
       const key = `${v.matricula}|${turnoActual}|${fechaActual}`;
       if (pendientesGuardar.has(key)) return;
+      if (_enVuelo.has(key)) return; // guardado en curso — no tocar
       const local  = datos[key];
       if (!local || !local.operario) return;
       const remoto = json.filas.find(f => f.matricula === v.matricula);

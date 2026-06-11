@@ -224,6 +224,7 @@
 
     /* ─── MODALES BASE ─── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 2000; display: none; align-items: center; justify-content: center; }
+    #modal-login-admin { z-index: 10500; } /* Por encima de pantalla-login (9999) y splash (10000) */
     .modal-overlay.open { display: flex; }
 
     /* ─── LOGIN RESPONSABLE ─── */
@@ -627,7 +628,7 @@
       </div>
 
       <div class="login-admin-link">
-        <button onclick="mostrarPantallaLogin(false); abrirLoginAdmin()">🔐 Acceder como administrador</button>
+        <button onclick="abrirLoginAdmin()">🔐 Acceder como administrador</button>
       </div>
     </div>
     <div class="login-preload-bar" style="width:calc(100% - 0px);max-width:360px">
@@ -1868,8 +1869,8 @@ async function cargarCuadrante() {
     mostrarToast('⚠️ Error al conectar: ' + e.message, 'error');
   } finally {
     overlay.remove();
-    actualizarBloqueoCuadrante();
     renderTabla();
+    actualizarBloqueoCuadrante(); // SIEMPRE después de renderTabla (renderTabla borra el banner)
     verificarConfig();
     ocultarSplash();
   }
@@ -2690,6 +2691,17 @@ async function verificarPasswordAdmin() {
       const cb = _pendingAdminCallback;
       _pendingAdminCallback = null;
       await cb();
+    } else if (!usuarioActual) {
+      // Viene del botón "Acceder como administrador" en la pantalla de login:
+      // crear sesión de admin y entrar al cuadrante
+      usuarioActual = { numUsuario: 'ADMIN', nombre: 'ADMINISTRADOR', rol: 'Admin' };
+      actualizarHeader();
+      document.getElementById('user-pill').style.display = 'flex';
+      document.getElementById('user-pill-name').textContent = 'ADMINISTRADOR';
+      document.getElementById('user-pill-sub').textContent  = 'Admin';
+      mostrarPantallaLogin(false);
+      await cargarCuadrante();
+      abrirAdmin();
     } else {
       abrirAdmin();
     }

@@ -1801,6 +1801,47 @@ function _procesarSeleccionOperario(mat, nombre) {
     return;
   }
 
+  // ── Aviso si vehículo restringido ─────────────────────────────────────────
+  const esRestringido = GRUPOS.some(g => g.vehiculos.some(v => v.matricula === mat && v.restringido));
+  if (esRestringido) {
+    mostrarAvisoRestringido(mat, nombre, () => _abrirConfirmarAsignacion(mat, nombre));
+    return;
+  }
+
+  _abrirConfirmarAsignacion(mat, nombre);
+}
+
+function mostrarAvisoRestringido(mat, nombre, onContinuar) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:380px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+      <div style="font-size:17px;font-weight:900;color:#c62020;margin-bottom:8px;">VEHÍCULO RESTRINGIDO</div>
+      <div style="font-size:13px;font-weight:700;color:#1a1a2e;background:#ffe4e4;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:14px;">${esc(mat)}</div>
+      <div style="font-size:13px;color:#556;line-height:1.6;margin-bottom:22px;">
+        Este vehículo <strong style="color:#c62020">solo puede ser conducido por personal autorizado</strong>.<br>
+        ¿Deseas continuar con la asignación de <strong>${esc(nombre)}</strong>?
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button id="btn-restringido-cancel" style="flex:1;padding:11px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="btn-restringido-ok" style="flex:1;padding:11px;background:#c62020;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Continuar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-restringido-cancel').onclick = () => {
+    document.body.removeChild(overlay);
+    const inp = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
+    if (inp) inp.value = getDato(mat).operario || '';
+  };
+  overlay.querySelector('#btn-restringido-ok').onclick = () => {
+    document.body.removeChild(overlay);
+    onContinuar();
+  };
+}
+
+function _abrirConfirmarAsignacion(mat, nombre) {
   const respEntrega = (usuarioActual && usuarioActual.nombre)
     ? usuarioActual.nombre
     : (usuarioActual ? usuarioActual.numUsuario : '—');

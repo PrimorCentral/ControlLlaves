@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.6.4">
+  <meta name="app-version" content="1.7.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -956,8 +956,8 @@
       <div class="hist-table-wrap">
         <table class="hist-table">
           <thead><tr>
-            <th>Fecha/Hora</th><th>Fecha</th><th>Turno</th>
-            <th>Matrícula</th><th>Responsable</th><th style="min-width:260px">Descripción</th>
+            <th>Fecha/Hora</th><th>Turno</th>
+            <th>Matrícula</th><th>Responsable</th><th style="min-width:260px">Descripción</th><th></th>
           </tr></thead>
           <tbody id="incid-tbody"><tr><td colspan="6" class="hist-empty">Usa el filtro para buscar incidencias.</td></tr></tbody>
         </table>
@@ -3630,26 +3630,28 @@ function renderTabIncidencias() {
     tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">Sin incidencias en el rango seleccionado.</td></tr>';
     return;
   }
-  tbody.innerHTML = incidenciasCache.map(f => {
+  tbody.innerHTML = incidenciasCache.map((f, idx) => {
     // Formatear timestamp a hora legible
     let hora = '—';
     try { hora = new Date(f.timestamp).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e){}
     const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
     return `<tr>
       <td style="white-space:nowrap;font-size:11px">${hora}</td>
-      <td style="white-space:nowrap">${f.fecha||'—'}</td>
       <td><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;background:${f.turno==='MANANA'?'#fffbeb':'#fff5f0'};color:${f.turno==='MANANA'?'#92600a':'#9a3412'}">${turnoLabel}</span></td>
       <td><strong>${f.matricula||'—'}</strong></td>
       <td style="font-size:11px">${f.responsable||'—'}</td>
       <td style="font-size:12px;line-height:1.5;max-width:320px;word-break:break-word">${esc(f.descripcion||'—')}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-item-action danger" onclick="eliminarIncidencia(${idx})" title="Eliminar incidencia" style="font-size:13px;padding:3px 8px">🗑</button>
+      </td>
     </tr>`;
   }).join('');
 }
 
 function exportarIncidenciasCSV() {
   if (!incidenciasCache.length) { mostrarToast('Sin datos para exportar', 'info'); return; }
-  const campos = ['timestamp','fecha','turno','matricula','responsable','descripcion'];
-  const cabeceras = ['Fecha/Hora','Fecha','Turno','Matrícula','Responsable','Descripción'];
+  const campos = ['timestamp','turno','matricula','responsable','descripcion'];
+  const cabeceras = ['Fecha/Hora','Turno','Matrícula','Responsable','Descripción'];
   const csv = [cabeceras.join(';'), ...incidenciasCache.map(f =>
     campos.map(c => `"${(f[c]||'').replace(/"/g,'""')}"`).join(';')
   )].join('\n');
@@ -3657,6 +3659,28 @@ function exportarIncidenciasCSV() {
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
   a.download = `incidencias_${fechaActual}.csv`;
   a.click();
+}
+
+async function eliminarIncidencia(idx) {
+  const inc = incidenciasCache[idx];
+  if (!inc) return;
+  const desc = (inc.descripcion || '').substring(0, 60);
+  if (!confirm(`¿Eliminar esta incidencia?\n\n"${desc}${desc.length >= 60 ? '…' : ''}"\n\nEsta acción no se puede deshacer.`)) return;
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'eliminarIncidencia', timestamp: inc.timestamp, matricula: inc.matricula })
+    });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+    incidenciasCache.splice(idx, 1);
+    renderTabIncidencias();
+    mostrarToast('✓ Incidencia eliminada', 'success');
+  } catch(e) {
+    mostrarToast('Error al eliminar: ' + e.message, 'error');
+  }
 }
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════

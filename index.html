@@ -4,8 +4,60 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestión de Flota · Primor</title>
+
+  <!-- ══════════════════════════════════════════════════════════
+       VERSIÓN DE LA APLICACIÓN
+       Cambia este número cada vez que subas una nueva versión.
+       También actualiza version.json en GitHub con el mismo número.
+  ══════════════════════════════════════════════════════════════ -->
+  <meta name="app-version" content="1.0.0">
+
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    /* ─── MODAL NUEVA VERSIÓN ─── */
+    #modal-nueva-version {
+      display: none;
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(10,10,30,0.75);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    #modal-nueva-version.visible { display: flex; }
+    #modal-nueva-version .nv-box {
+      background: white; border-radius: 18px;
+      padding: 36px 32px 28px; width: 380px;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+      font-family: 'Barlow', sans-serif;
+      animation: nv-in 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes nv-in {
+      from { transform: scale(0.85) translateY(20px); opacity: 0; }
+      to   { transform: scale(1) translateY(0);        opacity: 1; }
+    }
+    #modal-nueva-version .nv-icon  { font-size: 52px; margin-bottom: 10px; }
+    #modal-nueva-version .nv-title { font-size: 20px; font-weight: 900; color: #1a1a2e; margin-bottom: 8px; }
+    #modal-nueva-version .nv-desc  { font-size: 13px; color: #6b7a94; line-height: 1.6; margin-bottom: 24px; }
+    #modal-nueva-version .nv-version-badge {
+      display: inline-block; background: #f0f4ff; color: #3b5bdb;
+      border: 1.5px solid #c5d0ff; border-radius: 8px;
+      font-size: 11px; font-weight: 800; letter-spacing: 1px;
+      padding: 4px 12px; margin-bottom: 20px;
+    }
+    #modal-nueva-version .btn-actualizar {
+      width: 100%; padding: 14px;
+      background: #e84545; color: white; border: none;
+      border-radius: 11px; font-family: 'Barlow', sans-serif;
+      font-size: 15px; font-weight: 900; letter-spacing: 1.5px;
+      text-transform: uppercase; cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      box-shadow: 0 6px 20px rgba(232,69,69,0.35);
+    }
+    #modal-nueva-version .btn-actualizar:hover  { background: #c63030; transform: translateY(-1px); }
+    #modal-nueva-version .btn-actualizar:active { transform: translateY(0); }
+    #modal-nueva-version .nv-footer {
+      margin-top: 14px; font-size: 10px; color: #b0bac8; font-weight: 600;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; overflow: hidden; }
     body { height: 100vh; background: #f0f2f5; font-family: 'Barlow', sans-serif; display: flex; }
@@ -1919,13 +1971,38 @@ function pedirReasignacion(matricula) {
     document.body.appendChild(loadingOverlay);
 
     try {
-      // 1) Primero registrar el log (esperar respuesta completa antes de modificar el cuadrante)
+      const horaReasig = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+      // 1) Registrar log de reasignación
       if (operarioAnterior) {
-        const horaReasig = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         await registrarLog(matricula, operarioAnterior, '— Reasignación —', `Conductor reasignado a las ${horaReasig}`);
       }
 
-      // 2) Ahora limpiar en memoria
+      // 2) Guardar snapshot histórico en Registros (fila congelada, marcada como reasignada)
+      //    Incluye la hora de devolución = momento de la reasignación
+      if (operarioAnterior) {
+        const dActual = getDato(matricula);
+        let tipo = '';
+        GRUPOS.forEach(g => g.vehiculos.forEach(v => { if (v.matricula === matricula) tipo = v.tipo; }));
+        const snapshot = {
+          fecha:           fechaActual,
+          turno:           turnoActual,
+          matricula,
+          tipo,
+          operario:        operarioAnterior,
+          resp_entrega:    dActual.resp_entrega    || '',
+          resp_recibe:     dActual.resp_recibe     || '',
+          hora_entrega:    dActual.hora_entrega    || '',
+          hora_devolucion: horaReasig,   // ← hora exacta de la reasignación
+          num_tarjeta:     dActual.num_tarjeta     || '',
+          cinchas:         dActual.cinchas         || '',
+          cinchas_entrega: dActual.cinchas_entrega || '',
+          reasignado:      'SI',
+        };
+        await guardarSnapshotReasignacion(snapshot);
+      }
+
+      // 3) Limpiar datos activos en memoria (la fila activa queda vacía para el nuevo conductor)
       setDato(matricula, '_reasignado', 'SI');
       setDato(matricula, '_operarioAnterior', operarioAnterior);
       setDato(matricula, 'operario', '');
@@ -1933,8 +2010,11 @@ function pedirReasignacion(matricula) {
       setDato(matricula, 'hora_entrega', '');
       setDato(matricula, 'resp_recibe', '');
       setDato(matricula, 'hora_devolucion', '');
+      setDato(matricula, 'num_tarjeta', '');
+      setDato(matricula, 'cinchas', '');
+      setDato(matricula, 'cinchas_entrega', '');
 
-      // 3) Guardar cuadrante — cancelar el timer automático y ejecutar directamente
+      // 4) Guardar cuadrante activo — la fila vacía se borra de Registros (el snapshot ya está guardado)
       clearTimeout(saveTimer);
       saveTimer = null;
       await guardarTodo();
@@ -2046,64 +2126,101 @@ async function guardarTodoSilencioso() {
   await _ejecutarGuardado(false);
 }
 
-// ── núcleo compartido ─────────────────────────────────────────────────────────
+// ── Upsert de una sola fila — núcleo atómico ─────────────────────────────────
+// Envía solo la matrícula que cambió. El servidor hace INSERT o UPDATE
+// sin tocar ninguna otra fila. Si falla: reintenta hasta MAX_INTENTOS.
+async function guardarFilaUpsert(matricula, mostrarErrores) {
+  if (!APPS_SCRIPT_URL) return false;
+  const d = datos[`${matricula}|${turnoActual}|${fechaActual}`] || {};
+  // Encontrar el tipo del vehículo
+  let tipo = '';
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => { if (v.matricula === matricula) tipo = v.tipo; }));
+
+  const fila = {
+    fecha: fechaActual, turno: turnoActual, matricula, tipo,
+    operario:        d.operario        || '',
+    resp_entrega:    d.resp_entrega    || '',
+    resp_recibe:     d.resp_recibe     || '',
+    hora_entrega:    d.hora_entrega    || '',
+    hora_devolucion: d.hora_devolucion || '',
+    num_tarjeta:     d.num_tarjeta     || '',
+    cinchas:         d.cinchas         || '',
+    cinchas_entrega: d.cinchas_entrega || '',
+  };
+
+  const MAX_INTENTOS = 3;
+  for (let i = 1; i <= MAX_INTENTOS; i++) {
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ accion: 'guardarFila', fila }),
+        redirect: 'follow'
+      });
+      const json = await resp.json();
+      if (json.ok) return true;
+    } catch(e) {
+      if (i < MAX_INTENTOS) await new Promise(r => setTimeout(r, 1500 * i));
+    }
+  }
+  if (mostrarErrores) mostrarToast(`⚠️ No se pudo guardar ${matricula} — se reintentará`, 'error');
+  return false;
+}
+
+// ── Guarda snapshot histórico de una reasignación (siempre INSERT, nunca UPDATE)
+async function guardarSnapshotReasignacion(snapshot) {
+  if (!APPS_SCRIPT_URL) return false;
+  const MAX_INTENTOS = 3;
+  for (let i = 1; i <= MAX_INTENTOS; i++) {
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ accion: 'guardarSnapshotReasignacion', fila: snapshot }),
+        redirect: 'follow'
+      });
+      const json = await resp.json();
+      if (json.ok) return true;
+    } catch(e) {
+      if (i < MAX_INTENTOS) await new Promise(r => setTimeout(r, 1500 * i));
+    }
+  }
+  return false;
+}
+
+// ── núcleo compartido — itera sobre las matrículas pendientes ─────────────────
 async function _ejecutarGuardado(mostrarErrores) {
   if (!APPS_SCRIPT_URL) { setSaveIndicator('', '—'); return; }
-  if (pendientesGuardar.size === 0) { setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`); return; }
+  if (pendientesGuardar.size === 0) {
+    setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
+    return;
+  }
   if (guardandoAhora) return;
   guardandoAhora = true;
   setSaveIndicator('saving', '');
 
+  // Extraer las matrículas de las keys "MAT|turno|fecha"
   const snap = new Set(pendientesGuardar);
   pendientesGuardar.clear();
 
-  const filas = [];
-  GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    const d = datos[`${v.matricula}|${turnoActual}|${fechaActual}`] || {};
-    filas.push({
-      fecha: fechaActual, turno: turnoActual, matricula: v.matricula, tipo: v.tipo,
-      operario: d.operario||'', resp_entrega: d.resp_entrega||'',
-      resp_recibe: d.resp_recibe||'', hora_entrega: d.hora_entrega||'',
-      hora_devolucion: d.hora_devolucion||'', num_tarjeta: d.num_tarjeta||'',
-      cinchas: d.cinchas||'', cinchas_entrega: d.cinchas_entrega||'',
-    });
-  }));
+  const matriculas = [...snap].map(k => k.split('|')[0]);
+  const fallidas   = [];
 
-  let intentos = 0;
-  const MAX_INTENTOS = 3;
-
-  while (intentos < MAX_INTENTOS) {
-    intentos++;
-    try {
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', headers: {'Content-Type':'text/plain'},
-        body: JSON.stringify({ accion:'guardar', filas }), redirect:'follow'
-      });
-      const json = await resp.json();
-      if (json.ok) {
-        setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
-        guardandoAhora = false;
-        // Reiniciar el timer de sync para que otros vean el cambio lo antes posible
-        if (_syncTimer) { clearInterval(_syncTimer); _syncTimer = setInterval(() => syncSilencioso(), SYNC_INTERVALO); }
-        return; // Éxito — salir
-      }
-      // Respuesta de Sheets con error lógico → reintentar
-    } catch(e) {
-      // Error de red → reintentar tras pausa
-      if (intentos < MAX_INTENTOS) {
-        await new Promise(r => setTimeout(r, 1500 * intentos)); // backoff
-      }
-    }
+  for (const mat of matriculas) {
+    const ok = await guardarFilaUpsert(mat, mostrarErrores);
+    if (!ok) fallidas.push(`${mat}|${turnoActual}|${fechaActual}`);
   }
 
-  // Todos los intentos fallaron: devolver pendientes para no perder datos
-  snap.forEach(k => pendientesGuardar.add(k));
-  setSaveIndicator('saved', ''); // No mostrar error en el indicador
-  if (mostrarErrores) {
-    mostrarToast('No se pudo guardar ahora — se reintentará pronto', 'info');
+  if (fallidas.length === 0) {
+    setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
+    // Reiniciar el timer de sync para que otros vean el cambio enseguida
+    if (_syncTimer) { clearInterval(_syncTimer); _syncTimer = setInterval(() => syncSilencioso(), SYNC_INTERVALO); }
+  } else {
+    // Devolver solo las que fallaron para reintentar
+    fallidas.forEach(k => pendientesGuardar.add(k));
+    setSaveIndicator('error', '⚠️ Error al guardar');
+    if (mostrarErrores) mostrarToast('No se pudo guardar — se reintentará pronto', 'info');
+    setTimeout(() => guardarTodoSilencioso(), 10000);
   }
-  // Reintento silencioso en 10s
-  setTimeout(() => guardarTodoSilencioso(), 10000);
+
   guardandoAhora = false;
 }
 
@@ -3174,5 +3291,174 @@ async function hashStr(s) {
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL NUEVA VERSIÓN DISPONIBLE
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="modal-nueva-version" role="dialog" aria-modal="true">
+  <div class="nv-box">
+    <div class="nv-icon">🚀</div>
+    <div class="nv-title">Nueva versión disponible</div>
+    <div class="nv-version-badge" id="nv-badge">v ···</div>
+    <div class="nv-desc">
+      Se ha publicado una actualización de la aplicación.<br>
+      <strong>Es necesario actualizar para continuar.</strong>
+    </div>
+    <button class="btn-actualizar" onclick="forzarActualizacion()">
+      ⟳ &nbsp; ACTUALIZAR AHORA
+    </button>
+    <div class="nv-footer">La página se recargará automáticamente</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE VERSIONES — Control de actualizaciones forzadas
+//
+// Cómo funciona:
+//   1. Esta página tiene una versión definida en <meta name="app-version">
+//   2. Se consulta version.json en GitHub cada 2 minutos
+//   3. Si la versión remota es mayor → modal bloqueante obligatorio
+//
+// Cuando subas una nueva versión:
+//   → Cambia el <meta name="app-version" content="X.X.X"> en este HTML
+//   → Actualiza también version.json con el mismo número
+// ════════════════════════════════════════════════════════════════════════════
+
+(function() {
+  // ── Configuración ─────────────────────────────────────────────────────────
+  // URL del fichero version.json en tu GitHub Pages
+  // Ejemplo: https://primorcentral.github.io/ControlLlaves/version.json
+  const VERSION_JSON_URL = 'version.json';
+
+  // Cada cuántos milisegundos se comprueba si hay nueva versión (2 minutos)
+  const CHECK_INTERVAL_MS = 2 * 60 * 1000;
+
+  // ── Leer versión actual del HTML ──────────────────────────────────────────
+  function getVersionActual() {
+    const meta = document.querySelector('meta[name="app-version"]');
+    return meta ? meta.getAttribute('content') : '0.0.0';
+  }
+
+  // ── Comparar versiones semánticas (X.Y.Z) ────────────────────────────────
+  // Devuelve true si remota > local
+  function esVersionMayor(remota, local) {
+    const parse = v => v.replace(/[^0-9.]/g, '').split('.').map(Number);
+    const [rMaj, rMin, rPat] = parse(remota);
+    const [lMaj, lMin, lPat] = parse(local);
+    if (rMaj !== lMaj) return rMaj > lMaj;
+    if (rMin !== lMin) return rMin > lMin;
+    return rPat > lPat;
+  }
+
+  // ── Mostrar modal bloqueante ──────────────────────────────────────────────
+  function mostrarModalActualizacion(versionRemota) {
+    const modal = document.getElementById('modal-nueva-version');
+    const badge = document.getElementById('nv-badge');
+    if (!modal) return;
+    if (badge) badge.textContent = 'v ' + versionRemota;
+    modal.classList.add('visible');
+
+    // Bloquear cualquier interacción con el fondo
+    document.addEventListener('keydown', bloquearTeclado, true);
+    document.addEventListener('mousedown', bloquearFondo, true);
+    document.addEventListener('touchstart', bloquearFondo, true);
+  }
+
+  function bloquearTeclado(e) {
+    // Permitir solo si el foco está dentro del modal
+    const modal = document.getElementById('modal-nueva-version');
+    if (modal && !modal.contains(e.target)) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }
+
+  function bloquearFondo(e) {
+    const modal = document.getElementById('modal-nueva-version');
+    if (modal && !modal.contains(e.target)) {
+      e.stopPropagation();
+      e.preventDefault();
+      // Efecto visual: agitar el modal para indicar que es obligatorio
+      const box = modal.querySelector('.nv-box');
+      if (box) {
+        box.style.animation = 'none';
+        setTimeout(() => { box.style.animation = 'nv-shake 0.4s ease'; }, 10);
+      }
+    }
+  }
+
+  // ── Consultar version.json ────────────────────────────────────────────────
+  async function comprobarVersion() {
+    try {
+      // Cache-busting: añadir timestamp para evitar que el navegador
+      // devuelva el version.json cacheado
+      const url = VERSION_JSON_URL + '?t=' + Date.now();
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const versionRemota = data.version;
+      const versionLocal  = getVersionActual();
+
+      if (esVersionMayor(versionRemota, versionLocal)) {
+        mostrarModalActualizacion(versionRemota);
+        // Dejar de comprobar — el usuario tiene que actualizar
+        clearInterval(checkTimer);
+      }
+    } catch (e) {
+      // Sin conexión o error — no hacer nada, se reintentará
+    }
+  }
+
+  // ── Iniciar comprobaciones periódicas ────────────────────────────────────
+  // Primera comprobación a los 5 segundos de cargar la página
+  setTimeout(comprobarVersion, 5000);
+
+  // Comprobaciones periódicas cada CHECK_INTERVAL_MS
+  var checkTimer = setInterval(comprobarVersion, CHECK_INTERVAL_MS);
+
+  // También comprobar cuando el usuario vuelve a la pestaña
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') comprobarVersion();
+  });
+
+})();
+
+// ── Función global para el botón ACTUALIZAR ───────────────────────────────
+function forzarActualizacion() {
+  const btn = document.querySelector('#modal-nueva-version .btn-actualizar');
+  if (btn) { btn.textContent = '⏳  Actualizando…'; btn.disabled = true; }
+
+  // Limpiar caché del Service Worker si existe
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+  }
+
+  // Limpiar caché del navegador y recargar
+  if ('caches' in window) {
+    caches.keys().then(names => names.forEach(n => caches.delete(n)));
+  }
+
+  // Recargar forzando descarga desde servidor (bypass caché)
+  setTimeout(() => {
+    window.location.href = window.location.href.split('?')[0]
+      + '?v=' + Date.now();
+  }, 400);
+}
+</script>
+
+<!-- Animación shake para el modal cuando intentan salir sin actualizar -->
+<style>
+@keyframes nv-shake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px) rotate(-1deg); }
+  40%      { transform: translateX(8px)  rotate(1deg); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+</style>
+
 </body>
 </html>

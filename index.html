@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.1.8">
+  <meta name="app-version" content="2.1.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3700,6 +3700,22 @@ function abrirModalIncidencia(matricula) {
     const btn = overlay.querySelector('#btn-guardar-incidencia');
     btn.disabled = true; btn.textContent = '⏳ Guardando…';
 
+    // ── Modal de progreso ────────────────────────────────────────────────
+    const modalEnvio = document.createElement('div');
+    modalEnvio.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+    modalEnvio.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:44px;margin-bottom:14px;">⚠️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Registrando incidencia</div>
+        <div style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema y enviando<br>notificación por correo…<br>Por favor, espere un momento.</div>
+        <div style="display:flex;justify-content:center;gap:7px;align-items:center;">
+          <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0s"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.2s"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.4s"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(modalEnvio);
+
     // Actualizar memoria local SIN marcar como pendiente de guardar en Registros
     const key = `${matricula}|${turnoActual}|${fechaActual}`;
     if (!datos[key]) datos[key] = {};
@@ -3708,6 +3724,7 @@ function abrirModalIncidencia(matricula) {
     // Guardar SOLO en hoja Incidencias de Sheets (no en Registros)
     await registrarIncidenciaEnSheets(matricula, texto);
 
+    document.body.removeChild(modalEnvio);
     document.body.removeChild(overlay);
     renderTabla();
     mostrarToast('✓ Incidencia registrada', 'success');
@@ -4064,6 +4081,10 @@ function forzarActualizacion() {
   40%      { transform: translateX(8px)  rotate(1deg); }
   60%      { transform: translateX(-5px); }
   80%      { transform: translateX(5px); }
+}
+@keyframes dot-bounce {
+  0%,80%,100% { transform: translateY(0); opacity: 0.4; }
+  40%          { transform: translateY(-8px); opacity: 1; }
 }
 </style>
 

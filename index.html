@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.4.4">
+  <meta name="app-version" content="1.5.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -272,6 +272,8 @@
     /* ─── BOTÓN ORDEN POR FILA ─── */
     .btn-print-row { padding: 3px 10px; border-radius: 6px; border: 1.5px solid #bcc5d0; background: white; color: #667; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .btn-print-row:hover:not(:disabled) { border-color: #27ae60; color: #27ae60; background: #f0fff4; }
+    .btn-print-row.pendiente { background: #3b5bdb; border-color: #3b5bdb; color: white; }
+    .btn-print-row.pendiente:hover { background: #2f4ac7; border-color: #2f4ac7; }
     .btn-print-row.impresa { background: #27ae60; border-color: #27ae60; color: white; }
     .btn-print-row.impresa:hover { background: #219a52; border-color: #219a52; }
     .btn-print-row:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -1968,10 +1970,11 @@ function renderTabla() {
       // Botón imprimir orden
       const disabled = (asignado && !cuadranteBloqueado) ? '' : 'disabled';
       const yaImpresa = _ordenesImpresas.has(`${v.matricula}|${turnoActual}|${fechaActual}`);
-      html += `<td><button class="btn-print-row ${yaImpresa ? 'impresa' : ''}" ${disabled}
+      const claseOrden = yaImpresa ? 'impresa' : (asignado ? 'pendiente' : '');
+      html += `<td><button class="btn-print-row ${claseOrden}" ${disabled}
         data-mat="${esc(v.matricula)}"
         onclick="abrirModalOrden('${esc(v.matricula)}', false)"
-        title="${yaImpresa ? '✓ Orden ya impresa' : 'Imprimir orden de trabajo'}">🖨️ Orden</button></td>`;
+        title="${yaImpresa ? '✓ Orden ya impresa' : (asignado ? 'Pendiente de imprimir' : 'Imprimir orden de trabajo')}">🖨️ Orden</button></td>`;
 
       html += `</tr>`;
     });
@@ -2973,7 +2976,7 @@ function mostrarModalITVCaducada(matricula, fechaITV) {
       <div style="font-size:52px;margin-bottom:10px;">⛔</div>
       <div style="font-size:18px;font-weight:900;color:#e84545;margin-bottom:8px;">ITV CADUCADA</div>
       <div style="font-size:13px;color:#1a1a2e;font-weight:700;margin-bottom:6px;">${esc(matricula)}</div>
-      <div style="font-size:12px;color:#8899aa;margin-bottom:18px;">La ITV de este vehículo caducó el <strong style="color:#e84545">${fechaITV}</strong>.<br>No se puede asignar hasta renovarla.</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:18px;">La ITV de este vehículo caducó el <strong style="color:#e84545">${fmtFechaITV(fechaITV)}</strong>.<br>No se puede asignar hasta renovarla.</div>
       <button onclick="this.closest('div[style*=fixed]').remove()"
         style="width:100%;padding:13px;background:#1a1a2e;color:white;border:none;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:1px;">
         Entendido

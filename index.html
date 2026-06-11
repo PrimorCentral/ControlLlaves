@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.9.4">
+  <meta name="app-version" content="2.1.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -3665,33 +3665,89 @@ function exportarIncidenciasCSV() {
 async function eliminarIncidencia(idx) {
   const inc = incidenciasCache[idx];
   if (!inc) return;
-  const desc = (inc.descripcion || '').substring(0, 60);
-  if (!confirm(`¿Eliminar esta incidencia?\n\n"${desc}${desc.length >= 60 ? '…' : ''}"\n\nEsta acción no se puede deshacer.`)) return;
   if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
-  try {
-    // 1. Borrar de la hoja Incidencias
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ accion: 'eliminarIncidencia', timestamp: inc.timestamp, matricula: inc.matricula })
-    });
-    const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
 
-    // 2. Actualizar memoria local si el cuadrante abierto coincide con la fecha/turno
-    const key = `${inc.matricula}|${turnoActual}|${fechaActual}`;
-    if (datos[key] && inc.fecha === fechaActual &&
-        (inc.turno === turnoActual || (inc.turno === 'MANANA' && turnoActual === 'MANANA'))) {
-      datos[key].incidencias = '';
-      renderizarTabla();
+  const desc = (inc.descripcion || '').substring(0, 80);
+  const descCorta = desc + (inc.descripcion && inc.descripcion.length > 80 ? '…' : '');
+
+  // ── Modal de confirmación ─────────────────────────────────────────────────
+  await new Promise((resolve) => {
+    const overlayConfirm = document.createElement('div');
+    overlayConfirm.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    overlayConfirm.innerHTML = `
+      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:440px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Eliminar incidencia?</div>
+        <div style="font-size:11px;color:#8899aa;margin-bottom:14px;">
+          <span style="font-weight:700;color:#1a1a2e">${inc.matricula}</span>
+          · ${inc.fecha || ''}
+          · ${inc.turno === 'MANANA' ? 'Mañana' : (inc.turno || '')}
+        </div>
+        <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.5;margin-bottom:20px;max-height:80px;overflow:hidden;word-break:break-word;">
+          "${descCorta}"
+        </div>
+        <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btn-incid-cancel"
+            style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+            Cancelar
+          </button>
+          <button id="btn-incid-confirmar"
+            style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:0.3px;">
+            🗑 Sí, eliminar
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlayConfirm);
+
+    overlayConfirm.querySelector('#btn-incid-cancel').onclick = () => {
+      document.body.removeChild(overlayConfirm);
+      resolve(false);
+    };
+    overlayConfirm.querySelector('#btn-incid-confirmar').onclick = () => {
+      document.body.removeChild(overlayConfirm);
+      resolve(true);
+    };
+  }).then(async (confirmado) => {
+    if (!confirmado) return;
+
+    // ── Modal "Borrando…" ───────────────────────────────────────────────────
+    const overlayBorrando = document.createElement('div');
+    overlayBorrando.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    overlayBorrando.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:32px 36px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;animation:nv-in 0.2s ease;min-width:260px">
+        <div style="width:40px;height:40px;border:3px solid #f0f0f0;border-top-color:#e84545;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;">Borrando incidencia…</div>
+        <div style="font-size:11px;color:#8899aa;margin-top:5px">${inc.matricula}</div>
+      </div>`;
+    document.body.appendChild(overlayBorrando);
+
+    try {
+      // 1. Borrar de la hoja Incidencias
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ accion: 'eliminarIncidencia', timestamp: inc.timestamp, matricula: inc.matricula })
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+
+      // 2. Actualizar memoria local y refrescar cuadrante
+      const key = `${inc.matricula}|${inc.turno}|${inc.fecha}`;
+      const keyActual = `${inc.matricula}|${turnoActual}|${fechaActual}`;
+      if (datos[key]) datos[key].incidencias = '';
+      if (datos[keyActual]) datos[keyActual].incidencias = '';
+      renderTabla();
+
+      incidenciasCache.splice(idx, 1);
+      renderTabIncidencias();
+      mostrarToast('✓ Incidencia eliminada', 'success');
+    } catch(e) {
+      mostrarToast('Error al eliminar: ' + e.message, 'error');
+    } finally {
+      document.body.removeChild(overlayBorrando);
     }
-
-    incidenciasCache.splice(idx, 1);
-    renderTabIncidencias();
-    mostrarToast('✓ Incidencia eliminada', 'success');
-  } catch(e) {
-    mostrarToast('Error al eliminar: ' + e.message, 'error');
-  }
+  });
 }
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════

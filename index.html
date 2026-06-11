@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="1.1.4">
+  <meta name="app-version" content="1.2.4">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -675,6 +675,7 @@
     <div class="login-brand-icon">🔑</div>
     <div class="login-brand-title">GESTIÓN<br>DE FLOTA</div>
     <div class="login-brand-sub">Primor · Control diario</div>
+    <div style="margin-top:10px;font-size:10px;font-weight:700;color:#3b5bdb;background:#eef2ff;border:1px solid #c5d0ff;border-radius:6px;padding:3px 10px;display:inline-block;letter-spacing:0.5px;" id="login-version-badge">v —</div>
     <div class="login-brand-badge">
       <div class="login-brand-badge-dot"></div>
       <div class="login-brand-status">
@@ -1283,6 +1284,13 @@ document.addEventListener('DOMContentLoaded', () => {
   setSplashMsg('Listo…');
   const splashBar = document.getElementById('splash-bar');
   if (splashBar) { splashBar.style.width = '100%'; splashBar.style.transition = 'width 0.2s'; }
+  // Mostrar versión en pantalla login
+  const _vBadge = document.getElementById('login-version-badge');
+  if (_vBadge) {
+    const _vMeta = document.querySelector('meta[name="app-version"]');
+    if (_vMeta) _vBadge.textContent = 'v ' + _vMeta.getAttribute('content');
+  }
+
   setTimeout(() => {
     ocultarSplash();
     mostrarPantallaLogin(true);

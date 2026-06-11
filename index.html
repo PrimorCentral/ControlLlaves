@@ -47,12 +47,28 @@
     .save-indicator.saving { color: #f39c12; }
     .save-indicator.saved { color: #2ecc71; }
     .save-indicator.error { color: #e84545; }
-    .user-pill { background: #1a3a1a; border: 1px solid #2a5a2a; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .user-pill { background: #252545; border: 1px solid #3a3a60; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
     .user-pill-icon { font-size: 16px; }
-    .user-pill-name { font-size: 11px; font-weight: 800; color: #aaffaa; line-height: 1.2; }
-    .user-pill-sub { font-size: 9px; color: #556; }
+    .user-pill-name { font-size: 11px; font-weight: 800; color: #ffffff; line-height: 1.2; }
+    .user-pill-sub { font-size: 9px; color: #a0a8c0; font-weight: 600; }
     .btn-logout { background: transparent; border: 1px solid #334; color: #667; font-size: 10px; font-weight: 700; border-radius: 6px; padding: 4px 8px; cursor: pointer; transition: all 0.15s; margin-top: 2px; }
     .btn-logout:hover { border-color: #e84545; color: #e84545; }
+    /* Cuenta atrás sesión */
+    .session-countdown { font-size: 9px; font-weight: 800; color: #a0a8c0; letter-spacing: 0.5px; margin-top: 1px; transition: color 0.3s; }
+    .session-countdown.warning { color: #f39c12; }
+    .session-countdown.danger  { color: #e84545; animation: pulse-red 1s infinite; }
+    @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    /* Modal expiración */
+    #modal-sesion-expira { z-index: 10500; }
+    #modal-sesion-expira .modal-box { background:white; border-radius:16px; padding:32px 28px 24px; width:360px; text-align:center; box-shadow:0 24px 64px rgba(0,0,0,0.4); font-family:Barlow,sans-serif; }
+    #modal-sesion-expira .exp-icon { font-size:42px; margin-bottom:12px; }
+    #modal-sesion-expira .exp-title { font-size:16px; font-weight:900; color:#1a1a2e; margin-bottom:6px; }
+    #modal-sesion-expira .exp-sub { font-size:12px; color:#8899aa; margin-bottom:6px; }
+    #modal-sesion-expira .exp-counter { font-size:32px; font-weight:900; color:#e84545; margin:14px 0; font-variant-numeric:tabular-nums; }
+    #modal-sesion-expira .exp-btns { display:flex; gap:10px; justify-content:center; margin-top:18px; }
+    #modal-sesion-expira .btn-continuar { padding:11px 28px; background:#1a1a2e; color:white; border:none; border-radius:9px; font-family:Barlow,sans-serif; font-size:13px; font-weight:800; cursor:pointer; transition:background .15s; }
+    #modal-sesion-expira .btn-continuar:hover { background:#2a2a4e; }
+    #modal-sesion-expira .btn-salir { padding:11px 20px; background:#f4f5f8; color:#556; border:none; border-radius:9px; font-family:Barlow,sans-serif; font-size:12px; font-weight:700; cursor:pointer; }
 
     /* ─── MAIN ─── */
     .main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; padding: 0 0 10px; }
@@ -202,8 +218,10 @@
     #banner-bloqueo-fecha { font-size: 12px; }
 
     /* ─── BOTÓN ORDEN POR FILA ─── */
-    .btn-print-row { padding: 3px 10px; border-radius: 6px; border: 1px solid #dde1e8; background: white; color: #3498db; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-    .btn-print-row:hover { background: #f0f8ff; border-color: #3498db; }
+    .btn-print-row { padding: 3px 10px; border-radius: 6px; border: 1.5px solid #bcc5d0; background: white; color: #667; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn-print-row:hover:not(:disabled) { border-color: #27ae60; color: #27ae60; background: #f0fff4; }
+    .btn-print-row.impresa { background: #27ae60; border-color: #27ae60; color: white; }
+    .btn-print-row.impresa:hover { background: #219a52; border-color: #219a52; }
     .btn-print-row:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .nota-row td { background: #fffbeb; color: #92600a; font-size: 10px; font-weight: 700; padding: 8px 14px; letter-spacing: 0.3px; border-top: 2px solid #fde68a; }
@@ -517,9 +535,25 @@
     <div style="flex:1">
       <div class="user-pill-name" id="user-pill-name">—</div>
       <div class="user-pill-sub" id="user-pill-sub">—</div>
+      <div class="session-countdown" id="session-countdown"></div>
     </div>
-    <button class="btn-logout" onclick="cerrarSesion()" title="Cerrar sesión">⏏</button>
+    <button class="btn-logout" onclick="cerrarSesionManual()" title="Cerrar sesión">⏏</button>
   </div>
+
+<!-- MODAL: SESIÓN A PUNTO DE EXPIRAR -->
+<div class="modal-overlay" id="modal-sesion-expira">
+  <div class="modal-box">
+    <div class="exp-icon">⏱️</div>
+    <div class="exp-title">Sesión a punto de expirar</div>
+    <div class="exp-sub">Tu sesión se cerrará en</div>
+    <div class="exp-counter" id="exp-counter">60</div>
+    <div class="exp-sub">segundos. ¿Deseas continuar?</div>
+    <div class="exp-btns">
+      <button class="btn-continuar" onclick="renovarSesion()">✓ Continuar sesión</button>
+      <button class="btn-salir" onclick="expirarSesion()">Cerrar ahora</button>
+    </div>
+  </div>
+</div>
 
   <div class="sb-label">Jornada</div>
   <div class="field-sb">
@@ -921,6 +955,33 @@
   </div>
 </div>
 
+<!-- MODAL: CONFIRMANDO RECEPCIÓN DE LLAVES -->
+<div class="modal-overlay" id="modal-confirmando-recepcion" style="z-index:10200">
+  <div style="background:white;border-radius:18px;padding:38px 36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;">
+    <div style="font-size:44px;margin-bottom:14px;animation:spin-key 1.2s linear infinite;display:inline-block">🔑</div>
+    <div style="font-size:17px;font-weight:900;color:#1a1a2e;margin-bottom:6px">Confirmando recepción</div>
+    <div id="confirmando-recepcion-matricula" style="font-size:13px;font-weight:800;color:#e84545;background:#fff0f0;border-radius:7px;padding:5px 14px;display:inline-block;margin-bottom:14px;letter-spacing:0.5px"></div>
+    <div style="font-size:12px;color:#8899aa;font-weight:600">Un momento, por favor…</div>
+    <div style="margin-top:18px;height:4px;background:#f0f2f5;border-radius:99px;overflow:hidden">
+      <div style="height:100%;background:#e84545;border-radius:99px;animation:progress-bar 1.8s ease-in-out infinite"></div>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes spin-key {
+  0%   { transform: rotate(-15deg) scale(1);   }
+  25%  { transform: rotate(10deg)  scale(1.12); }
+  50%  { transform: rotate(-10deg) scale(1.05); }
+  75%  { transform: rotate(12deg)  scale(1.1);  }
+  100% { transform: rotate(-15deg) scale(1);   }
+}
+@keyframes progress-bar {
+  0%   { width: 0%;    margin-left: 0; }
+  50%  { width: 70%;   margin-left: 15%; }
+  100% { width: 0%;    margin-left: 100%; }
+}
+</style>
+
 <!-- DROPDOWN FLOTANTE: BÚSQUEDA DE OPERARIO/CHOFER -->
 <div class="operario-dropdown" id="operario-dropdown">
   <div class="operario-dropdown-header" id="operario-dropdown-header">Nombre &middot; DNI &middot; N&ordm; usuario</div>
@@ -1093,11 +1154,26 @@ let pendientesGuardar = new Set();
 let usuarioActual = null;
 let ordenActual = { matricula: '', operario: '' };
 let _ordenEmpresaKey = 'JD';
+const _ordenesImpresas = new Set(); // matricula|turno|fecha
 let cuadranteDesbloqueadoPorAdmin = false; // true cuando admin desbloquea un día diferente a hoy
 
 // ════════════════════════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════════════════════════
+// Renovar sesión automáticamente con cualquier interacción
+['click','keydown','touchstart'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (usuarioActual && _sesionTimer && !_sesionModalAbierto) {
+      // Solo renovar si quedan más de SESION_AVISO segundos
+      // (si ya está en aviso, dejar que el usuario confirme manualmente)
+      if (_sesionSegundos > SESION_AVISO) {
+        _sesionSegundos = SESION_DURACION;
+        actualizarPillCountdown();
+      }
+    }
+  }, { passive: true });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   const hoy = new Date();
   fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
@@ -1107,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Si se cambia a una fecha distinta de hoy, bloquear cuadrante (requiere admin)
     const hoyStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
     cuadranteDesbloqueadoPorAdmin = false;
+    _ordenesImpresas.clear(); // nueva fecha = nuevas impresiones
     actualizarHeader();
     actualizarBloqueoCuadrante();
     if (usuarioActual) cargarCuadrante();
@@ -1264,9 +1341,13 @@ async function loginResponsable() {
         renderTabla();
         verificarConfig();
         mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
+        iniciarSync();
+        iniciarTemporizadorSesion();
       } else {
         // Precarga no terminó → carga completa normal
         await cargarCuadrante();
+        iniciarSync();
+        iniciarTemporizadorSesion();
       }
     } else {
       const i1 = document.getElementById('mlr-num');
@@ -1286,31 +1367,108 @@ async function loginResponsable() {
   }
 }
 
-function cerrarSesion() {
+// ════════════════════════════════════════════════════════════════════════════
+// EXPIRACIÓN DE SESIÓN
+// ════════════════════════════════════════════════════════════════════════════
+const SESION_DURACION   = 10 * 60;  // 10 min en segundos
+const SESION_AVISO      = 60;       // avisar cuando queden 60 segundos
+let _sesionTimer        = null;     // intervalo de cuenta atrás
+let _sesionSegundos     = 0;        // segundos restantes
+let _sesionModalAbierto = false;
+let _sesionExpCountdown = null;     // intervalo del modal
+
+function iniciarTemporizadorSesion() {
+  detenerTemporizadorSesion();
+  _sesionSegundos = SESION_DURACION;
+  _sesionModalAbierto = false;
+  actualizarPillCountdown();
+  _sesionTimer = setInterval(() => {
+    _sesionSegundos--;
+    actualizarPillCountdown();
+    if (_sesionSegundos <= SESION_AVISO && !_sesionModalAbierto) {
+      abrirModalExpiracion();
+    }
+    if (_sesionSegundos <= 0) {
+      expirarSesion();
+    }
+  }, 1000);
+}
+
+function detenerTemporizadorSesion() {
+  if (_sesionTimer) { clearInterval(_sesionTimer); _sesionTimer = null; }
+  if (_sesionExpCountdown) { clearInterval(_sesionExpCountdown); _sesionExpCountdown = null; }
+  const cd = document.getElementById('session-countdown');
+  if (cd) cd.textContent = '';
+}
+
+function renovarSesion() {
+  // Resetear la sesión a 10 minutos completos
+  _sesionSegundos = SESION_DURACION;
+  _sesionModalAbierto = false;
+  if (_sesionExpCountdown) { clearInterval(_sesionExpCountdown); _sesionExpCountdown = null; }
+  document.getElementById('modal-sesion-expira').classList.remove('open');
+  actualizarPillCountdown();
+}
+
+function abrirModalExpiracion() {
+  _sesionModalAbierto = true;
+  let cuentaModal = _sesionSegundos;
+  const counterEl = document.getElementById('exp-counter');
+  if (counterEl) counterEl.textContent = cuentaModal;
+  document.getElementById('modal-sesion-expira').classList.add('open');
+  // Cuenta atrás dentro del modal (independiente del timer principal)
+  _sesionExpCountdown = setInterval(() => {
+    cuentaModal--;
+    if (counterEl) counterEl.textContent = Math.max(0, cuentaModal);
+  }, 1000);
+}
+
+function actualizarPillCountdown() {
+  const cd = document.getElementById('session-countdown');
+  if (!cd || !usuarioActual) return;
+  const min = Math.floor(_sesionSegundos / 60);
+  const seg = _sesionSegundos % 60;
+  cd.textContent = `Sesión: ${min}:${String(seg).padStart(2,'0')}`;
+  cd.className = 'session-countdown' +
+    (_sesionSegundos <= 60 ? ' danger' : _sesionSegundos <= 180 ? ' warning' : '');
+}
+
+function expirarSesion() {
+  detenerTemporizadorSesion();
+  document.getElementById('modal-sesion-expira').classList.remove('open');
+  _sesionModalAbierto = false;
+  // Cerrar sesión sin confirmación (es automático)
+  _cerrarSesionInterno();
+}
+
+function cerrarSesionManual() {
   if (!confirm('¿Cerrar sesión?')) return;
+  detenerTemporizadorSesion();
+  _cerrarSesionInterno();
+}
+
+function _cerrarSesionInterno() {
+  detenerSync();
+  detenerTemporizadorSesion();
   usuarioActual = null;
   datos = {};
   pendientesGuardar.clear();
   _precargaLista  = false;
   _precargaPromise = null;
-
-  // Resetear formulario
   document.getElementById('mlr-num').value = '';
   document.getElementById('mlr-clave').value = '';
   document.getElementById('mlr-error').style.display = 'none';
   document.getElementById('login-preload-fill').style.width = '0%';
   document.getElementById('login-preload-msg').textContent = '';
-
-  // Ocultar pill usuario
   document.getElementById('user-pill').style.display = 'none';
-
-  // Volver a pantalla de bienvenida
   mostrarPantallaLogin(true);
-
   renderTabla();
-
-  // Reiniciar precarga para la próxima sesión
   setTimeout(() => iniciarPrecarga(), 400);
+}
+
+function cerrarSesion() {
+  // Alias para compatibilidad — delegar a la nueva función manual
+  cerrarSesionManual();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1574,7 +1732,7 @@ function _procesarSeleccionOperario(mat, nombre) {
     }
     actualizarStats(); renderTabla();
     abrirModalOrden(mat, true);
-    programarGuardado();
+    guardarTodoSilencioso(); // inmediato al asignar
   };
 }
 
@@ -1685,9 +1843,11 @@ function renderTabla() {
 
       // Botón imprimir orden
       const disabled = (asignado && !cuadranteBloqueado) ? '' : 'disabled';
-      html += `<td><button class="btn-print-row" ${disabled}
+      const yaImpresa = _ordenesImpresas.has(`${v.matricula}|${turnoActual}|${fechaActual}`);
+      html += `<td><button class="btn-print-row ${yaImpresa ? 'impresa' : ''}" ${disabled}
+        data-mat="${esc(v.matricula)}"
         onclick="abrirModalOrden('${esc(v.matricula)}', false)"
-        title="Imprimir orden de trabajo">🖨️ Orden</button></td>`;
+        title="${yaImpresa ? '✓ Orden ya impresa' : 'Imprimir orden de trabajo'}">🖨️ Orden</button></td>`;
 
       html += `</tr>`;
     });
@@ -1797,7 +1957,7 @@ function onCellInput(input) {
 function onCellBlur(input) {
   clearTimeout(saveTimer);
   saveTimer = null;
-  guardarTodo();
+  guardarTodoSilencioso();
 }
 
 function actualizarStats() {
@@ -1812,7 +1972,7 @@ function actualizarStats() {
 function programarGuardado() {
   setSaveIndicator('saving', '⏳ Guardando…');
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => guardarTodo(), 800);
+  saveTimer = setTimeout(() => guardarTodoSilencioso(), 800);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1876,12 +2036,24 @@ async function cargarCuadrante() {
   }
 }
 
+// ── guardarTodo: versión visible (botón manual) ──────────────────────────────
 async function guardarTodo() {
-  if (!APPS_SCRIPT_URL) { setSaveIndicator('', '—'); return Promise.resolve(); }
-  if (pendientesGuardar.size === 0) { setSaveIndicator('saved', '✓ Todo guardado'); return Promise.resolve(); }
-  if (guardandoAhora) return Promise.resolve();
+  await _ejecutarGuardado(true);
+}
+
+// ── guardarTodoSilencioso: usado internamente, sin mensajes de error ──────────
+async function guardarTodoSilencioso() {
+  await _ejecutarGuardado(false);
+}
+
+// ── núcleo compartido ─────────────────────────────────────────────────────────
+async function _ejecutarGuardado(mostrarErrores) {
+  if (!APPS_SCRIPT_URL) { setSaveIndicator('', '—'); return; }
+  if (pendientesGuardar.size === 0) { setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`); return; }
+  if (guardandoAhora) return;
   guardandoAhora = true;
-  setSaveIndicator('saving', '⏳ Guardando…');
+  setSaveIndicator('saving', '');
+
   const snap = new Set(pendientesGuardar);
   pendientesGuardar.clear();
 
@@ -1897,31 +2069,144 @@ async function guardarTodo() {
     });
   }));
 
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: {'Content-Type':'text/plain'},
-      body: JSON.stringify({ accion:'guardar', filas }), redirect:'follow'
-    });
-    const json = await resp.json();
-    if (json.ok) {
-      setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
-    } else {
-      snap.forEach(k => pendientesGuardar.add(k));
-      throw new Error(json.error || 'Error desconocido');
+  let intentos = 0;
+  const MAX_INTENTOS = 3;
+
+  while (intentos < MAX_INTENTOS) {
+    intentos++;
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: {'Content-Type':'text/plain'},
+        body: JSON.stringify({ accion:'guardar', filas }), redirect:'follow'
+      });
+      const json = await resp.json();
+      if (json.ok) {
+        setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);
+        guardandoAhora = false;
+        // Reiniciar el timer de sync para que otros vean el cambio lo antes posible
+        if (_syncTimer) { clearInterval(_syncTimer); _syncTimer = setInterval(() => syncSilencioso(), SYNC_INTERVALO); }
+        return; // Éxito — salir
+      }
+      // Respuesta de Sheets con error lógico → reintentar
+    } catch(e) {
+      // Error de red → reintentar tras pausa
+      if (intentos < MAX_INTENTOS) {
+        await new Promise(r => setTimeout(r, 1500 * intentos)); // backoff
+      }
     }
-  } catch(e) {
-    console.error(e);
-    setSaveIndicator('error', '✗ Error al guardar');
-    mostrarToast('Error al guardar: '+e.message, 'error');
-  } finally {
-    guardandoAhora = false;
   }
+
+  // Todos los intentos fallaron: devolver pendientes para no perder datos
+  snap.forEach(k => pendientesGuardar.add(k));
+  setSaveIndicator('saved', ''); // No mostrar error en el indicador
+  if (mostrarErrores) {
+    mostrarToast('No se pudo guardar ahora — se reintentará pronto', 'info');
+  }
+  // Reintento silencioso en 10s
+  setTimeout(() => guardarTodoSilencioso(), 10000);
+  guardandoAhora = false;
 }
 
 function setSaveIndicator(type, msg) {
   const el = document.getElementById('save-indicator');
   el.className = 'save-indicator ' + type;
   el.textContent = msg;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SYNC MULTI-USUARIO — polling silencioso cada 30s
+// Fusiona cambios de otros usuarios sin pisar los propios
+// ════════════════════════════════════════════════════════════════════════════
+let _syncTimer       = null;
+let _syncEnCurso     = false;
+const SYNC_INTERVALO = 8000; // 8 segundos — tiempo real
+
+function iniciarSync() {
+  detenerSync();
+  // Sincronizar al instante al arrancar
+  syncSilencioso();
+  // Y luego cada 8 segundos
+  _syncTimer = setInterval(() => syncSilencioso(), SYNC_INTERVALO);
+  // Al volver a la pestaña después de estar en background → sync inmediato
+  document.addEventListener('visibilitychange', _onVisibilityChange);
+}
+
+function detenerSync() {
+  if (_syncTimer) { clearInterval(_syncTimer); _syncTimer = null; }
+  document.removeEventListener('visibilitychange', _onVisibilityChange);
+}
+
+function _onVisibilityChange() {
+  if (!document.hidden) syncSilencioso(); // vuelve el foco → sincronizar ya
+}
+
+async function syncSilencioso() {
+  // Guardias: no sincronizar si no hay sesión, hay cambios propios en vuelo,
+  // ya hay un sync en curso, o la pestaña está oculta (ahorramos llamadas)
+  if (!APPS_SCRIPT_URL || !usuarioActual) return;
+  if (_syncEnCurso || guardandoAhora) return;
+  if (pendientesGuardar.size > 0) return; // mis cambios tienen prioridad
+  if (document.hidden) return;
+
+  _syncEnCurso = true;
+  try {
+    const url = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
+    const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(7000) });
+    if (!resp.ok) return;
+    const json = await resp.json();
+    if (!json.ok || !json.filas) return;
+
+    let hayNovedades = false;
+    const campos = ['operario','resp_entrega','resp_recibe','hora_entrega',
+                    'hora_devolucion','num_tarjeta','cinchas','cinchas_entrega'];
+
+    // ── Actualizar filas con datos remotos más recientes ──────────────────
+    json.filas.forEach(fila => {
+      const key = `${fila.matricula}|${turnoActual}|${fechaActual}`;
+      if (pendientesGuardar.has(key)) return; // mis cambios mandan
+
+      const local = datos[key] || {};
+      let cambio  = false;
+
+      campos.forEach(k => {
+        const remoto = fila[k] || '';
+        const propio = local[k] || '';
+        if (remoto !== propio && (remoto || !propio)) {
+          if (!datos[key]) datos[key] = {};
+          datos[key][k] = remoto;
+          cambio = true;
+        }
+      });
+      if (cambio) hayNovedades = true;
+    });
+
+    // ── Detectar matrículas liberadas por otro usuario ────────────────────
+    GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+      const key = `${v.matricula}|${turnoActual}|${fechaActual}`;
+      if (pendientesGuardar.has(key)) return;
+      const local  = datos[key];
+      if (!local || !local.operario) return;
+      const remoto = json.filas.find(f => f.matricula === v.matricula);
+      if (!remoto || !remoto.operario) {
+        // Limpiar TODOS los campos — la fila fue borrada en Sheets
+        datos[key] = {
+          operario: '', resp_entrega: '', resp_recibe: '',
+          hora_entrega: '', hora_devolucion: '',
+          num_tarjeta: '', cinchas: '', cinchas_entrega: ''
+        };
+        hayNovedades = true;
+      }
+    }));
+
+    if (hayNovedades) {
+      renderTabla();
+      actualizarBloqueoCuadrante();
+    }
+  } catch(e) {
+    // Silencioso — el siguiente ciclo reintentará
+  } finally {
+    _syncEnCurso = false;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2196,6 +2481,15 @@ function imprimirOrden(matricula, operario, emp, rutas) {
   </head><body>${bloques}</body></html>`);
   win.document.close();
   win.focus();
+  // Marcar la matrícula como orden impresa
+  const _impKey = `${matricula}|${turnoActual}|${fechaActual}`;
+  _ordenesImpresas.add(_impKey);
+  // Actualizar el botón de esa fila sin re-renderizar toda la tabla
+  const btns = document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape(matricula)}"]`);
+  btns.forEach(b => {
+    b.classList.add('impresa');
+    b.title = '✓ Orden ya impresa';
+  });
   setTimeout(() => win.print(), 500);
 }
 
@@ -2603,6 +2897,12 @@ function renderListaRecibirLlaves() {
 async function confirmarRecibirLlave(matricula) {
   if (!usuarioActual) return;
 
+  // Mostrar modal de confirmando recepción
+  const modalConf = document.getElementById('modal-confirmando-recepcion');
+  const matLabel  = document.getElementById('confirmando-recepcion-matricula');
+  if (matLabel) matLabel.textContent = matricula;
+  if (modalConf) modalConf.classList.add('open');
+
   const ahora = new Date();
   const horaStr = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   const valorRecibe = usuarioActual.nombre || usuarioActual.numUsuario;
@@ -2624,6 +2924,9 @@ async function confirmarRecibirLlave(matricula) {
 
   // Guardar inmediatamente en Sheets
   await guardarTodo();
+
+  // Cerrar modal de confirmando y mostrar resultado
+  if (modalConf) modalConf.classList.remove('open');
 
   mostrarToast(`✓ Llaves de ${matricula} recibidas — ${horaStr}`, 'success');
   renderTabla(); // reflejar resp_recibe en la tabla principal
@@ -2701,6 +3004,8 @@ async function verificarPasswordAdmin() {
       document.getElementById('user-pill-sub').textContent  = 'Admin';
       mostrarPantallaLogin(false);
       await cargarCuadrante();
+      iniciarSync();
+      iniciarTemporizadorSesion();
       abrirAdmin();
     } else {
       abrirAdmin();

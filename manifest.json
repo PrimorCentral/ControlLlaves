@@ -1,0 +1,19 @@
+{
+  "name": "Gestión de Flota · Primor",
+  "short_name": "Flota Primor",
+  "description": "Control diario de flota y llaves Primor",
+  "start_url": "/ControlLlaves/",
+  "scope": "/ControlLlaves/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e84545",
+  "icons": [
+    {
+      "src": "IMAGENTRANSPORTE.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

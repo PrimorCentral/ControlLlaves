@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.1.5">
+  <meta name="app-version" content="2.1.6">
 
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -916,7 +916,7 @@
           <thead><tr>
             <th>Fecha</th><th>Turno</th><th>Matrícula</th><th>Tipo</th>
             <th>Operario</th><th>Resp. Entrega</th><th>Resp. Recibe</th>
-            <th>H. Entrega</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th>
+            <th>H. Entrega</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th><th></th>
           </tr></thead>
           <tbody id="hist-tbody"></tbody>
         </table>
@@ -3161,7 +3161,7 @@ async function cargarHistorial() {
 function renderHistorial() {
   const tbody = document.getElementById('hist-tbody');
   if (!historialCache.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="hist-empty">Sin registros.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="hist-empty">Sin registros.</td></tr>';
     return;
   }
 
@@ -3179,7 +3179,6 @@ function renderHistorial() {
       try {
         const d = new Date(s);
         if (!isNaN(d)) {
-          // Epoch de Google Sheets: 1899-12-30 → usar UTC
           const useUTC = s.startsWith('1899');
           const h = String(useUTC ? d.getUTCHours() : d.getHours()).padStart(2,'0');
           const m = String(useUTC ? d.getUTCMinutes() : d.getMinutes()).padStart(2,'0');
@@ -3199,16 +3198,19 @@ function renderHistorial() {
     return s;
   }
 
-  const CAMPOS_HORA  = ['hora_entrega','hora_devolucion'];
+  const CAMPOS_HORA = ['hora_entrega','hora_devolucion'];
   const campos = ['fecha','turno','matricula','tipo','operario','resp_entrega','resp_recibe','hora_entrega','hora_devolucion','num_tarjeta','itv','incidencias'];
-  tbody.innerHTML = historialCache.map(f =>
+  tbody.innerHTML = historialCache.map((f, idx) =>
     `<tr>${campos.map(c => {
       let val;
-      if (c === 'fecha')            val = fmtFecha(f[c]);
+      if (c === 'fecha')              val = fmtFecha(f[c]);
       else if (CAMPOS_HORA.includes(c)) val = fmtHora(f[c]);
-      else                          val = f[c] || '';
+      else                            val = f[c] || '';
       return `<td class="${c==='matricula'?'mat':''}${!val?' vacio':''}">${val||'—'}</td>`;
-    }).join('')}</tr>`
+    }).join('')}
+    <td style="text-align:center;white-space:nowrap">
+      <button class="btn-item-action danger" onclick="eliminarHistorial(${idx})" title="Eliminar registro" style="font-size:13px;padding:3px 8px">🗑</button>
+    </td></tr>`
   ).join('');
 }
 
@@ -3220,6 +3222,84 @@ function exportarCSV() {
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
   a.download = `historial_${fechaActual}.csv`;
   a.click();
+}
+
+async function eliminarHistorial(idx) {
+  const f = historialCache[idx];
+  if (!f) return;
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+
+  const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
+
+  // ── Modal confirmación ────────────────────────────────────────────────────
+  await new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ov.innerHTML = `
+      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:420px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Eliminar este registro?</div>
+        <div style="font-size:11px;color:#8899aa;margin-bottom:14px;">
+          <span style="font-weight:700;color:#1a1a2e">${f.matricula||'—'}</span>
+          · ${f.fecha||''}
+          · ${turnoLabel}
+        </div>
+        <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.6;margin-bottom:16px;">
+          <strong>Operario:</strong> ${f.operario||'—'}<br>
+          <strong>Resp. entrega:</strong> ${f.resp_entrega||'—'}
+        </div>
+        <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Se eliminará de la hoja Registros. Esta acción no se puede deshacer.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btn-hst-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="btn-hst-ok" style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🗑 Sí, eliminar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#btn-hst-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };
+    ov.querySelector('#btn-hst-ok').onclick     = () => { document.body.removeChild(ov); resolve(true);  };
+  }).then(async (confirmado) => {
+    if (!confirmado) return;
+
+    // ── Modal "Borrando…" ─────────────────────────────────────────────────
+    const ovBorrando = document.createElement('div');
+    ovBorrando.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ovBorrando.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:32px 36px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;animation:nv-in 0.2s ease;min-width:260px">
+        <div style="width:40px;height:40px;border:3px solid #f0f0f0;border-top-color:#e84545;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a2e;">Borrando registro…</div>
+        <div style="font-size:11px;color:#8899aa;margin-top:5px">${f.matricula} · ${f.fecha}</div>
+      </div>`;
+    document.body.appendChild(ovBorrando);
+
+    try {
+      // guardarFila con todos los campos vacíos → el Apps Script borra la fila
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          accion: 'guardarFila',
+          fila: { fecha: f.fecha, turno: f.turno, matricula: f.matricula }
+        })
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+
+      // Actualizar memoria local si coincide con el cuadrante abierto
+      const key = `${f.matricula}|${f.turno}|${f.fecha}`;
+      if (datos[key]) {
+        datos[key] = { operario:'', resp_entrega:'', resp_recibe:'', hora_entrega:'', hora_devolucion:'', num_tarjeta:'', itv:'', incidencias:'' };
+        renderTabla();
+      }
+
+      historialCache.splice(idx, 1);
+      renderHistorial();
+      mostrarToast('✓ Registro eliminado', 'success');
+    } catch(e) {
+      mostrarToast('Error al eliminar: ' + e.message, 'error');
+    } finally {
+      document.body.removeChild(ovBorrando);
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

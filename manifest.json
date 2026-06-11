@@ -10,8 +10,8 @@
   "theme_color": "#e84545",
   "icons": [
     {
-      "src": "IMAGENTRANSPORTE.png",
-      "sizes": "any",
+      "src": "icon.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }

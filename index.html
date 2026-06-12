@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.4">
+  <meta name="app-version" content="2.4.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2641,9 +2641,12 @@ async function cargarCuadrante() {
     const urlIncid     = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
 
     // Todas las peticiones de lectura son independientes — se lanzan en paralelo
+    // (flota/conductores con mostrarError=false: el modal de error, si hace falta,
+    //  se gestiona de forma centralizada abajo para evitar condiciones de carrera
+    //  cuando una de las dos termina antes que la otra)
     const [flotaOk, conductoresOk, json, jsonIncid] = await Promise.all([
-      cargarFlotaDesdeSheets(),
-      cargarConductoresDesdeSheets(),
+      cargarFlotaDesdeSheets(false),
+      cargarConductoresDesdeSheets(false),
       fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       sincronizarRepostajesPendientes(),
@@ -2652,10 +2655,13 @@ async function cargarCuadrante() {
     ]);
 
     if (!flotaOk || !conductoresOk) {
-      // El modal de error con reintentar ya está visible (mostrado por la función que falló)
       _cargaCuadranteFallida = true;
+      mostrarErrorCargaFlotaConductores(!flotaOk, !conductoresOk);
       return;
     }
+
+    // Ambas cargas correctas — si quedaba visible un modal de error de un intento anterior, ocultarlo
+    ocultarErrorCarga();
 
     actualizarCargando('Procesando datos…', 75);
 
@@ -2978,6 +2984,34 @@ function ocultarErrorCarga() {
   document.getElementById('modal-error-carga').classList.remove('visible');
 }
 
+// ── Modal de error combinado para flota/conductores (carga en paralelo) ──────
+// Se llama desde cargarCuadrante cuando una o ambas cargas fallan. Evita la
+// condición de carrera de tener dos llamadas independientes a mostrarErrorCarga/
+// ocultarErrorCarga pisándose entre sí, y reintenta solo lo que haya fallado.
+function mostrarErrorCargaFlotaConductores(faltaFlota, faltaConductores) {
+  let detalle;
+  if (faltaFlota && faltaConductores) {
+    detalle = 'No se pudo cargar la flota de vehículos ni la lista de conductores. Comprueba tu conexión e inténtalo de nuevo.';
+  } else if (faltaFlota) {
+    detalle = 'No se pudo cargar la flota de vehículos. Comprueba tu conexión e inténtalo de nuevo.';
+  } else {
+    detalle = 'No se pudo cargar la lista de conductores. Comprueba tu conexión e inténtalo de nuevo.';
+  }
+  mostrarErrorCarga('No se pudieron cargar los datos', detalle, async () => {
+    const [fOk, cOk] = await Promise.all([
+      faltaFlota ? cargarFlotaDesdeSheets(false) : Promise.resolve(true),
+      faltaConductores ? cargarConductoresDesdeSheets(false) : Promise.resolve(true)
+    ]);
+    if (fOk && cOk) {
+      ocultarErrorCarga();
+      return true;
+    }
+    // Sigue fallando algo: actualizar el modal con el reintento de lo que falte
+    mostrarErrorCargaFlotaConductores(!fOk, !cOk);
+    return false;
+  });
+}
+
 async function reintentarCargaError() {
   const btn = document.getElementById('err-carga-btn');
   const fn  = _ultimaCargaFallida;
@@ -3002,9 +3036,9 @@ async function reintentarCargaError() {
 // ════════════════════════════════════════════════════════════════════════════
 // FLOTA DESDE SHEETS
 // ════════════════════════════════════════════════════════════════════════════
-async function cargarFlotaDesdeSheets() {
+async function cargarFlotaDesdeSheets(mostrarError = true) {
   if (!APPS_SCRIPT_URL) {
-    mostrarErrorCarga('Sin conexión configurada', 'No hay una URL de Apps Script configurada.', cargarFlotaDesdeSheets);
+    if (mostrarError) mostrarErrorCarga('Sin conexión configurada', 'No hay una URL de Apps Script configurada.', cargarFlotaDesdeSheets);
     return false;
   }
   try {
@@ -3018,14 +3052,14 @@ async function cargarFlotaDesdeSheets() {
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
         g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'' });
       });
-      ocultarErrorCarga();
+      if (mostrarError) ocultarErrorCarga();
       return true;
     } else {
-      mostrarErrorCarga('No se pudo cargar la flota', 'La hoja "Vehiculos" está vacía o no respondió correctamente.', cargarFlotaDesdeSheets);
+      if (mostrarError) mostrarErrorCarga('No se pudo cargar la flota', 'La hoja "Vehiculos" está vacía o no respondió correctamente.', cargarFlotaDesdeSheets);
       return false;
     }
   } catch(e) {
-    mostrarErrorCarga('Error de conexión', 'No se pudo cargar la flota de vehículos.', cargarFlotaDesdeSheets);
+    if (mostrarError) mostrarErrorCarga('Error de conexión', 'No se pudo cargar la flota de vehículos.', cargarFlotaDesdeSheets);
     return false;
   }
 }
@@ -3047,9 +3081,9 @@ async function sincronizarVehiculosConSheets() {
 // ════════════════════════════════════════════════════════════════════════════
 // CONDUCTORES — SYNC CON GOOGLE SHEETS
 // ════════════════════════════════════════════════════════════════════════════
-async function cargarConductoresDesdeSheets() {
+async function cargarConductoresDesdeSheets(mostrarError = true) {
   if (!APPS_SCRIPT_URL) {
-    mostrarErrorCarga('Sin conexión configurada', 'No hay una URL de Apps Script configurada.', cargarConductoresDesdeSheets);
+    if (mostrarError) mostrarErrorCarga('Sin conexión configurada', 'No hay una URL de Apps Script configurada.', cargarConductoresDesdeSheets);
     return false;
   }
   try {
@@ -3058,14 +3092,14 @@ async function cargarConductoresDesdeSheets() {
     if (json.ok && json.conductores && json.conductores.length > 0) {
       CONDUCTORES.length = 0;
       json.conductores.forEach(c => CONDUCTORES.push(c));
-      ocultarErrorCarga();
+      if (mostrarError) ocultarErrorCarga();
       return true;
     } else {
-      mostrarErrorCarga('No se pudo cargar conductores', 'La hoja "Conductores" está vacía o no respondió correctamente.', cargarConductoresDesdeSheets);
+      if (mostrarError) mostrarErrorCarga('No se pudo cargar conductores', 'La hoja "Conductores" está vacía o no respondió correctamente.', cargarConductoresDesdeSheets);
       return false;
     }
   } catch(e) {
-    mostrarErrorCarga('Error de conexión', 'No se pudo cargar la lista de conductores.', cargarConductoresDesdeSheets);
+    if (mostrarError) mostrarErrorCarga('Error de conexión', 'No se pudo cargar la lista de conductores.', cargarConductoresDesdeSheets);
     return false;
   }
 }

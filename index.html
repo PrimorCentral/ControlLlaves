@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.9">
+  <meta name="app-version" content="2.5.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -329,7 +329,7 @@
     .mlr-btn:hover { background: #c63030; }
 
     /* ─── MODAL ORDEN DE TRABAJO ─── */
-    .modal-orden { background: white; border-radius: 16px; padding: 28px 26px; width: 520px; max-width: 95vw; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
+    .modal-orden { background: white; border-radius: 16px; padding: 28px 26px; width: 520px; max-width: 95vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
     .modal-orden-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
     .modal-orden-title { font-size: 16px; font-weight: 900; color: #1a1a2e; }
     .modal-orden-sub { font-size: 11px; color: #8899aa; margin-top: 3px; }
@@ -344,7 +344,7 @@
     .orden-emp-btn { flex: 1; padding: 9px; border: 1.5px solid #dde1e8; border-radius: 8px; background: white; color: #556; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
     .orden-emp-btn.active { background: #e84545; border-color: #e84545; color: white; }
     .orden-emp-btn:hover:not(.active) { border-color: #e84545; color: #e84545; }
-    .orden-rutas-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; max-height: 200px; overflow-y: auto; }
+    .orden-rutas-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; max-height: 260px; overflow-y: auto; }
     .orden-ruta-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid #dde1e8; border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none; }
     .orden-ruta-item:hover { border-color: #e84545; background: #fff5f5; }
     .orden-ruta-item.selected { border-color: #e84545; background: #fff0f0; }
@@ -441,6 +441,9 @@
     .hist-table tbody tr:hover, .log-table tbody tr:hover { background: #fafbfc; }
     .hist-table tbody td, .log-table tbody td { padding: 7px 10px; color: #334; }
     .hist-table tbody td.mat, .log-table tbody td.mat { font-weight: 800; color: #1a1a2e; }
+    .hist-table .col-acciones { position: sticky; right: 0; background: #fff; box-shadow: -4px 0 6px -4px rgba(0,0,0,0.15); white-space: nowrap; }
+    .hist-table thead th.col-acciones { background: #1a1a2e; }
+    .hist-table tbody tr:hover td.col-acciones { background: #fafbfc; }
     .hist-empty { text-align: center; padding: 30px; color: #8899aa; font-size: 13px; }
 
     /* ─── PANTALLA BIENVENIDA LOGIN ─── */
@@ -1140,7 +1143,7 @@
           <thead><tr>
             <th>Fecha</th><th>Turno</th><th>Matrícula</th><th>Tipo</th>
             <th>Operario</th><th>Resp. Entrega</th><th>Resp. Recibe</th>
-            <th>H. Entrega</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th><th></th>
+            <th>H. Entrega</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th><th class="col-acciones"></th>
           </tr></thead>
           <tbody id="hist-tbody"></tbody>
         </table>
@@ -1161,6 +1164,7 @@
           <thead><tr>
             <th>Fecha/Hora</th><th>Responsable</th><th>Nº Usuario</th>
             <th>Vehículo</th><th>Operario</th><th>Empresa</th><th>Ruta</th><th>Turno</th>
+            <th class="col-acciones"></th>
           </tr></thead>
           <tbody id="log-tbody"></tbody>
         </table>
@@ -1222,7 +1226,7 @@
             <th>Resp. Entrega</th>
             <th>Resp. Recibe</th>
             <th>Estado</th>
-            <th></th>
+            <th class="col-acciones"></th>
           </tr></thead>
           <tbody id="repo-tab-tbody">
             <tr><td colspan="15" class="hist-empty">Usa el filtro para buscar repostajes.</td></tr>
@@ -1358,9 +1362,13 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
         <div style="display:flex;flex-direction:column;gap:6px;">
           <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Matrícula</label>
-          <select id="repo-matricula" onchange="onCambioMatriculaRepostaje()"
-            style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;background:white;transition:border-color .2s;"
-            onfocus="this.style.borderColor='#e8a23d'" onblur="this.style.borderColor='#dde1ea'"></select>
+          <div style="position:relative;">
+            <input id="repo-matricula" readonly tabindex="-1"
+              placeholder="—"
+              autocomplete="off"
+              style="width:100%;padding:11px 40px 11px 12px;border:1.5px solid #e8eaf0;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;background:#f4f5f8;box-sizing:border-box;cursor:default;pointer-events:none;">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:#d0d4db;pointer-events:none;user-select:none;">🔒</span>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
           <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Número de tarjeta</label>
@@ -2512,11 +2520,11 @@ function renderTabla() {
             const devuelta = repoFecha.hora_devolucion && repoFecha.hora_devolucion.trim();
             if (devuelta) {
               // Completado → número limpio clickable para PDF
-              html += `<td><span
+              html += `<td style="text-align:center;padding:4px 6px;"><span
                 onclick="generarPDFRepostajeDirecto(${JSON.stringify(repoFecha).replace(/"/g,'&quot;')})"
                 title="Repostaje completado — click para generar PDF"
-                style="font-size:11px;font-weight:800;color:#1a1a2e;cursor:pointer;padding:2px 4px;border-radius:4px;transition:background 0.15s"
-                onmouseover="this.style.background='#f0f2f5'" onmouseout="this.style.background='transparent'">
+                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#1a6635;background:#eafaf1;border:2px solid #a9dfbf;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;width:100%;box-sizing:border-box;transition:background 0.15s,border-color 0.15s"
+                onmouseover="this.style.background='#d6f5e3';this.style.borderColor='#7ccba6'" onmouseout="this.style.background='#eafaf1';this.style.borderColor='#a9dfbf'">
                 ⛽ ${esc(repoFecha.num_tarjeta)}
               </span></td>`;
             } else {
@@ -2551,11 +2559,11 @@ function renderTabla() {
                 fecha:           fechaActual || '',
                 estado:          'COMPLETADO',
               };
-              html += `<td><span
+              html += `<td style="text-align:center;padding:4px 6px;"><span
                 onclick="generarPDFRepostajeDirecto(${JSON.stringify(repoLocal).replace(/"/g,'&quot;')})"
                 title="Repostaje completado — click para generar PDF"
-                style="font-size:11px;font-weight:800;color:#1a1a2e;cursor:pointer;padding:2px 4px;border-radius:4px;transition:background 0.15s"
-                onmouseover="this.style.background='#f0f2f5'" onmouseout="this.style.background='transparent'">
+                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#1a6635;background:#eafaf1;border:2px solid #a9dfbf;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;width:100%;box-sizing:border-box;transition:background 0.15s,border-color 0.15s"
+                onmouseover="this.style.background='#d6f5e3';this.style.borderColor='#7ccba6'" onmouseout="this.style.background='#eafaf1';this.style.borderColor='#a9dfbf'">
                 ⛽ ${esc(numTarjetaLocal)}
               </span></td>`;
             } else {
@@ -2586,12 +2594,17 @@ function renderTabla() {
             }
 
           } else if (esHoy) {
-            // Hoy, sin ningún repostaje registrado → botón Registrar
-            html += `<td><button class="btn-print-row" style="background:#2a2a1a;color:#ffd54a;border-color:#5a5a2a;font-size:10px;padding:4px 8px;"
-              onclick="abrirModalRepostajeConMat('${esc(v.matricula)}')"
-              title="Registrar entrega de tarjeta GASOIL">
-              ⛽ Registrar
-            </button></td>`;
+            if (asignado) {
+              // Hoy, sin ningún repostaje registrado y con conductor asignado → botón Registrar
+              html += `<td><button class="btn-print-row" style="background:#2a2a1a;color:#ffd54a;border-color:#5a5a2a;font-size:10px;padding:4px 8px;"
+                onclick="abrirModalRepostajeConMat('${esc(v.matricula)}')"
+                title="Registrar entrega de tarjeta GASOIL">
+                ⛽ Registrar
+              </button></td>`;
+            } else {
+              // Hoy, sin conductor asignado → nada que registrar todavía
+              html += `<td><span style="font-size:11px;color:#c0c5cf;">—</span></td>`;
+            }
 
           } else {
             // Día histórico sin repostaje → input vacío de solo lectura
@@ -3574,6 +3587,7 @@ function imprimirOrden(matricula, operario, emp, rutas) {
     // Actualizar el botón de esa fila sin re-renderizar toda la tabla
     const btns = document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape((matricula||''). trim().toUpperCase())}"]`);
     btns.forEach(b => {
+      b.classList.remove('pendiente');
       b.classList.add('impresa');
       b.title = '✓ Orden ya impresa';
     });
@@ -3716,7 +3730,7 @@ async function cargarLog() {
   const hasta   = document.getElementById('log-fecha-hasta').value;
   const filtroU = document.getElementById('log-filtro-usuario').value.trim().toUpperCase();
   const tbody   = document.getElementById('log-tbody');
-  tbody.innerHTML = '<tr><td colspan="8" class="hist-empty">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">Cargando…</td></tr>';
   try {
     const url = `${APPS_SCRIPT_URL}?accion=cargarLog&desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&filtroUsuario=${encodeURIComponent(filtroU)}`;
     const resp = await fetch(url, { redirect:'follow' });
@@ -3724,17 +3738,17 @@ async function cargarLog() {
     logCache = json.filas || [];
     renderLog();
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="8" class="hist-empty">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="hist-empty">Error: ${e.message}</td></tr>`;
   }
 }
 
 function renderLog() {
   const tbody = document.getElementById('log-tbody');
   if (!logCache.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="hist-empty">Sin registros.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">Sin registros.</td></tr>';
     return;
   }
-  tbody.innerHTML = logCache.map(f => `<tr>
+  tbody.innerHTML = logCache.map((f, idx) => `<tr>
     <td>${f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : f.timestamp}</td>
     <td style="font-weight:800">${f.nombreResponsable||'—'}</td>
     <td>${f.numUsuario||'—'}</td>
@@ -3743,6 +3757,10 @@ function renderLog() {
     <td>${f.empresa||'—'}</td>
     <td>${f.ruta||'—'}</td>
     <td>${f.turno||'—'}</td>
+    <td class="col-acciones" style="text-align:center;white-space:nowrap">
+      <button class="btn-item-action" onclick="verLogOrden(${idx})" title="Ver orden de trabajo" style="font-size:13px;padding:3px 8px;color:#1d4ed8;border-color:#bfdbfe;margin-right:3px">📄</button>
+      <button class="btn-item-action danger" onclick="eliminarLog(${idx})" title="Eliminar registro del log" style="font-size:13px;padding:3px 8px">🗑</button>
+    </td>
   </tr>`).join('');
 }
 
@@ -3754,6 +3772,100 @@ function exportarLogCSV() {
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
   a.download = `log_ordenes_${fechaActual}.csv`;
   a.click();
+}
+
+// Vuelve a generar e imprimir/visualizar la orden de trabajo de una entrada del log
+function verLogOrden(idx) {
+  const f = logCache[idx];
+  if (!f) return;
+
+  // Buscar la empresa cuyo label coincida con el guardado en el log
+  let empKey = Object.keys(EMPRESAS).find(k => EMPRESAS[k].label === f.empresa);
+  if (!empKey) empKey = Object.keys(EMPRESAS)[0];
+  const emp = EMPRESAS[empKey];
+
+  // Buscar la ruta cuyo label coincida dentro de esa empresa
+  let ruta = (emp.rutas || []).find(r => r.label === f.ruta);
+  if (!ruta) {
+    // Fallback: construir una ruta genérica a partir del texto guardado, ej "GAITE → PTA"
+    const partes = (f.ruta || '').split('→').map(s => s.trim());
+    ruta = { id: 'log', origen: partes[0] || '', destino: partes[1] || '', label: f.ruta || '—' };
+  }
+
+  // Usar la fecha del log (no la del filtro actual) para el documento
+  const fechaOriginal = fechaActual;
+  if (f.fecha) fechaActual = f.fecha;
+  _ordenEmpresaKey = empKey;
+  try {
+    imprimirOrden(f.matricula, f.operario, emp, [ruta]);
+  } finally {
+    fechaActual = fechaOriginal;
+  }
+}
+
+// Elimina una entrada del log de órdenes
+async function eliminarLog(idx) {
+  const f = logCache[idx];
+  if (!f) return;
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+
+  await new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ov.innerHTML = `
+      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:420px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Eliminar este registro del log?</div>
+        <div style="font-size:11px;color:#8899aa;margin-bottom:14px;">
+          <span style="font-weight:700;color:#1a1a2e">${f.matricula||'—'}</span>
+          · ${f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : ''}
+        </div>
+        <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.6;margin-bottom:16px;">
+          <strong>Responsable:</strong> ${f.nombreResponsable||'—'}<br>
+          <strong>Operario:</strong> ${f.operario||'—'}<br>
+          <strong>Empresa / Ruta:</strong> ${f.empresa||'—'} · ${f.ruta||'—'}
+        </div>
+        <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btn-log-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="btn-log-ok" style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🗑 Sí, eliminar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#btn-log-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };
+    ov.querySelector('#btn-log-ok').onclick     = () => { document.body.removeChild(ov); resolve(true);  };
+  }).then(async (confirmado) => {
+    if (!confirmado) return;
+
+    const ovBorrando = document.createElement('div');
+    ovBorrando.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ovBorrando.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:32px 36px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;animation:nv-in 0.2s ease;min-width:260px">
+        <div style="width:40px;height:40px;border:3px solid #f0f0f0;border-top-color:#e84545;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a2e;">Borrando registro…</div>
+        <div style="font-size:11px;color:#8899aa;margin-top:5px">${f.matricula||''} · ${f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : ''}</div>
+      </div>`;
+    document.body.appendChild(ovBorrando);
+
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ accion: 'eliminarLog', timestamp: f.timestamp })
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+
+      logCache.splice(idx, 1);
+      renderLog();
+      await sincronizarOrdenesImpresas();
+      mostrarToast('✓ Registro de log eliminado', 'success');
+    } catch(e) {
+      mostrarToast('Error al eliminar: ' + e.message, 'error');
+    } finally {
+      document.body.removeChild(ovBorrando);
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -4153,7 +4265,7 @@ function renderHistorial() {
       else                            val = f[c] || '';
       return `<td class="${c==='matricula'?'mat':''}${!val?' vacio':''}">${val||'—'}</td>`;
     }).join('')}
-    <td style="text-align:center;white-space:nowrap">
+    <td class="col-acciones" style="text-align:center;white-space:nowrap">
       <button class="btn-item-action danger" onclick="eliminarHistorial(${idx})" title="Eliminar registro" style="font-size:13px;padding:3px 8px">🗑</button>
     </td></tr>`
   ).join('');
@@ -4233,8 +4345,24 @@ async function eliminarHistorial(idx) {
       const key = `${f.matricula}|${f.turno}|${f.fecha}`;
       if (datos[key]) {
         datos[key] = { operario:'', resp_entrega:'', resp_recibe:'', hora_entrega:'', hora_devolucion:'', num_tarjeta:'', itv:'', incidencias:'' };
-        renderTabla();
       }
+
+      renderTabla();
+
+      // Borrar también las entradas del Log de Órdenes de este vehículo/fecha/turno,
+      // y resincronizar inmediatamente el estado de los botones "Orden"
+      // (misma lógica que el sync periódico, pero al instante)
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            accion: 'eliminarLogPorFiltro',
+            matricula: f.matricula, fecha: f.fecha, turno: f.turno
+          })
+        });
+        await sincronizarOrdenesImpresas();
+      } catch(e) { console.warn('No se pudo limpiar el log de órdenes:', e); }
 
       historialCache.splice(idx, 1);
       renderHistorial();
@@ -4519,11 +4647,8 @@ function abrirModalRepostaje() {
     return;
   }
 
-  // Rellenar select de matrículas
-  const select = document.getElementById('repo-matricula');
-  select.innerHTML = listaMatriculasRepostaje()
-    .map(v => `<option value="${esc(v.matricula)}">${esc(v.matricula)} (${esc(v.tipo)})</option>`)
-    .join('');
+  // El campo matrícula es de solo lectura, se rellena en abrirModalRepostajeConMat()
+  document.getElementById('repo-matricula').value = '';
 
   // Fecha y hora automáticas
   const ahora = new Date();
@@ -4857,6 +4982,31 @@ function cerrarDevolucionDirecta() {
   _devDirRepostaje = null;
 }
 
+// Muestra un modal preguntando si se quiere imprimir el informe PDF del repostaje
+function preguntarImprimirInformeRepostaje(repo) {
+  let overlay = document.getElementById('confirmar-imprimir-repostaje-overlay');
+  if (overlay) overlay.remove();
+
+  overlay = document.createElement('div');
+  overlay.id = 'confirmar-imprimir-repostaje-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:30px 32px;width:380px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:40px;margin-bottom:12px;">📄</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">¿Imprimir informe de repostaje?</div>
+      <div style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Se generará el PDF de la solicitud de repostaje de <strong>${esc(repo.matricula || '')}</strong>.</div>
+      <div style="display:flex;justify-content:center;gap:10px;">
+        <button onclick="document.getElementById('confirmar-imprimir-repostaje-overlay').remove();"
+          style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;transition:background .15s;"
+          onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='#f4f5f8'">No</button>
+        <button onclick="document.getElementById('confirmar-imprimir-repostaje-overlay').remove();generarPDFRepostajeDirecto(${JSON.stringify(repo).replace(/"/g,'&quot;')})"
+          style="padding:10px 26px;background:#e8a23d;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(232,162,61,0.35);transition:background .15s;"
+          onmouseover="this.style.background='#c8821d'" onmouseout="this.style.background='#e8a23d'">Sí, imprimir</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
 async function confirmarDevolucionDirecta() {
   if (!usuarioActual || !_devDirRepostaje) return;
   const repo = _devDirRepostaje;
@@ -4944,6 +5094,16 @@ async function confirmarDevolucionDirecta() {
       renderTabla();
       document.body.removeChild(modalProgreso);
       mostrarToast(`✓ Tarjeta GASOIL de ${repo.matricula} devuelta — ${hora}`, 'success');
+
+      // Preguntar si se quiere imprimir el informe de repostaje
+      const repoCompleto = {
+        ...repo,
+        hora_devolucion: hora,
+        gasoil_despues:  gasoilDespues,
+        adblue_despues:  adblueDespues,
+        resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
+      };
+      preguntarImprimirInformeRepostaje(repoCompleto);
     } else {
       document.body.removeChild(modalProgreso);
       mostrarToast('⚠️ No se pudo confirmar la devolución: ' + (json.error||'error'), 'error');
@@ -5506,7 +5666,7 @@ function renderTabRepostajes() {
       <td style="font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.resp_entrega||'')}">${esc(f.resp_entrega||'—')}</td>
       <td style="font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.resp_recibe||'')}">${completado ? esc(f.resp_recibe||'—') : '—'}</td>
       <td>${estadoBadge}</td>
-      <td style="text-align:center;white-space:nowrap">
+      <td class="col-acciones" style="text-align:center;white-space:nowrap">
         <button class="btn-item-action" onclick="generarPDFRepostaje(${idx})" title="Generar PDF solicitud repostaje" style="font-size:13px;padding:3px 8px;color:#c0392b;border-color:#e8c5c5;margin-right:3px">📄</button>
         <button class="btn-item-action danger" onclick="eliminarRepostajeAdmin(${idx})" title="Eliminar repostaje" style="font-size:13px;padding:3px 8px">🗑</button>
       </td>
@@ -5615,7 +5775,7 @@ function _generarPDFDesdeObjeto(f) {
   doc.rect(antesX, y, col2W, 5.5, 'F');
   doc.text('ANTES DE REPOSTAR', antesX + col2W / 2, y + 4, { align: 'center' });
   // Medidor semicircular ANTES
-  drawFuelGauge(doc, antesX + col2W / 2, y + gaugeRowH / 2 + 3, 12, f.gasoil_antes);
+  drawFuelGauge(doc, antesX + col2W / 2, y + gaugeRowH / 2, 12, f.gasoil_antes);
   // AdBlue
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
@@ -5632,7 +5792,7 @@ function _generarPDFDesdeObjeto(f) {
   doc.setFontSize(7);
   doc.setTextColor(100, 110, 130);
   doc.text('DESPUÉS DE REPOSTAR', despuesX + col3W / 2, y + 4, { align: 'center' });
-  drawFuelGauge(doc, despuesX + col3W / 2, y + gaugeRowH / 2 + 3, 12, f.gasoil_despues);
+  drawFuelGauge(doc, despuesX + col3W / 2, y + gaugeRowH / 2, 12, f.gasoil_despues);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(80, 90, 110);

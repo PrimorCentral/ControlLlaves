@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.2.0">
+  <meta name="app-version" content="2.2.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -19,6 +19,7 @@
   <meta name="apple-mobile-web-app-title" content="Flota Primor">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     /* ─── MODAL NUEVA VERSIÓN ─── */
     #modal-nueva-version {
@@ -353,6 +354,25 @@
     .btn-modal-cancelar:hover { background: #eaecf2; }
     .btn-modal-imprimir { flex: 1; padding: 11px; background: #e84545; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; transition: background 0.15s; }
     .btn-modal-imprimir:hover { background: #c63030; }
+
+    /* ─── MODAL REPOSTAJE ─── */
+    .modal-repo { background: white; border-radius: 16px; padding: 28px 26px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
+    .repo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .repo-field { display: flex; flex-direction: column; gap: 5px; }
+    .repo-field.full { grid-column: 1 / -1; }
+    .repo-field label { font-size: 9px; font-weight: 700; color: #8899aa; letter-spacing: 1px; text-transform: uppercase; }
+    .repo-field input, .repo-field select { padding: 10px 12px; border: 1.5px solid #dde1e8; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 13px; color: #1a1a2e; outline: none; transition: border-color 0.2s; }
+    .repo-field input:focus, .repo-field select:focus { border-color: #e84545; }
+    .repo-field .repo-auto { padding: 10px 12px; background: #f7f8fa; border: 1.5px solid #eef0f5; border-radius: 8px; font-size: 13px; font-weight: 800; color: #556; }
+    .repo-section-label { font-size: 10px; font-weight: 800; color: #e8a23d; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+    .repo-pend-row { display: flex; align-items: center; gap: 12px; background: #f7f8fa; border: 1.5px solid #dde1e8; border-radius: 10px; padding: 12px 14px; flex-wrap: wrap; }
+    .repo-pend-info { flex: 1 1 100%; min-width: 0; }
+    .repo-pend-inputs { display: flex; gap: 8px; align-items: flex-end; flex: 1; }
+    .repo-pend-inputs .repo-field { flex: 1; min-width: 90px; }
+    .repo-pend-inputs input { padding: 8px 10px; border: 1.5px solid #dde1e8; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; color: #1a1a2e; outline: none; width: 100%; box-sizing: border-box; }
+    .repo-pend-inputs input:focus { border-color: #e8a23d; }
+    .btn-confirmar-repo { flex-shrink: 0; padding: 9px 18px; background: #2a2a1a; color: #ffd54a; border: 1.5px solid #5a5a2a; border-radius: 9px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .btn-confirmar-repo:hover { background: #4a4a1a; color: #fff0a0; }
 
     /* ─── LOGIN ADMIN ─── */
     .modal-login-admin { background: white; border-radius: 14px; padding: 30px 28px; width: 340px; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
@@ -781,6 +801,8 @@
   <button class="btn-action btn-secondary" onclick="window.print()">🖨️ Imprimir cuadrante</button>
   <button class="btn-action btn-secondary" onclick="if(usuarioActual) cargarCuadrante()">↺ Recargar</button>
   <button class="btn-action btn-secondary" onclick="abrirModalRecibirLlaves()" style="background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;" id="btn-recibir-llaves">🔑 Recibir llaves</button>
+  <button class="btn-action btn-secondary" onclick="abrirModalRepostaje()" style="background:#2a2a1a;color:#ffd54a;border:1.5px solid #5a5a2a;" id="btn-registrar-repostaje">⛽ Registrar repostaje</button>
+  <button class="btn-action btn-secondary" onclick="abrirModalRepostajesPendientes()" style="background:#1a2a3a;color:#5ab4ff;border:1.5px solid #2a4a5a;" id="btn-repostajes-pendientes">🧾 Repostajes pendientes</button>
   <button class="btn-action btn-secondary" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;">🔐 Panel Admin</button>
 </div>
 
@@ -978,6 +1000,7 @@
       <button class="admin-tab" id="tab-btn-historial" onclick="cambiarTab('historial')">📋 Historial</button>
       <button class="admin-tab" id="tab-btn-log" onclick="cambiarTab('log')">📝 Log Órdenes</button>
       <button class="admin-tab" id="tab-btn-incidencias" onclick="cambiarTab('incidencias')">⚠️ Incidencias</button>
+      <button class="admin-tab" id="tab-btn-repostajes" onclick="cambiarTab('repostajes')">⛽ Repostajes</button>
       <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')">👥 Responsables</button>
       <button class="admin-tab" id="tab-btn-config" onclick="cambiarTab('config')">⚙️ Config</button>
     </div>
@@ -1099,6 +1122,49 @@
       </div>
     </div>
 
+    <!-- TAB: REPOSTAJES -->
+    <div class="admin-tab-panel" id="tab-panel-repostajes" style="flex-direction:column;gap:10px">
+      <div class="hist-filters">
+        <input type="date" id="repo-tab-fecha-desde">
+        <input type="date" id="repo-tab-fecha-hasta">
+        <input type="text" id="repo-tab-filtro-matricula" placeholder="Filtrar matrícula…" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <select id="repo-tab-filtro-estado" style="padding:7px 10px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+          <option value="">Todos los estados</option>
+          <option value="PENDIENTE">⏳ Pendiente devolución</option>
+          <option value="COMPLETADO">✅ Completado</option>
+        </select>
+        <button class="btn-add-item" onclick="cargarTabRepostajes()" style="background:#3498db">🔍 Buscar</button>
+        <button class="btn-add-item" onclick="exportarRepostajesCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="cargarTabRepostajes()" style="background:#2ecc71" title="Recargar desde Sheets">🔄 Recargar</button>
+      </div>
+      <!-- Resumen estadístico -->
+      <div id="repo-tab-stats" style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap"></div>
+      <div class="hist-table-wrap">
+        <table class="hist-table">
+          <thead><tr>
+            <th>Fecha</th>
+            <th>Matrícula</th>
+            <th>Chofer</th>
+            <th>Km</th>
+            <th>Tarjeta</th>
+            <th>H. Entrega</th>
+            <th>H. Dev.</th>
+            <th>⛽ Antes</th>
+            <th>🧪 Antes</th>
+            <th>⛽ Después</th>
+            <th>🧪 Después</th>
+            <th>Resp. Entrega</th>
+            <th>Resp. Recibe</th>
+            <th>Estado</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="repo-tab-tbody">
+            <tr><td colspan="15" class="hist-empty">Usa el filtro para buscar repostajes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- TAB: RESPONSABLES -->
     <div class="admin-tab-panel" id="tab-panel-responsables" style="flex-direction:column;gap:10px">
       <div class="admin-section">
@@ -1196,10 +1262,202 @@
 }
 </style>
 
+<!-- MODAL: REGISTRAR REPOSTAJE -->
+<div class="modal-overlay" id="modal-registrar-repostaje">
+  <div style="background:white;border-radius:20px;width:540px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;display:flex;flex-direction:column;">
+
+    <!-- CABECERA -->
+    <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;">
+      <div style="width:44px;height:44px;background:#e8a23d;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⛽</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.3px;">Registrar repostaje</div>
+        <div style="font-size:11px;color:#6b7a94;margin-top:2px;">Entrega de tarjeta GASOIL — rellena los datos antes de repostar</div>
+      </div>
+      <button onclick="cerrarModalRepostaje()"
+        style="width:30px;height:30px;border-radius:8px;border:1.5px solid #2a2a4a;background:transparent;color:#6b7a94;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;line-height:1;"
+        onmouseover="this.style.borderColor='#e84545';this.style.color='#e84545'" onmouseout="this.style.borderColor='#2a2a4a';this.style.color='#6b7a94'">✕</button>
+    </div>
+
+    <!-- PILLS INFO -->
+    <div style="background:#f4f6fb;padding:10px 26px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e8eaf0;flex-wrap:wrap;flex-shrink:0;">
+      <span id="repo-pill-fecha" style="display:inline-flex;align-items:center;gap:5px;background:white;border:1.5px solid #dde1ea;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#556;">📅 —</span>
+      <span id="repo-pill-turno" style="display:inline-flex;align-items:center;gap:5px;background:#fffbeb;border:1.5px solid #fde68a;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:800;color:#92600a;">● Mañana</span>
+      <span id="repo-pill-hora" style="display:inline-flex;align-items:center;gap:5px;background:white;border:1.5px solid #dde1ea;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#556;">🕐 —</span>
+    </div>
+
+    <!-- CUERPO -->
+    <div style="padding:22px 26px 24px;overflow-y:auto;flex:1;">
+
+      <!-- Fila: Matrícula + Tarjeta -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Matrícula</label>
+          <select id="repo-matricula" onchange="onCambioMatriculaRepostaje()"
+            style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;background:white;transition:border-color .2s;"
+            onfocus="this.style.borderColor='#e8a23d'" onblur="this.style.borderColor='#dde1ea'"></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Número de tarjeta</label>
+          <input type="text" id="repo-tarjeta" value="GASOIL"
+            style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;transition:border-color .2s,box-shadow .2s;"
+            onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#dde1ea';this.style.boxShadow='none'">
+        </div>
+      </div>
+
+      <!-- Chofer -->
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Usuario / Chofer</label>
+        <div class="operario-search-wrap" style="min-width:unset">
+          <input class="operario-search-input" id="repo-chofer"
+            placeholder="Buscar nombre, DNI…"
+            autocomplete="off"
+            style="border-radius:10px;"
+            onfocus="abrirBuscadorOperarioRepo(this)"
+            oninput="filtrarBuscadorOperarioRepo(this)">
+          <span class="operario-search-icon">🔍</span>
+        </div>
+      </div>
+
+      <!-- Kilometraje -->
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px;">
+        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Kilometraje</label>
+        <input type="number" id="repo-km" placeholder="Ej: 125.400" min="0"
+          style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;color:#1a1a2e;outline:none;transition:border-color .2s,box-shadow .2s;"
+          onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#dde1ea';this.style.boxShadow='none'">
+      </div>
+
+      <!-- Sección: Antes de repostar -->
+      <div style="background:#fffbeb;border:1px solid #fde8a0;border-left:4px solid #e8a23d;padding:14px 16px;border-radius:0 10px 10px 0;margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:800;color:#b07a10;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">⛽ Depósitos antes de repostar</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:1px;text-transform:uppercase;">Gasoil (%)</label>
+            <input type="number" id="repo-gasoil-antes" placeholder="0 – 100" min="0" max="100"
+              style="padding:11px 12px;border:1.5px solid #fde68a;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;outline:none;background:white;transition:border-color .2s,box-shadow .2s;"
+              onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#fde68a';this.style.boxShadow='none'">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:1px;text-transform:uppercase;">AdBlue (%)</label>
+            <input type="number" id="repo-adblue-antes" placeholder="0 – 100" min="0" max="100"
+              style="padding:11px 12px;border:1.5px solid #fde68a;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;outline:none;background:white;transition:border-color .2s,box-shadow .2s;"
+              onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#fde68a';this.style.boxShadow='none'">
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:#aab5c0;font-weight:600;margin-bottom:20px;">La hora de entrega se registrará automáticamente al confirmar.</div>
+
+      <!-- Botones -->
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button onclick="cerrarModalRepostaje()"
+          style="padding:11px 22px;background:#f4f5f8;color:#667;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s;"
+          onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='#f4f5f8'">Cancelar</button>
+        <button onclick="enviarRegistroRepostaje()"
+          style="padding:11px 26px;background:#e8a23d;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(232,162,61,0.35);transition:background .15s,transform .1s;"
+          onmouseover="this.style.background='#c8821d'" onmouseout="this.style.background='#e8a23d'"
+          id="btn-enviar-repostaje">⛽ Entregar tarjeta y registrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPOSTAJES PENDIENTES -->
+<div class="modal-overlay" id="modal-repostajes-pendientes">
+  <div style="background:white;border-radius:20px;width:660px;max-width:96vw;max-height:90vh;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;display:flex;flex-direction:column;">
+
+    <!-- CABECERA -->
+    <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;">
+      <div style="width:44px;height:44px;background:#3b82f6;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🧾</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.3px;">Repostajes pendientes</div>
+        <div style="font-size:11px;color:#6b7a94;margin-top:2px;">Confirma la devolución con los depósitos después de repostar</div>
+      </div>
+      <button onclick="cerrarModalRepostajesPendientes()"
+        style="width:30px;height:30px;border-radius:8px;border:1.5px solid #2a2a4a;background:transparent;color:#6b7a94;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;line-height:1;"
+        onmouseover="this.style.borderColor='#e84545';this.style.color='#e84545'" onmouseout="this.style.borderColor='#2a2a4a';this.style.color='#6b7a94'">✕</button>
+    </div>
+
+    <!-- LISTA -->
+    <div id="repostajes-pendientes-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0;padding:20px 26px;">
+      <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">Cargando…</div>
+    </div>
+
+    <!-- PIE -->
+    <div style="display:flex;justify-content:flex-end;padding:14px 26px;flex-shrink:0;border-top:1px solid #f0f2f5;">
+      <button onclick="cerrarModalRepostajesPendientes()"
+        style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;transition:background .15s;"
+        onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='#f4f5f8'">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DEVOLUCIÓN DIRECTA DESDE CUADRANTE -->
+<div class="modal-overlay" id="modal-devolucion-directa">
+  <div style="background:white;border-radius:20px;width:480px;max-width:96vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+    <!-- CABECERA -->
+    <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;">
+      <div style="width:44px;height:44px;background:#f59e0b;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⛽</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.3px;">Devolver tarjeta GASOIL</div>
+        <div style="font-size:11px;color:#6b7a94;margin-top:2px;" id="devdir-sub">Confirma los depósitos tras repostar</div>
+      </div>
+      <button onclick="cerrarDevolucionDirecta()"
+        style="width:30px;height:30px;border-radius:8px;border:1.5px solid #2a2a4a;background:transparent;color:#6b7a94;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;line-height:1;"
+        onmouseover="this.style.borderColor='#e84545';this.style.color='#e84545'" onmouseout="this.style.borderColor='#2a2a4a';this.style.color='#6b7a94'">✕</button>
+    </div>
+    <!-- INFO FILA -->
+    <div style="padding:18px 26px 0;display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="background:#f7f8fa;border:1.5px solid #dde1e8;border-radius:9px;padding:10px 14px;flex:1;min-width:120px;">
+        <div style="font-size:9px;font-weight:800;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Matrícula</div>
+        <div style="font-size:14px;font-weight:900;color:#1a1a2e;" id="devdir-matricula">—</div>
+      </div>
+      <div style="background:#f7f8fa;border:1.5px solid #dde1e8;border-radius:9px;padding:10px 14px;flex:1;min-width:120px;">
+        <div style="font-size:9px;font-weight:800;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Nº Tarjeta</div>
+        <div style="font-size:14px;font-weight:900;color:#1a1a2e;" id="devdir-tarjeta">—</div>
+      </div>
+      <div style="background:#f7f8fa;border:1.5px solid #dde1e8;border-radius:9px;padding:10px 14px;flex:1;min-width:120px;">
+        <div style="font-size:9px;font-weight:800;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Chofer</div>
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="devdir-chofer">—</div>
+      </div>
+    </div>
+    <!-- ANTES -->
+    <div style="padding:10px 26px 0;font-size:10px;color:#8899aa;font-weight:700;" id="devdir-antes"></div>
+    <!-- INPUTS -->
+    <div style="padding:16px 26px 22px;display:flex;gap:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:5px;">
+        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.2px;text-transform:uppercase;">Gasoil después (%)</label>
+        <input type="number" min="0" max="100" placeholder="0 – 100" id="devdir-gasoil"
+          style="width:100%;padding:11px 12px;border:1.5px solid #e8eaf0;border-radius:9px;font-family:Barlow,sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;outline:none;background:#f8f9fc;transition:border-color .2s,box-shadow .2s;"
+          onfocus="this.style.borderColor='#e84545';this.style.boxShadow='0 0 0 3px rgba(232,69,69,0.09)'" onblur="this.style.borderColor='#e8eaf0';this.style.boxShadow='none'">
+      </div>
+      <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:5px;">
+        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.2px;text-transform:uppercase;">AdBlue después (%)</label>
+        <input type="number" min="0" max="100" placeholder="0 – 100" id="devdir-adblue"
+          style="width:100%;padding:11px 12px;border:1.5px solid #e8eaf0;border-radius:9px;font-family:Barlow,sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;outline:none;background:#f8f9fc;transition:border-color .2s,box-shadow .2s;"
+          onfocus="this.style.borderColor='#e84545';this.style.boxShadow='0 0 0 3px rgba(232,69,69,0.09)'" onblur="this.style.borderColor='#e8eaf0';this.style.boxShadow='none'">
+      </div>
+    </div>
+    <!-- PIE -->
+    <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 26px;border-top:1px solid #f0f2f5;">
+      <button onclick="cerrarDevolucionDirecta()"
+        style="padding:10px 20px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">Cancelar</button>
+      <button id="btn-devdir-confirmar" onclick="confirmarDevolucionDirecta()"
+        style="padding:10px 24px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:background .15s;letter-spacing:0.5px;"
+        onmouseover="this.style.background='#c63030'" onmouseout="this.style.background='#e84545'">✓ Confirmar devolución</button>
+    </div>
+  </div>
+</div>
+
 <!-- DROPDOWN FLOTANTE: BÚSQUEDA DE OPERARIO/CHOFER -->
 <div class="operario-dropdown" id="operario-dropdown">
   <div class="operario-dropdown-header" id="operario-dropdown-header">Nombre &middot; DNI &middot; N&ordm; usuario</div>
   <div class="operario-dropdown-list" id="operario-dropdown-list"></div>
+</div>
+
+<!-- Dropdown flotante para el campo chofer del modal de repostaje -->
+<div class="operario-dropdown" id="operario-dropdown-repo">
+  <div class="operario-dropdown-header">Nombre &middot; DNI &middot; N&ordm; usuario</div>
+  <div class="operario-dropdown-list"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1371,6 +1629,10 @@ let ordenActual = { matricula: '', operario: '' };
 let _ordenEmpresaKey = 'JD';
 const _ordenesImpresas = new Set(); // matricula|turno|fecha
 let cuadranteDesbloqueadoPorAdmin = false; // true cuando admin desbloquea un día diferente a hoy
+// Mapa matrícula → repostaje pendiente (para mostrar badge en columna Nº Tarjeta)
+let _repostajesPendientesMat = {}; // { matricula: { num_tarjeta, id, ... } }
+// Mapa matrícula → repostaje del día cargado (para días históricos)
+let _repostajesFechaMat = {}; // { matricula: { num_tarjeta, hora_devolucion, id, ... } }
 
 // ════════════════════════════════════════════════════════════════════════════
 // INIT
@@ -1511,6 +1773,11 @@ async function iniciarPrecarga() {
           });
         }
       } catch(e) { /* sin incidencias cargadas — no es crítico */ }
+
+      // Sincronizar repostajes para que el badge aparezca correcto desde el primer render
+      if (msg) msg.textContent = 'Verificando repostajes...';
+      await sincronizarRepostajesPendientes();
+      await sincronizarRepostajesFecha();
 
       if (fill) fill.style.width = '100%';
       if (msg)  msg.textContent  = '✓ Listo — identifícate para acceder';
@@ -2112,6 +2379,113 @@ function renderTabla() {
         const CAMPOS_AUTO = ['resp_entrega', 'resp_recibe', 'hora_entrega', 'hora_devolucion'];
         const esCampoAuto = CAMPOS_AUTO.includes(col.key);
 
+        // ── Campo NUM_TARJETA: badge según estado del repostaje ──────────────
+        if (col.key === 'num_tarjeta') {
+          const repoInfo  = _repostajesPendientesMat[v.matricula];  // pendiente activo (hoy)
+          const repoFecha = _repostajesFechaMat[v.matricula];       // cualquier repostaje del día
+          // Fallback: num_tarjeta que viene directamente de la hoja Registros (cargarCuadrante)
+          const numTarjetaLocal = (d.num_tarjeta || '').trim();
+
+          if (repoInfo) {
+            // Tarjeta entregada HOY y pendiente de devolución → badge amarillo, abre modal devolución directa
+            html += `<td><span style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:pointer"
+              onclick="abrirDevolucionDirecta(${JSON.stringify(repoInfo).replace(/"/g,'&quot;')})" title="Tarjeta pendiente — click para registrar devolución">
+              ⛽ ${esc(repoInfo.num_tarjeta||'GASOIL')}
+            </span></td>`;
+
+          } else if (repoFecha && repoFecha.num_tarjeta) {
+            // Hay repostaje registrado este día (completado o pendiente histórico)
+            const devuelta = repoFecha.hora_devolucion && repoFecha.hora_devolucion.trim();
+            if (devuelta) {
+              // Completado → número limpio clickable para PDF
+              html += `<td><span
+                onclick="generarPDFRepostajeDirecto(${JSON.stringify(repoFecha).replace(/"/g,'&quot;')})"
+                title="Repostaje completado — click para generar PDF"
+                style="font-size:11px;font-weight:800;color:#1a1a2e;cursor:pointer;padding:2px 4px;border-radius:4px;transition:background 0.15s"
+                onmouseover="this.style.background='#f0f2f5'" onmouseout="this.style.background='transparent'">
+                ⛽ ${esc(repoFecha.num_tarjeta)}
+              </span></td>`;
+            } else {
+              // Entregada pero sin devolución (pendiente histórico) → fondo amarillo, abre devolución directa
+              html += `<td><span
+                onclick="abrirDevolucionDirecta(${JSON.stringify(repoFecha).replace(/"/g,'&quot;')})"
+                title="Tarjeta pendiente de devolución — click para registrar devolución"
+                style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:pointer">
+                ⛽ ${esc(repoFecha.num_tarjeta)}
+              </span></td>`;
+            }
+
+          } else if (numTarjetaLocal) {
+            // Fallback desde hoja Registros: usar hora_devolucion para saber el estado
+            const horaDevLocal = (d.hora_devolucion || '').trim();
+            if (horaDevLocal) {
+              // Completado (tiene hora devolución) → clickable para PDF
+              // Construimos un objeto mínimo con los datos que tenemos en local
+              const repoLocal = {
+                matricula:       v.matricula,
+                num_tarjeta:     numTarjetaLocal,
+                usuario_chofer:  d.operario || '',
+                kilometraje:     '',
+                hora_entrega:    d.hora_entrega || '',
+                hora_devolucion: horaDevLocal,
+                gasoil_antes:    '',
+                adblue_antes:    '',
+                gasoil_despues:  '',
+                adblue_despues:  '',
+                resp_entrega:    d.resp_entrega || '',
+                resp_recibe:     d.resp_recibe || '',
+                fecha:           fechaActual || '',
+                estado:          'COMPLETADO',
+              };
+              html += `<td><span
+                onclick="generarPDFRepostajeDirecto(${JSON.stringify(repoLocal).replace(/"/g,'&quot;')})"
+                title="Repostaje completado — click para generar PDF"
+                style="font-size:11px;font-weight:800;color:#1a1a2e;cursor:pointer;padding:2px 4px;border-radius:4px;transition:background 0.15s"
+                onmouseover="this.style.background='#f0f2f5'" onmouseout="this.style.background='transparent'">
+                ⛽ ${esc(numTarjetaLocal)}
+              </span></td>`;
+            } else {
+              // Sin hora devolución → pendiente, abre modal devolución directa si es hoy
+              if (esHoy) {
+                // Construimos objeto mínimo para el modal de devolución
+                const repoLocal = {
+                  id:             '',
+                  matricula:      v.matricula,
+                  num_tarjeta:    numTarjetaLocal,
+                  usuario_chofer: d.operario || '',
+                  kilometraje:    '',
+                  hora_entrega:   d.hora_entrega || '',
+                  gasoil_antes:   '',
+                  adblue_antes:   '',
+                  resp_entrega:   d.resp_entrega || '',
+                };
+                html += `<td><span
+                  style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:pointer"
+                  onclick="abrirDevolucionDirecta(${JSON.stringify(repoLocal).replace(/"/g,'&quot;')})"
+                  title="Tarjeta pendiente — click para registrar devolución">
+                  ⛽ ${esc(numTarjetaLocal)}
+                </span></td>`;
+              } else {
+                // Histórico sin devolución → solo texto
+                html += `<td><span style="font-size:11px;font-weight:800;color:#1a1a2e;padding:2px 4px;">⛽ ${esc(numTarjetaLocal)}</span></td>`;
+              }
+            }
+
+          } else if (esHoy) {
+            // Hoy, sin ningún repostaje registrado → botón Registrar
+            html += `<td><button class="btn-print-row" style="background:#2a2a1a;color:#ffd54a;border-color:#5a5a2a;font-size:10px;padding:4px 8px;"
+              onclick="abrirModalRepostajeConMat('${esc(v.matricula)}')"
+              title="Registrar entrega de tarjeta GASOIL">
+              ⛽ Registrar
+            </button></td>`;
+
+          } else {
+            // Día histórico sin repostaje → input vacío de solo lectura
+            html += `<td><input class="cell-input-locked num" value="${esc(val)}" readonly tabindex="-1"></td>`;
+          }
+          return;
+        }
+
         // ── Campo INCIDENCIAS: solo botón "Ver" si tiene incidencia (solo editable si es hoy) ─
         if (col.key === 'incidencias') {
           const tieneIncid = val && val.trim();
@@ -2429,7 +2803,12 @@ async function cargarCuadrante() {
       }
     } catch(e) { console.warn('No se pudieron cargar incidencias:', e); }
 
-    // 5) Sincronizar órdenes impresas desde el log
+    // 5) Sincronizar repostajes pendientes + repostajes del día
+    actualizarCargando('Verificando repostajes activos…', 87);
+    await sincronizarRepostajesPendientes();
+    await sincronizarRepostajesFecha();
+
+    // 6) Sincronizar órdenes impresas desde el log
     actualizarCargando('Verificando órdenes impresas…', 90);
     await sincronizarOrdenesImpresas();
 
@@ -2619,6 +2998,12 @@ async function syncSilencioso() {
     // ── Cada 6 ciclos (~30s) sincronizar la flota ──
     if (_syncCiclo % 6 === 1) {
       await cargarFlotaDesdeSheets();
+    }
+
+    // ── Cada 3 ciclos (~15s) sincronizar repostajes pendientes ──
+    if (_syncCiclo === 1 || _syncCiclo % 3 === 0) {
+      await sincronizarRepostajesPendientes();
+    await sincronizarRepostajesFecha();
     }
 
     // ── Sincronizar órdenes impresas cada 15s ──
@@ -2999,6 +3384,49 @@ function imprimirOrden(matricula, operario, emp, rutas) {
 // Consulta el log del día/turno actual y actualiza _ordenesImpresas
 // Se llama al cargar el cuadrante y en cada ciclo de sync
 // ════════════════════════════════════════════════════════════════════════════
+// Carga repostajes pendientes y actualiza _repostajesPendientesMat
+// para que renderTabla muestre el badge correcto en columna Nº Tarjeta
+async function sincronizarRepostajesPendientes() {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=cargarRepostajesPendientes&_t=' + Date.now(), {
+      redirect: 'follow', signal: AbortSignal.timeout(6000),
+      cache: 'no-store'
+    });
+    if (!resp.ok) return;
+    const json = await resp.json();
+    _repostajesPendientesMat = {};
+    if (json.ok && json.filas) {
+      json.filas.forEach(f => {
+        const mat = (f.matricula||'').trim().toUpperCase();
+        if (mat) _repostajesPendientesMat[mat] = f;
+      });
+    }
+  } catch(e) { /* sin conexión — no crítico */ }
+}
+
+// Carga repostajes de la fecha actual y actualiza _repostajesFechaMat
+// para mostrar el nº de tarjeta en cuadrantes de días anteriores
+async function sincronizarRepostajesFecha() {
+  if (!APPS_SCRIPT_URL || !fechaActual) return;
+  _repostajesFechaMat = {};
+  try {
+    const url = `${APPS_SCRIPT_URL}?accion=cargarRepostajes&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}&_t=${Date.now()}`;
+    const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(8000), cache: 'no-store' });
+    if (!resp.ok) return;
+    const json = await resp.json();
+    if (json.ok && json.filas) {
+      json.filas.forEach(f => {
+        const mat = (f.matricula||'').trim().toUpperCase();
+        if (mat) {
+          // Si hay varios repostajes del mismo día/matrícula, guardar el más reciente (último)
+          _repostajesFechaMat[mat] = f;
+        }
+      });
+    }
+  } catch(e) { /* sin conexión — no crítico */ }
+}
+
 async function sincronizarOrdenesImpresas() {
   if (!APPS_SCRIPT_URL) return;
   try {
@@ -3694,6 +4122,483 @@ async function confirmarRecibirLlave(matricula) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// REPOSTAJE
+// ════════════════════════════════════════════════════════════════════════════
+
+// Devuelve una lista plana { matricula, tipo } de todos los vehículos de la flota
+function listaMatriculasRepostaje() {
+  const lista = [];
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => lista.push({ matricula: v.matricula, tipo: v.tipo })));
+  return lista;
+}
+
+// Abre el modal de repostaje preseleccionando la matrícula indicada
+function abrirModalRepostajeConMat(matricula) {
+  abrirModalRepostaje();
+  const sel = document.getElementById('repo-matricula');
+  if (sel) { sel.value = matricula; onCambioMatriculaRepostaje(); }
+}
+
+// ── Dropdown operarios para el campo chofer del modal de repostaje ────────────
+let _repoDropdownAbierto = false;
+let _repoDropdownInput   = null;
+
+function abrirBuscadorOperarioRepo(input) {
+  _repoDropdownInput = input;
+  _repoDropdownAbierto = true;
+  filtrarBuscadorOperarioRepo(input);
+}
+
+function filtrarBuscadorOperarioRepo(input) {
+  const q = (input.value || '').trim().toUpperCase();
+  const dd = document.getElementById('operario-dropdown-repo');
+  if (!dd) return;
+  const lista = CONDUCTORES.filter(c =>
+    !q ||
+    c.nombre.toUpperCase().includes(q) ||
+    (c.dni||'').toUpperCase().includes(q) ||
+    String(c.numUsuario||'').includes(q)
+  );
+  const list = dd.querySelector('.operario-dropdown-list');
+  list.innerHTML = lista.length
+    ? lista.map(c => `<div class="operario-dropdown-item" onmousedown="seleccionarConductorRepo('${esc(c.nombre)}')">
+        <span class="operario-item-nombre">${esc(c.nombre)}</span>
+        <span class="operario-item-meta">${esc(c.sociedad||'')} · DNI ${esc(c.dni)} · Nº ${esc(String(c.numUsuario))}</span>
+      </div>`).join('')
+    : '<div class="operario-dropdown-empty">Sin resultados</div>';
+  // Posicionar el dropdown debajo del input
+  const rect = input.getBoundingClientRect();
+  dd.style.top    = (rect.bottom + 4) + 'px';
+  dd.style.left   = rect.left + 'px';
+  dd.style.width  = Math.max(280, rect.width) + 'px';
+  dd.classList.add('open');
+}
+
+function seleccionarConductorRepo(nombre) {
+  const input = document.getElementById('repo-chofer');
+  if (input) input.value = nombre;
+  const dd = document.getElementById('operario-dropdown-repo');
+  if (dd) dd.classList.remove('open');
+  _repoDropdownAbierto = false;
+}
+
+document.addEventListener('click', (e) => {
+  if (!_repoDropdownAbierto) return;
+  const dd = document.getElementById('operario-dropdown-repo');
+  const input = document.getElementById('repo-chofer');
+  if (dd && !dd.contains(e.target) && e.target !== input) {
+    dd.classList.remove('open');
+    _repoDropdownAbierto = false;
+  }
+});
+
+function abrirModalRepostaje() {
+  if (!usuarioActual) {
+    mostrarToast('Debes iniciar sesión para registrar un repostaje', 'error');
+    return;
+  }
+
+  // Rellenar select de matrículas
+  const select = document.getElementById('repo-matricula');
+  select.innerHTML = listaMatriculasRepostaje()
+    .map(v => `<option value="${esc(v.matricula)}">${esc(v.matricula)} (${esc(v.tipo)})</option>`)
+    .join('');
+
+  // Fecha y hora automáticas
+  const ahora = new Date();
+  const fecha = fechaActual || (ahora.getFullYear() + '-' + String(ahora.getMonth()+1).padStart(2,'0') + '-' + String(ahora.getDate()).padStart(2,'0'));
+  const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  // Mostrar fecha en formato DD-MM-AAAA
+  const fechaDisplay = fecha ? fecha.split('-').reverse().join('-') : fecha;
+
+  // Actualizar pills de cabecera
+  const pillFecha = document.getElementById('repo-pill-fecha');
+  const pillTurno = document.getElementById('repo-pill-turno');
+  const pillHora  = document.getElementById('repo-pill-hora');
+  if (pillFecha) pillFecha.textContent = '📅 ' + fechaDisplay;
+  if (pillHora)  pillHora.textContent  = '🕐 ' + hora;
+  if (pillTurno) {
+    const esMañana = turnoActual === 'MANANA';
+    pillTurno.textContent = '● ' + (esMañana ? 'Mañana' : 'Tarde');
+    pillTurno.style.background    = esMañana ? '#fffbeb' : '#fff5f0';
+    pillTurno.style.borderColor   = esMañana ? '#fde68a' : '#fecaca';
+    pillTurno.style.color         = esMañana ? '#92600a' : '#9a3412';
+  }
+
+  // Valores por defecto
+  document.getElementById('repo-tarjeta').value       = 'GASOIL';
+  document.getElementById('repo-km').value            = '';
+  document.getElementById('repo-gasoil-antes').value   = '';
+  document.getElementById('repo-adblue-antes').value   = '';
+  document.getElementById('repo-chofer').value         = '';
+
+  // Resetear botón por si quedó en estado de carga
+  const btnEnviar = document.getElementById('btn-enviar-repostaje');
+  if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.textContent = '⛽ Entregar tarjeta y registrar'; }
+
+  onCambioMatriculaRepostaje();
+
+  document.getElementById('modal-registrar-repostaje').classList.add('open');
+}
+
+function cerrarModalRepostaje() {
+  document.getElementById('modal-registrar-repostaje').classList.remove('open');
+}
+
+// Al elegir la matrícula, autocompleta el chofer si ya hay un conductor asignado en el cuadrante
+function onCambioMatriculaRepostaje() {
+  const matricula = document.getElementById('repo-matricula').value;
+  const choferInput = document.getElementById('repo-chofer');
+  if (!matricula) return;
+  const d = getDato(matricula);
+  if (d && d.operario && d.operario.trim() && !choferInput.value.trim()) {
+    choferInput.value = d.operario;
+  }
+}
+
+async function enviarRegistroRepostaje() {
+  if (!usuarioActual) return;
+
+  const matricula     = document.getElementById('repo-matricula').value;
+  const chofer        = document.getElementById('repo-chofer').value.trim();
+  const km            = document.getElementById('repo-km').value.trim();
+  const tarjeta       = document.getElementById('repo-tarjeta').value.trim() || 'GASOIL';
+  const gasoilAntes   = document.getElementById('repo-gasoil-antes').value;
+  const adblueAntes   = document.getElementById('repo-adblue-antes').value;
+
+  if (!matricula)   { mostrarToast('Selecciona la matrícula', 'error'); return; }
+  if (!chofer)      { mostrarToast('Indica el usuario/chofer', 'error'); return; }
+  if (km === '')    { mostrarToast('Indica el kilometraje', 'error'); return; }
+  if (gasoilAntes === '' || adblueAntes === '') {
+    mostrarToast('Indica los depósitos antes de repostar', 'error');
+    return;
+  }
+
+  const ahora = new Date();
+  const fecha = fechaActual || (ahora.getFullYear() + '-' + String(ahora.getMonth()+1).padStart(2,'0') + '-' + String(ahora.getDate()).padStart(2,'0'));
+  const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+  const repostaje = {
+    fecha,
+    matricula,
+    usuario_chofer:  chofer,
+    kilometraje:     km,
+    num_tarjeta:     tarjeta,
+    hora_entrega:    hora,
+    gasoil_antes:    gasoilAntes,
+    adblue_antes:    adblueAntes,
+    resp_entrega:    usuarioActual.nombre || usuarioActual.numUsuario,
+  };
+
+  const btn = document.getElementById('btn-enviar-repostaje');
+  const txtOriginal = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
+
+  // Modal de progreso (igual que incidencias)
+  const modalProgreso = document.createElement('div');
+  modalProgreso.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  modalProgreso.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:44px;margin-bottom:14px;">⛽</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Registrando repostaje</div>
+      <div id="modal-progreso-msg" style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema…<br>Por favor, espere un momento.</div>
+      <div style="display:flex;justify-content:center;gap:7px;align-items:center;">
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0s"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.2s"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.4s"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(modalProgreso);
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'registrarRepostaje', repostaje }),
+      redirect: 'follow'
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      cerrarModalRepostaje();
+      // Escribir num_tarjeta en el cuadrante para que se guarde en la hoja Registros
+      setDato(matricula, 'num_tarjeta', tarjeta);
+      programarGuardado();
+      // Actualizar badge en el cuadrante — mantener modal hasta que todo esté listo
+      const msgEl = document.getElementById('modal-progreso-msg');
+      if (msgEl) msgEl.innerHTML = 'Sincronizando repostajes…<br>Un momento.';
+      await sincronizarRepostajesPendientes();
+      await sincronizarRepostajesFecha();
+      if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
+      renderTabla();
+      document.body.removeChild(modalProgreso);
+      mostrarToast(`⛽ Tarjeta GASOIL entregada para ${matricula} — ${hora}`, 'success');
+    } else {
+      document.body.removeChild(modalProgreso);
+      mostrarToast('⚠️ No se pudo registrar el repostaje: ' + (json.error||'error'), 'error');
+    }
+  } catch (e) {
+    if (document.body.contains(modalProgreso)) document.body.removeChild(modalProgreso);
+    mostrarToast('⚠️ Error de conexión al registrar el repostaje', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = txtOriginal; }
+  }
+}
+
+function abrirModalRepostajesPendientes() {
+  if (!usuarioActual) {
+    mostrarToast('Debes iniciar sesión para ver los repostajes pendientes', 'error');
+    return;
+  }
+  document.getElementById('modal-repostajes-pendientes').classList.add('open');
+  cargarRepostajesPendientes();
+}
+
+function cerrarModalRepostajesPendientes() {
+  document.getElementById('modal-repostajes-pendientes').classList.remove('open');
+}
+
+async function cargarRepostajesPendientes() {
+  const lista = document.getElementById('repostajes-pendientes-lista');
+  lista.innerHTML = `<div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">Cargando…</div>`;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL + '?accion=cargarRepostajesPendientes&_t=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
+    const json = await resp.json();
+    renderListaRepostajesPendientes(json.ok ? (json.filas||[]) : []);
+  } catch (e) {
+    lista.innerHTML = `<div style="text-align:center;padding:40px;color:#e84545;font-size:13px">⚠️ Error al cargar los repostajes pendientes</div>`;
+  }
+}
+
+function renderListaRepostajesPendientes(filas) {
+  const lista = document.getElementById('repostajes-pendientes-lista');
+
+  if (!filas.length) {
+    lista.innerHTML = `
+      <div style="text-align:center;padding:50px 20px;color:#8899aa">
+        <div style="font-size:36px;margin-bottom:12px">✅</div>
+        <div style="font-size:15px;font-weight:800;color:#1a1a2e">Sin repostajes pendientes</div>
+        <div style="font-size:12px;margin-top:6px">Todas las tarjetas GASOIL han sido devueltas.</div>
+      </div>`;
+    return;
+  }
+
+  lista.innerHTML = filas.map(f => `
+    <div class="repo-pend-row" id="rp-row-${esc(f.id)}">
+      <div class="repo-pend-info">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:800;color:#1a1a2e;background:#e8eaef;border-radius:5px;padding:2px 8px;white-space:nowrap">${esc(f.matricula)}</span>
+          <span style="font-size:10px;color:#8899aa;font-weight:700">🪪 ${esc(f.num_tarjeta)}</span>
+          <span style="font-size:10px;color:#8899aa;font-weight:700">🛣️ ${esc(f.kilometraje)} km</span>
+        </div>
+        <div style="font-size:12px;color:#334;font-weight:700">👤 ${esc(f.usuario_chofer)}</div>
+        <div style="font-size:10px;color:#8899aa;margin-top:2px">
+          Entregada por <strong>${esc(f.resp_entrega||'—')}</strong> a las <strong>${esc(f.hora_entrega||'—')}</strong>
+          &nbsp;·&nbsp; Antes: ⛽ ${esc(f.gasoil_antes)}% &nbsp; 🧪 AdBlue ${esc(f.adblue_antes)}%
+        </div>
+      </div>
+      <div class="repo-pend-inputs">
+        <div class="repo-field">
+          <label>Gasoil después (%)</label>
+          <input type="number" min="0" max="100" placeholder="0-100" id="rp-gasoil-${esc(f.id)}">
+        </div>
+        <div class="repo-field">
+          <label>AdBlue después (%)</label>
+          <input type="number" min="0" max="100" placeholder="0-100" id="rp-adblue-${esc(f.id)}">
+        </div>
+        <button class="btn-confirmar-repo" onclick="confirmarDevolucionRepostaje('${esc(f.id)}','${esc(f.matricula)}')">✓ Confirmar devolución</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── Devolución directa desde badge del cuadrante ────────────────────────────
+let _devDirRepostaje = null; // repostaje activo para devolución directa
+
+function abrirDevolucionDirecta(repo) {
+  _devDirRepostaje = repo;
+  document.getElementById('devdir-matricula').textContent = repo.matricula || '—';
+  document.getElementById('devdir-tarjeta').textContent   = repo.num_tarjeta || 'GASOIL';
+  document.getElementById('devdir-chofer').textContent    = repo.usuario_chofer || '—';
+  document.getElementById('devdir-sub').textContent       = `Matrícula ${repo.matricula} · entregada a las ${repo.hora_entrega||'—'}`;
+  document.getElementById('devdir-antes').textContent     = `Antes de repostar: ⛽ Gasoil ${repo.gasoil_antes}%   🧪 AdBlue ${repo.adblue_antes}%`;
+  document.getElementById('devdir-gasoil').value = '';
+  document.getElementById('devdir-adblue').value = '';
+  const btn = document.getElementById('btn-devdir-confirmar');
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar devolución'; }
+  document.getElementById('modal-devolucion-directa').classList.add('open');
+  setTimeout(() => document.getElementById('devdir-gasoil').focus(), 120);
+}
+
+function cerrarDevolucionDirecta() {
+  document.getElementById('modal-devolucion-directa').classList.remove('open');
+  _devDirRepostaje = null;
+}
+
+async function confirmarDevolucionDirecta() {
+  if (!usuarioActual || !_devDirRepostaje) return;
+  const repo = _devDirRepostaje;
+
+  const gasoilDespues = document.getElementById('devdir-gasoil').value;
+  const adblueDespues = document.getElementById('devdir-adblue').value;
+
+  if (gasoilDespues === '' || adblueDespues === '') {
+    mostrarToast('Indica los depósitos después de repostar', 'error');
+    return;
+  }
+
+  const ahora = new Date();
+  const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+  const btn = document.getElementById('btn-devdir-confirmar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
+
+  // Cerrar modal de devolución y mostrar modal de progreso
+  cerrarDevolucionDirecta();
+
+  const modalProgreso = document.createElement('div');
+  modalProgreso.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  modalProgreso.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:44px;margin-bottom:14px;">⛽</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Registrando devolución</div>
+      <div id="devdir-progreso-msg" style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema…<br>Por favor, espere un momento.</div>
+      <div style="display:flex;justify-content:center;gap:7px;align-items:center;">
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0s"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.2s"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.4s"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(modalProgreso);
+
+  try {
+    let repoId = repo.id;
+
+    // Si no tenemos id (fallback desde hoja Registros), buscar el id real en los pendientes
+    if (!repoId) {
+      const msgEl2 = document.getElementById('devdir-progreso-msg');
+      if (msgEl2) msgEl2.innerHTML = 'Buscando registro activo…';
+      const respBuscar = await fetch(
+        `${APPS_SCRIPT_URL}?accion=cargarRepostajesPendientes&_t=${Date.now()}`, { redirect: 'follow', cache: 'no-store' }
+      );
+      const jsonBuscar = await respBuscar.json();
+      if (jsonBuscar.ok && jsonBuscar.filas) {
+        const mat = (repo.matricula || '').trim().toUpperCase();
+        const encontrado = jsonBuscar.filas.find(
+          f => (f.matricula||'').trim().toUpperCase() === mat
+        );
+        if (encontrado) {
+          repoId = encontrado.id;
+        } else {
+          // No está pendiente — ya fue completado, refrescar y avisar
+          document.body.removeChild(modalProgreso);
+          await sincronizarRepostajesPendientes();
+          await sincronizarRepostajesFecha();
+          renderTabla();
+          mostrarToast(`ℹ️ La tarjeta de ${repo.matricula} ya fue devuelta anteriormente`, 'info');
+          return;
+        }
+      }
+    }
+
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'completarRepostaje', repostaje: {
+        id:              repoId,
+        hora_devolucion: hora,
+        gasoil_despues:  gasoilDespues,
+        adblue_despues:  adblueDespues,
+        resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
+      }}),
+      redirect: 'follow'
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      const msgEl = document.getElementById('devdir-progreso-msg');
+      if (msgEl) msgEl.innerHTML = 'Sincronizando repostajes…<br>Un momento.';
+      await sincronizarRepostajesPendientes();
+      await sincronizarRepostajesFecha();
+      if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
+      renderTabla();
+      document.body.removeChild(modalProgreso);
+      mostrarToast(`✓ Tarjeta GASOIL de ${repo.matricula} devuelta — ${hora}`, 'success');
+    } else {
+      document.body.removeChild(modalProgreso);
+      mostrarToast('⚠️ No se pudo confirmar la devolución: ' + (json.error||'error'), 'error');
+    }
+  } catch (e) {
+    if (document.body.contains(modalProgreso)) document.body.removeChild(modalProgreso);
+    mostrarToast('⚠️ Error de conexión al confirmar la devolución', 'error');
+  }
+}
+
+async function confirmarDevolucionRepostaje(id, matricula) {
+  if (!usuarioActual) return;
+
+  const gasoilDespues = document.getElementById(`rp-gasoil-${id}`).value;
+  const adblueDespues = document.getElementById(`rp-adblue-${id}`).value;
+
+  if (gasoilDespues === '' || adblueDespues === '') {
+    mostrarToast('Indica los depósitos después de repostar', 'error');
+    return;
+  }
+
+  const ahora = new Date();
+  const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+  const rowEl = document.getElementById(`rp-row-${id}`);
+  const btn   = rowEl ? rowEl.querySelector('.btn-confirmar-repo') : null;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
+
+  // Cerrar la lista y mostrar modal de progreso
+  cerrarModalRepostajesPendientes();
+
+  const modalProgreso = document.createElement('div');
+  modalProgreso.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  modalProgreso.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:44px;margin-bottom:14px;">⛽</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Registrando devolución</div>
+      <div id="repo-devol-progreso-msg" style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema…<br>Por favor, espere un momento.</div>
+      <div style="display:flex;justify-content:center;gap:7px;align-items:center;">
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0s"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.2s"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#e8a23d;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.4s"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(modalProgreso);
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'completarRepostaje', repostaje: {
+        id,
+        hora_devolucion: hora,
+        gasoil_despues:  gasoilDespues,
+        adblue_despues:  adblueDespues,
+        resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
+      }}),
+      redirect: 'follow'
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      const msgEl = document.getElementById('repo-devol-progreso-msg');
+      if (msgEl) msgEl.innerHTML = 'Sincronizando repostajes…<br>Un momento.';
+      await sincronizarRepostajesPendientes();
+      await sincronizarRepostajesFecha();
+      if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
+      renderTabla();
+      document.body.removeChild(modalProgreso);
+      mostrarToast(`✓ Tarjeta GASOIL de ${matricula} devuelta — ${hora}`, 'success');
+    } else {
+      document.body.removeChild(modalProgreso);
+      mostrarToast('⚠️ No se pudo confirmar la devolución: ' + (json.error||'error'), 'error');
+    }
+  } catch (e) {
+    if (document.body.contains(modalProgreso)) document.body.removeChild(modalProgreso);
+    mostrarToast('⚠️ Error de conexión al confirmar la devolución', 'error');
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
 // ADMIN LOGIN
 // ════════════════════════════════════════════════════════════════════════════
 function abrirLoginAdmin() {
@@ -3789,7 +4694,7 @@ function cerrarAdmin() {
 }
 
 function cambiarTab(tab) {
-  ['vehiculos','conductores','historial','log','incidencias','responsables','config'].forEach(t => {
+  ['vehiculos','conductores','historial','log','incidencias','repostajes','responsables','config'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
   });
@@ -3813,6 +4718,13 @@ function cambiarTab(tab) {
       document.getElementById('incid-fecha-hasta').value = fechaActual;
     }
     cargarTabIncidencias();
+  }
+  if (tab === 'repostajes') {
+    if (!document.getElementById('repo-tab-fecha-desde').value) {
+      document.getElementById('repo-tab-fecha-desde').value = fechaActual;
+      document.getElementById('repo-tab-fecha-hasta').value = fechaActual;
+    }
+    cargarTabRepostajes();
   }
   if (tab === 'responsables') cargarResponsables();
   if (tab === 'conductores') renderAdminConductores();
@@ -4067,6 +4979,488 @@ async function registrarIncidenciaEnSheets(matricula, descripcion) {
 // PESTAÑA INCIDENCIAS (Panel Admin)
 // ════════════════════════════════════════════════════════════════════════════
 let incidenciasCache = [];
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB REPOSTAJES (Panel Admin)
+// ════════════════════════════════════════════════════════════════════════════
+let repostajesCache = [];
+
+async function cargarTabRepostajes() {
+  const tbody = document.getElementById('repo-tab-tbody');
+  const statsEl = document.getElementById('repo-tab-stats');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="15" class="hist-empty">⏳ Cargando desde Sheets…</td></tr>';
+  if (statsEl) statsEl.innerHTML = '';
+
+  const desde     = document.getElementById('repo-tab-fecha-desde').value;
+  const hasta     = document.getElementById('repo-tab-fecha-hasta').value;
+  const matricula = (document.getElementById('repo-tab-filtro-matricula').value || '').trim();
+  const estado    = (document.getElementById('repo-tab-filtro-estado').value || '').trim();
+
+  if (!APPS_SCRIPT_URL) {
+    tbody.innerHTML = '<tr><td colspan="15" class="hist-empty">⚠️ Sin URL de Apps Script configurada.</td></tr>';
+    return;
+  }
+
+  try {
+    let url = `${APPS_SCRIPT_URL}?accion=cargarRepostajes`;
+    if (desde)    url += `&desde=${encodeURIComponent(desde)}`;
+    if (hasta)    url += `&hasta=${encodeURIComponent(hasta)}`;
+    if (matricula) url += `&matricula=${encodeURIComponent(matricula)}`;
+    const resp = await fetch(url, { redirect: 'follow' });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+    // Filtrar por estado en cliente (Apps Script no filtra por estado)
+    repostajesCache = (json.filas || []).filter(f => !estado || (f.estado||'').toUpperCase() === estado);
+    renderTabRepostajes();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="15" class="hist-empty">Error al cargar: ${e.message}</td></tr>`;
+  }
+}
+
+function renderTabRepostajes() {
+  const tbody   = document.getElementById('repo-tab-tbody');
+  const statsEl = document.getElementById('repo-tab-stats');
+  if (!tbody) return;
+
+  // ── Estadísticas ─────────────────────────────────────────────────────────
+  if (statsEl) {
+    const total      = repostajesCache.length;
+    const pendientes = repostajesCache.filter(f => (f.estado||'').toUpperCase() === 'PENDIENTE').length;
+    const completados = total - pendientes;
+    statsEl.innerHTML = `
+      <div style="background:white;border:1px solid #dde1e8;border-radius:10px;padding:10px 16px;display:flex;flex-direction:column;gap:2px;min-width:100px">
+        <span style="font-size:22px;font-weight:900;color:#1a1a2e">${total}</span>
+        <span style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.5px">Total</span>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 16px;display:flex;flex-direction:column;gap:2px;min-width:120px">
+        <span style="font-size:22px;font-weight:900;color:#92600a">${pendientes}</span>
+        <span style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:0.5px">⏳ Pendientes</span>
+      </div>
+      <div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:10px 16px;display:flex;flex-direction:column;gap:2px;min-width:120px">
+        <span style="font-size:22px;font-weight:900;color:#1a6635">${completados}</span>
+        <span style="font-size:10px;font-weight:700;color:#1a6635;letter-spacing:0.5px">✅ Completados</span>
+      </div>`;
+  }
+
+  if (!repostajesCache.length) {
+    tbody.innerHTML = '<tr><td colspan="15" class="hist-empty">Sin repostajes en el rango seleccionado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = repostajesCache.map((f, idx) => {
+    const completado = (f.estado||'').toUpperCase() === 'COMPLETADO';
+    const pendiente  = (f.estado||'').toUpperCase() === 'PENDIENTE';
+    const estadoBadge = completado
+      ? `<span style="font-size:9px;font-weight:800;color:#1a6635;background:#eafaf1;border:1px solid #a9dfbf;border-radius:5px;padding:2px 8px;white-space:nowrap">✅ Completado</span>`
+      : `<span style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 8px;white-space:nowrap">⏳ Pendiente</span>`;
+    const fechaFmt = (f.fecha||'').length >= 10
+      ? f.fecha.substring(0,10).split('-').reverse().join('-')
+      : (f.fecha||'—');
+    // Consumo: diferencia gasoil
+    let consumoBadge = '';
+    if (completado && f.gasoil_antes !== '' && f.gasoil_despues !== '') {
+      const diff = parseFloat(f.gasoil_despues) - parseFloat(f.gasoil_antes);
+      const color = diff >= 0 ? '#1a6635' : '#c62020';
+      const bg    = diff >= 0 ? '#eafaf1' : '#fff0f0';
+      const bdr   = diff >= 0 ? '#a9dfbf' : '#fcc';
+      consumoBadge = `<span style="font-size:9px;font-weight:700;color:${color};background:${bg};border:1px solid ${bdr};border-radius:4px;padding:1px 5px;margin-left:4px">${diff>0?'+':''}${diff.toFixed(0)}%</span>`;
+    }
+    return `<tr style="background:${pendiente?'#fffbeb':'white'}">
+      <td style="white-space:nowrap;font-weight:700">${fechaFmt}</td>
+      <td><strong style="font-size:12px;background:#eef0f5;border-radius:5px;padding:2px 7px">${esc(f.matricula||'—')}</strong></td>
+      <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.usuario_chofer||'')}">${esc(f.usuario_chofer||'—')}</td>
+      <td style="font-size:11px;white-space:nowrap">${f.kilometraje ? Number(f.kilometraje).toLocaleString('es-ES') + ' km' : '—'}</td>
+      <td style="font-size:11px;font-weight:700">${esc(f.num_tarjeta||'—')}</td>
+      <td style="font-size:11px;white-space:nowrap">${esc(f.hora_entrega||'—')}</td>
+      <td style="font-size:11px;white-space:nowrap;color:${completado?'#1a6635':'#92600a'}">${completado ? esc(f.hora_devolucion||'—') : '⏳'}</td>
+      <td style="font-size:11px;text-align:center">${f.gasoil_antes !== '' && f.gasoil_antes !== undefined ? f.gasoil_antes+'%' : '—'}</td>
+      <td style="font-size:11px;text-align:center">${f.adblue_antes !== '' && f.adblue_antes !== undefined ? f.adblue_antes+'%' : '—'}</td>
+      <td style="font-size:11px;text-align:center">${completado && f.gasoil_despues !== '' ? f.gasoil_despues+'%'+consumoBadge : (completado?'—':'⏳')}</td>
+      <td style="font-size:11px;text-align:center">${completado && f.adblue_despues !== '' ? f.adblue_despues+'%' : (completado?'—':'⏳')}</td>
+      <td style="font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.resp_entrega||'')}">${esc(f.resp_entrega||'—')}</td>
+      <td style="font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.resp_recibe||'')}">${completado ? esc(f.resp_recibe||'—') : '—'}</td>
+      <td>${estadoBadge}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-item-action" onclick="generarPDFRepostaje(${idx})" title="Generar PDF solicitud repostaje" style="font-size:13px;padding:3px 8px;color:#c0392b;border-color:#e8c5c5;margin-right:3px">📄</button>
+        <button class="btn-item-action danger" onclick="eliminarRepostajeAdmin(${idx})" title="Eliminar repostaje" style="font-size:13px;padding:3px 8px">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function exportarRepostajesCSV() {
+  if (!repostajesCache.length) { mostrarToast('Sin datos para exportar', 'info'); return; }
+  const campos    = ['fecha','matricula','usuario_chofer','kilometraje','num_tarjeta','hora_entrega','hora_devolucion','gasoil_antes','adblue_antes','gasoil_despues','adblue_despues','resp_entrega','resp_recibe','estado'];
+  const cabeceras = ['Fecha','Matrícula','Chofer','Km','Tarjeta','H.Entrega','H.Devolución','Gasoil Antes%','AdBlue Antes%','Gasoil Después%','AdBlue Después%','Resp.Entrega','Resp.Recibe','Estado'];
+  const csv = [cabeceras.join(';'), ...repostajesCache.map(f =>
+    campos.map(c => `"${(f[c]||'').toString().replace(/"/g,'""')}"`).join(';')
+  )].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `repostajes_${fechaActual}.csv`;
+  a.click();
+}
+
+// Genera el PDF directamente desde un objeto repostaje (para uso desde el cuadrante histórico)
+function generarPDFRepostajeDirecto(f) {
+  if (!f) return;
+  _generarPDFDesdeObjeto(f);
+}
+
+function generarPDFRepostaje(idx) {
+  const f = repostajesCache[idx];
+  if (!f) return;
+  _generarPDFDesdeObjeto(f);
+}
+
+function _generarPDFDesdeObjeto(f) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = 210;
+  const margin = 18;
+  const contentW = pageW - margin * 2;
+
+  // ── Título ──────────────────────────────────────────────────────
+  doc.setFillColor(26, 26, 46);
+  doc.rect(-10, 12, pageW + 20, 14, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text('SOLICITUD DE REPOSTAJE DE VEHICULO', pageW / 2, 21, { align: 'center' });
+
+  // ── Helpers ──────────────────────────────────────────────────────
+  function drawCell(x, y, w, h, label, value, bgLabel) {
+    doc.setDrawColor(180, 185, 200);
+    doc.setLineWidth(0.3);
+    doc.rect(x, y, w, h);
+    if (bgLabel) {
+      doc.setFillColor(245, 246, 250);
+      doc.rect(x, y, w, 5.5, 'F');
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 110, 130);
+    doc.text(label, x + 2.5, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(26, 26, 46);
+    doc.text(String(value || '—'), x + 2.5, y + h - 3);
+  }
+
+  // ── Fila 1: Fecha / Matrícula ────────────────────────────────────
+  const rowH = 16;
+  let y = 30;
+  const halfW = contentW / 2;
+
+  const fechaFmt = (f.fecha||'').length >= 10
+    ? f.fecha.substring(0,10).split('-').reverse().join('/')
+    : (f.fecha || '—');
+
+  drawCell(margin, y, halfW, rowH, 'FECHA', fechaFmt, true);
+  drawCell(margin + halfW, y, halfW, rowH, 'MATRÍCULA', f.matricula || '—', true);
+  y += rowH;
+
+  // ── Fila 2: Chofer / Kilometraje ─────────────────────────────────
+  drawCell(margin, y, halfW, rowH, 'USUARIO CHOFER', f.usuario_chofer || '—', true);
+  drawCell(margin + halfW, y, halfW, rowH, 'KILOMETRAJE', f.kilometraje ? Number(f.kilometraje).toLocaleString('es-ES') + ' km' : '—', true);
+  y += rowH;
+
+  // ── Fila 3: Nº Tarjeta + celdas grandes ANTES/DESPUÉS ────────────
+  const col1W = halfW;
+  const col2W = halfW / 2;
+  const col3W = halfW / 2;
+  const gaugeRowH = 40;
+
+  // Columna izquierda: Nº Tarjeta + Hora entrega + Hora devolución
+  const subRowH = gaugeRowH / 3;
+  drawCell(margin, y, col1W, subRowH, 'NÚMERO DE TARJETA', f.num_tarjeta || '—', true);
+  drawCell(margin, y + subRowH, col1W, subRowH, 'HORA ENTREGA TARJETA', f.hora_entrega || '—', true);
+  drawCell(margin, y + subRowH * 2, col1W, subRowH, 'HORA DEVOLUCIÓN TARJETA', f.hora_devolucion || '—', true);
+
+  // Columna ANTES
+  const antesX = margin + col1W;
+  doc.setDrawColor(180, 185, 200);
+  doc.setLineWidth(0.3);
+  doc.rect(antesX, y, col2W, gaugeRowH);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 110, 130);
+  doc.setFillColor(245, 246, 250);
+  doc.rect(antesX, y, col2W, 5.5, 'F');
+  doc.text('ANTES DE REPOSTAR', antesX + col2W / 2, y + 4, { align: 'center' });
+  // Medidor semicircular ANTES
+  drawFuelGauge(doc, antesX + col2W / 2, y + gaugeRowH / 2 + 3, 12, f.gasoil_antes);
+  // AdBlue
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 90, 110);
+  doc.text('AdBlue: ' + (f.adblue_antes !== '' && f.adblue_antes !== undefined ? f.adblue_antes + '%' : '—'), antesX + col2W / 2, y + gaugeRowH - 3, { align: 'center' });
+
+  // Columna DESPUÉS
+  const despuesX = margin + col1W + col2W;
+  doc.setDrawColor(180, 185, 200);
+  doc.rect(despuesX, y, col3W, gaugeRowH);
+  doc.setFillColor(245, 246, 250);
+  doc.rect(despuesX, y, col3W, 5.5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 110, 130);
+  doc.text('DESPUÉS DE REPOSTAR', despuesX + col3W / 2, y + 4, { align: 'center' });
+  drawFuelGauge(doc, despuesX + col3W / 2, y + gaugeRowH / 2 + 3, 12, f.gasoil_despues);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 90, 110);
+  doc.text('AdBlue: ' + (f.adblue_despues !== '' && f.adblue_despues !== undefined ? f.adblue_despues + '%' : '—'), despuesX + col3W / 2, y + gaugeRowH - 3, { align: 'center' });
+
+  y += gaugeRowH;
+
+  // ── Fila responsable ─────────────────────────────────────────────
+  const respH = 12;
+  doc.setDrawColor(180, 185, 200);
+  doc.setLineWidth(0.3);
+  doc.rect(margin, y, contentW, respH);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(26, 26, 46);
+  doc.text('RESPONSABLE:', margin + 2.5, y + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(f.resp_entrega || '', margin + 32, y + 8);
+  y += respH;
+
+  // ── Línea de firma ───────────────────────────────────────────────
+  y += 14;
+  doc.setDrawColor(180, 185, 200);
+  doc.setLineWidth(0.4);
+  const sigW = (contentW - 12) / 2;
+  doc.line(margin, y, margin + sigW, y);
+  doc.line(margin + sigW + 12, y, margin + contentW, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(120, 130, 150);
+  doc.text('Firma responsable entrega', margin + sigW / 2, y + 4, { align: 'center' });
+  doc.text('Firma conductor', margin + sigW + 12 + sigW / 2, y + 4, { align: 'center' });
+
+  // ── Pie de página ─────────────────────────────────────────────────
+  doc.setFontSize(7);
+  doc.setTextColor(160, 170, 185);
+  doc.text('Gestión de Flota · Primor', pageW / 2, 285, { align: 'center' });
+  doc.text('Generado: ' + new Date().toLocaleString('es-ES'), pageW / 2, 289, { align: 'center' });
+
+  const mat = (f.matricula || 'repostaje').replace(/[^a-zA-Z0-9]/g, '_');
+  const pdfBlob = doc.output('blob');
+  const pdfUrl  = URL.createObjectURL(pdfBlob);
+
+  // Mostrar PDF en overlay modal con iframe
+  let pdfOverlay = document.getElementById('pdf-repostaje-overlay');
+  if (pdfOverlay) pdfOverlay.remove();
+
+  pdfOverlay = document.createElement('div');
+  pdfOverlay.id = 'pdf-repostaje-overlay';
+  pdfOverlay.style.cssText = 'position:fixed;inset:0;z-index:9800;background:rgba(10,12,30,0.80);backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;';
+  pdfOverlay.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;width:90vw;max-width:900px;">
+      <span style="color:#e2e8f0;font-size:14px;font-weight:700;flex:1;">📄 Solicitud de repostaje</span>
+      <button onclick="document.getElementById('pdf-repostaje-overlay').remove();URL.revokeObjectURL('${pdfUrl}')"
+        style="padding:8px 20px;background:#e84545;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">
+        ✕ Cerrar
+      </button>
+      <a href="${pdfUrl}" download="repostaje_${mat}_${fechaFmt.replace(/\//g,'-')}.pdf"
+        style="padding:8px 18px;background:#2a4a2a;color:#4ade80;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;text-decoration:none;letter-spacing:0.5px;">
+        ⬇ Descargar
+      </a>
+    </div>
+    <iframe src="${pdfUrl}" style="width:90vw;max-width:900px;height:80vh;border:none;border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,0.5);"></iframe>`;
+  document.body.appendChild(pdfOverlay);
+
+  // Renderizar con pdf.js
+  (async () => {
+    try {
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      if (!pdfjsLib) {
+        // pdf.js no cargado aún — cargar dinámicamente
+        await new Promise((resolve, reject) => {
+          if (document.getElementById('pdfjs-script')) { resolve(); return; }
+          const s = document.createElement('script');
+          s.id = 'pdfjs-script';
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+          s.onload = resolve; s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+      const lib = window['pdfjs-dist/build/pdf'];
+      lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      const arrayBuf = await fetch(pdfUrl).then(r => r.arrayBuffer());
+      const pdfDoc   = await lib.getDocument({ data: arrayBuf }).promise;
+      const page     = await pdfDoc.getPage(1);
+
+      const canvas  = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx     = canvas.getContext('2d');
+
+      // Calcular escala para que quepa en pantalla
+      const maxW    = Math.min(window.innerWidth * 0.88, 760);
+      const vp0     = page.getViewport({ scale: 1 });
+      const scale   = maxW / vp0.width;
+      const vp      = page.getViewport({ scale });
+
+      canvas.width  = vp.width;
+      canvas.height = vp.height;
+      canvas.style.width  = vp.width  + 'px';
+      canvas.style.height = vp.height + 'px';
+
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    } catch(e) {
+      console.error('pdf.js render error:', e);
+      // Fallback al iframe si pdf.js falla
+      const canvas = document.getElementById(canvasId);
+      if (canvas && canvas.parentElement) {
+        canvas.parentElement.innerHTML = `<iframe src="${pdfUrl}" style="width:min(90vw,760px);height:80vh;border:none;display:block;"></iframe>`;
+      }
+    }
+  })();
+}
+
+// Dibuja un medidor semicircular de combustible
+function drawFuelGauge(doc, cx, cy, r, pct) {
+  // Arco de fondo gris
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(2);
+  // jsPDF no tiene arc nativo, usamos lines para simular el semicírculo
+  const steps = 36;
+  const startAngle = Math.PI;
+  const endAngle   = 0;
+  function toRad(deg) { return deg * Math.PI / 180; }
+
+  // Fondo gris (semicírculo completo)
+  let pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const angle = startAngle + (endAngle - startAngle) * (i / steps);
+    pts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+  }
+  doc.setDrawColor(200, 200, 210);
+  doc.setLineWidth(2.2);
+  for (let i = 0; i < pts.length - 1; i++) {
+    doc.line(pts[i][0], pts[i][1], pts[i+1][0], pts[i+1][1]);
+  }
+
+  // Arco coloreado según nivel
+  const level = (parseFloat(pct) || 0) / 100;
+  const fillEnd = startAngle + (endAngle - startAngle) * level;
+  const color = level > 0.5 ? [39, 174, 96] : level > 0.25 ? [230, 126, 34] : [231, 76, 60];
+  doc.setDrawColor(...color);
+  doc.setLineWidth(2.2);
+  let pts2 = [];
+  for (let i = 0; i <= Math.round(steps * level); i++) {
+    const angle = startAngle + (endAngle - startAngle) * (i / steps);
+    pts2.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+  }
+  for (let i = 0; i < pts2.length - 1; i++) {
+    doc.line(pts2[i][0], pts2[i][1], pts2[i+1][0], pts2[i+1][1]);
+  }
+
+  // Aguja
+  const needleAngle = startAngle + (endAngle - startAngle) * level;
+  const nx = cx + (r - 2) * Math.cos(needleAngle);
+  const ny = cy + (r - 2) * Math.sin(needleAngle);
+  doc.setDrawColor(80, 80, 100);
+  doc.setLineWidth(0.6);
+  doc.line(cx, cy, nx, ny);
+
+  // Centro del medidor
+  doc.setFillColor(80, 80, 100);
+  doc.circle(cx, cy, 1, 'F');
+
+  // Etiquetas E / F
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 100);
+  doc.text('E', cx - r - 1, cy + 3);
+  doc.text('F', cx + r - 0.5, cy + 3);
+
+  // Porcentaje
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...color);
+  doc.text((pct !== '' && pct !== undefined ? pct + '%' : '—'), cx, cy + 6, { align: 'center' });
+}
+
+async function eliminarRepostajeAdmin(idx) {
+  const rep = repostajesCache[idx];
+  if (!rep) return;
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+
+  const matricula = rep.matricula || '—';
+  const fecha     = rep.fecha ? rep.fecha.substring(0,10).split('-').reverse().join('-') : '—';
+
+  // Modal de confirmación
+  await new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ov.innerHTML = `
+      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:420px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Eliminar repostaje?</div>
+        <div style="font-size:11px;color:#8899aa;margin-bottom:14px;">
+          <span style="font-weight:700;color:#1a1a2e">${esc(matricula)}</span>
+          · ${fecha}
+          · Chofer: <strong>${esc(rep.usuario_chofer||'—')}</strong>
+        </div>
+        <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.5;margin-bottom:20px;">
+          Tarjeta: <strong>${esc(rep.num_tarjeta||'—')}</strong> · 
+          Estado: <strong>${esc(rep.estado||'—')}</strong>
+        </div>
+        <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btn-repo-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="btn-repo-confirmar" style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🗑 Sí, eliminar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#btn-repo-cancel').onclick    = () => { document.body.removeChild(ov); resolve(false); };
+    ov.querySelector('#btn-repo-confirmar').onclick = () => { document.body.removeChild(ov); resolve(true);  };
+  }).then(async (confirmado) => {
+    if (!confirmado) return;
+
+    // Modal borrando
+    const ovB = document.createElement('div');
+    ovB.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ovB.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:32px 36px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;animation:nv-in 0.2s ease;min-width:260px">
+        <div style="width:40px;height:40px;border:3px solid #f0f0f0;border-top-color:#e84545;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a2e;">Eliminando repostaje…</div>
+        <div style="font-size:11px;color:#8899aa;margin-top:5px">${esc(matricula)} · ${fecha}</div>
+      </div>`;
+    document.body.appendChild(ovB);
+
+    try {
+      // Eliminar desde Sheets usando el ID del repostaje
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ accion: 'eliminarRepostaje', id: rep.id })
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+      repostajesCache.splice(idx, 1);
+      renderTabRepostajes();
+      // Limpiar num_tarjeta del cuadrante en memoria y guardar en Registros
+      setDato(rep.matricula, 'num_tarjeta', '');
+      programarGuardado();
+      // Actualizar siempre el mapa de badges del cuadrante (sea pendiente o completado)
+      await sincronizarRepostajesPendientes();
+      await sincronizarRepostajesFecha();
+      renderTabla();
+      mostrarToast('✓ Repostaje eliminado', 'success');
+    } catch(e) {
+      mostrarToast('Error al eliminar: ' + e.message, 'error');
+    } finally {
+      document.body.removeChild(ovB);
+    }
+  });
+}
 
 async function cargarTabIncidencias() {
   const tbody = document.getElementById('incid-tbody');

@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.3">
+  <meta name="app-version" content="2.4.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -632,6 +632,30 @@
       width: 0%; transition: width 0.5s ease;
     }
 
+    /* ─── MODAL ERROR DE CARGA (con reintentar) ─── */
+    #modal-error-carga {
+      display: none; position: fixed; inset: 0; z-index: 10000;
+      background: rgba(10,12,30,0.78); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    #modal-error-carga.visible { display: flex; }
+    #modal-error-carga .err-box {
+      background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 20px;
+      padding: 32px 34px; display: flex; flex-direction: column;
+      align-items: center; gap: 14px; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      min-width: 280px; max-width: 90vw; text-align: center;
+      animation: carga-in 0.2s ease-out;
+    }
+    .err-icono { font-size: 40px; }
+    .err-titulo { font-size: 14px; font-weight: 800; color: #e2e8f0; }
+    .err-detalle { font-size: 12px; font-weight: 600; color: #8899aa; line-height: 1.5; }
+    .err-btn-reintentar {
+      margin-top: 6px; padding: 11px 24px; background: #e84545; color: #fff;
+      border: none; border-radius: 10px; font-family: Barlow, sans-serif;
+      font-size: 13px; font-weight: 800; letter-spacing: 0.3px; cursor: pointer;
+    }
+    .err-btn-reintentar:active { transform: scale(0.97); }
+
     /* ─── MODAL GENERANDO ORDEN ─── */
     #modal-generando-orden {
       display: none; position: fixed; inset: 0; z-index: 9500;
@@ -695,6 +719,16 @@
       <div class="carga-barra" id="carga-barra"></div>
     </div>
     <div class="carga-paso" id="carga-paso">Iniciando…</div>
+  </div>
+</div>
+
+<!-- MODAL ERROR DE CARGA — con botón Reintentar -->
+<div id="modal-error-carga">
+  <div class="err-box">
+    <div class="err-icono">⚠️</div>
+    <div class="err-titulo" id="err-carga-titulo">No se pudieron cargar los datos</div>
+    <div class="err-detalle" id="err-carga-detalle">Comprueba tu conexión a Internet e inténtalo de nuevo.</div>
+    <button class="err-btn-reintentar" id="err-carga-btn" onclick="reintentarCargaError()">↻ Reintentar</button>
   </div>
 </div>
 
@@ -1481,89 +1515,16 @@ const SELLOS = {
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// DATOS: CONDUCTORES (sincronizado con Google Sheets — hoja "Conductores")
+// DATOS: CONDUCTORES — siempre se carga desde Google Sheets (hoja "Conductores")
 // ════════════════════════════════════════════════════════════════════════════
-let CONDUCTORES_SEMILLA = [
-  { nombre: "RAFAEL SUAREZ ARJONA", dni: "25099633-D", numUsuario: "3429", sociedad: "ARMONIA CROMATICA", nave: "GAITE" },
-  { nombre: "EMILIO GONZALEZ HERNANDEZ", dni: "52866589-P", numUsuario: "7376", sociedad: "EL HORIZONTE INVISIBLE", nave: "GAITE" },
-  { nombre: "JUAN ANTONIO RUIZ MORALES", dni: "74882029-D", numUsuario: "16135", sociedad: "PRIMOR INVESTIMENT", nave: "GAITE" },
-  { nombre: "ANTONIO ARREZA LUQUE", dni: "74945288-H", numUsuario: "13195", sociedad: "JIMENEZ & DIAZ", nave: "GAITE" },
-  { nombre: "ANTONIO JESUS DIAZ ROBLES", dni: "33380734-Y", numUsuario: "3935", sociedad: "JIMENEZ & DIAZ", nave: "GAITE" },
-  { nombre: "FRANCISCO DIAZ CUEVAS", dni: "74840980-S", numUsuario: "9454", sociedad: "INEFABLE", nave: "GAITE" },
-  { nombre: "FRANCISCO MESA VAZQUEZ", dni: "77458672-P", numUsuario: "20823", sociedad: "PRIMOR INVESTIMENT", nave: "GAITE" },
-  { nombre: "FRANCISCO CUENCA PADILLA", dni: "53698062-P", numUsuario: "3970", sociedad: "MAGIC HOURS", nave: "GAITE" },
-  { nombre: "MIGUEL ANGEL LOPEZ RUIZ", dni: "74872227-M", numUsuario: "2832", sociedad: "VERTICAL DOWN", nave: "GAITE" },
-  { nombre: "MANUEL JESUS REBOLLO TORRES", dni: "25698259-Z", numUsuario: "18591", sociedad: "BEAUTY CHAIN", nave: "GAITE" },
-  { nombre: "HECTOR ARNALDO PAEZ", dni: "X-4548337-H", numUsuario: "976", sociedad: "GROW COMUNITY", nave: "GAITE" },
-  { nombre: "JOSE ANTONIO CORDON LLERA", dni: "33378254-X", numUsuario: "6623", sociedad: "JIMENEZ & DIAZ", nave: "GAITE" },
-  { nombre: "FRANCISCO MONTAÑEZ MARIN", dni: "33381941-V", numUsuario: "4991", sociedad: "JIMENEZ & DIAZ", nave: "GAITE" },
-  { nombre: "PACO ROBERTO PRIETO", dni: "25675752-R", numUsuario: "963", sociedad: "JIMENEZ & DIAZ", nave: "GAITE" },
-  { nombre: "CRISTIAN BLANCA TORREBLANCA", dni: "76640298-C", numUsuario: "4771", sociedad: "SOFISMA", nave: "GAITE" },
-  { nombre: "DANIEL GOMEZ BERNAL", dni: "77182893-E", numUsuario: "4776", sociedad: "SOFISMA", nave: "GAITE" },
-  { nombre: "PAULINO MORABITO", dni: "07998314-H", numUsuario: "5811", sociedad: "JIMENEZ & DIAZ", nave: "GAITE" },
-  { nombre: "JUAN GARCIA GARCIA", dni: "25578393-R", numUsuario: "18935", sociedad: "PRIMOR INVESTIMENT", nave: "GAITE" },
-  { nombre: "JAVIER RAMOS PADILLA", dni: "74885408-F", numUsuario: "997", sociedad: "VERTICAL DOWN", nave: "GAITE" },
-  { nombre: "ALBERTO JESUS RUIZ ARREBOLA", dni: "26269025-N", numUsuario: "14326", sociedad: "SPYGLASS", nave: "GAITE" },
-  { nombre: "JOSE LUIS FRANCO FERNANDEZ", dni: "77490536-V", numUsuario: "12942", sociedad: "SPYGLASS", nave: "GAITE" },
-  { nombre: "JAVIER TELLEZ GALVEZ", dni: "53374308-W", numUsuario: "24866", sociedad: "SOFISMA", nave: "GAITE" },
-  { nombre: "JORGE ELIECER ZABALA QUIROS", dni: "Y-9423095-D", numUsuario: "27962", sociedad: "INEFABLE VERDAD", nave: "GAITE" },
-  { nombre: "ALBERTO FONSECA VILLENA", dni: "76427904-P", numUsuario: "9906", sociedad: "MOMENTS WILL BE LOST", nave: "PTA" },
-  { nombre: "MARIO DE LOS RIOS BEJARANO", dni: "25070271-H", numUsuario: "20067", sociedad: "VELOCITY CARGO", nave: "PTA" },
-  { nombre: "LUIS MELGAREJO CORTES", dni: "74853612-C", numUsuario: "7378", sociedad: "FIRST TOUCH", nave: "PTA" },
-  { nombre: "SALVADOR GUILLOT MOLINA", dni: "33354103-D", numUsuario: "10165", sociedad: "DELIVERY PATH", nave: "PTA" },
-  { nombre: "SERGIO JUAN VELA RUIZ", dni: "45075234-H", numUsuario: "9330", sociedad: "FIRST TOUCH", nave: "PTA" },
-  { nombre: "JORGE BUENO DEL RIO", dni: "76434990-X", numUsuario: "4416", sociedad: "MOMENTS WILL BE LOST", nave: "PTA" },
-  { nombre: "ANGEL ANTONIO LOPEZ GUITIERREZ", dni: "26802728-T", numUsuario: "5900", sociedad: "LOCURA DESMEDIDA", nave: "LIBIAO" },
-  { nombre: "ADRIAN MURIANO ROMERO", dni: "76754976-C", numUsuario: "21021", sociedad: "LOCURA DESMEDIDA", nave: "LIBIAO" },
-  { nombre: "DAVID SANCHEZ MONTOYA", dni: "77673959-S", numUsuario: "10834", sociedad: "NOMBRES INTERMINABLES", nave: "PTA" },
-  { nombre: "FRANCISCO BAREA MARQUEZ", dni: "25707944-Q", numUsuario: "14556", sociedad: "SOLO GUAU ES GUAU", nave: "PTA" },
-  { nombre: "JUAN HUGO LOPEZ GARRIDO", dni: "74943041-W", numUsuario: "6785", sociedad: "GROW COMUNITY", nave: "GAITE" },
-  { nombre: "FRANCISCO JOSE GARCIA DELGADO", dni: "77198316-N", numUsuario: "28314", sociedad: "FIRST TOUCH", nave: "PTA" },
-  { nombre: "JESUS AGUERA MIRANDA", dni: "33388375B", numUsuario: "41271", sociedad: "FLUSH STRIKE", nave: "CARTAMA" },
-  { nombre: "JUAN RUEDA VERTEDOR", dni: "33386125-S", numUsuario: "22115", sociedad: "FIRST TOUCH", nave: "PTA" },
-  { nombre: "JOSE LUIS DE LOS REYES MARTIN", dni: "25663671-H", numUsuario: "16432", sociedad: "SOLO GUAU ES GUAU", nave: "PTA" },
-  { nombre: "SAMUEL DAVID FONSECA FLORES", dni: "Y7313829-G", numUsuario: "30489", sociedad: "NOMBRES INTERMINABLES", nave: "PTA" },
-  { nombre: "PENELOPE PEDROSA GUERRERO", dni: "74907235-F", numUsuario: "31445", sociedad: "DELIVERY PATH", nave: "PTA" },
-  { nombre: "JONATAN DAMIAN HERBALEJO", dni: "Y0977095-T", numUsuario: "40518", sociedad: "LOCURA DESMEDIDA", nave: "PTA" },
-  { nombre: "MIGUEL ANGEL PEREZ PEÑA", dni: "60570460-Y", numUsuario: "26477", sociedad: "FIRST TOUCH", nave: "PTA" },
-  { nombre: "BRYAN ESTEBAN HOYOS JARAMILLO", dni: "Z1035472-V", numUsuario: "27201", sociedad: "FIRST TOUCH", nave: "PTA" },
-  { nombre: "JEAN GARCIA PEREZ", dni: "14054997-L", numUsuario: "33501", sociedad: "ARMONIA CROMATICA", nave: "PTA" },
-  { nombre: "RANIERO HUGO NASCIMBENI", dni: "Y7970428-E", numUsuario: "33827", sociedad: "DELIVERY PATH", nave: "PTA" },
-];
-// Array activo — se rellena desde Sheets al arrancar; la semilla se usa como fallback
 let CONDUCTORES = [];
 
 // ════════════════════════════════════════════════════════════════════════════
 // DATOS: FLOTA (grupos de vehículos)
 // ════════════════════════════════════════════════════════════════════════════
-const GRUPOS = [
-  { nombre: 'FURGONETAS', vehiculos: [
-    { matricula: 'IVECO 5118 JZC', tipo: 'FURGONETA', nota: 'GAITE' },
-    { matricula: 'IVECO 0127 HPN', tipo: 'FURGONETA', nota: 'PTA' },
-    { matricula: 'IVECO 3569 GXB', tipo: 'FURGONETA', nota: 'LIBIAO' },
-    { matricula: 'PTA IVECO 0080 FFH', tipo: 'FURGONETA', nota: '' },
-  ]},
-  { nombre: 'CAMIONES 15P / 24P', vehiculos: [
-    { matricula: 'IVECO 6317 DPX', tipo: 'CAMION 15P', nota: '' },
-    { matricula: 'IVECO 0497 DFK', tipo: 'CAMION 24P', nota: '' },
-    { matricula: 'IVECO 3272 KZR', tipo: 'CAMION 15P', nota: '' },
-  ]},
-  { nombre: 'CAMIONES 8P', vehiculos: [
-    { matricula: 'IVECO 0248 KTK', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'IVECO 6398 KZJ', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'IVECO 0247 KTK', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'IVECO 4035 KTR', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'IVECO 1166 MJR', tipo: 'CAMION 8P', nota: '', restringido: true },
-    { matricula: 'MERCEDES 4667 MGC', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'IVECO 2010 NKN', tipo: 'CAMION 8P', nota: '', restringido: true },
-  ]},
-  { nombre: 'CAMIONES 8P — PTA', vehiculos: [
-    { matricula: 'PTA IVECO 6530 LHH', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'PTA IVECO 3995 MCH', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'PTA RENAULT 8423 JBS', tipo: 'CAMION 8P', nota: '' },
-    { matricula: 'IVECO 7510 NGN', tipo: 'CAMION 8P', nota: '' },
-  ]},
-];
+// GRUPOS — siempre se carga desde Google Sheets (hoja "Vehiculos") al iniciar.
+// Si Sheets falla o está vacío, se muestra un modal de error con botón Reintentar.
+const GRUPOS = [];
 
 // ════════════════════════════════════════════════════════════════════════════
 // DATOS: EMPRESAS Y RUTAS
@@ -1694,8 +1655,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     ocultarSplash();
     mostrarPantallaLogin(true);
-    // Arrancar precarga en background mientras el usuario ve el login
-    iniciarPrecarga();
   }, 350);
 });
 
@@ -1710,84 +1669,6 @@ function mostrarPantallaLogin(visible) {
   } else {
     el.classList.add('oculto');
   }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// PRECARGA EN BACKGROUND — arranca antes de que el usuario haga login
-// ════════════════════════════════════════════════════════════════════════════
-let _precargaPromise = null;   // promesa de la precarga
-let _precargaLista   = false;  // true cuando la precarga terminó sin error
-let _precargaTimestamp = 0;    // momento (Date.now()) en que terminó la precarga
-const PRECARGA_MAX_EDAD_MS = 60000; // 60s — si el login tarda más, se recarga todo
-
-async function iniciarPrecarga() {
-  if (!APPS_SCRIPT_URL) return;
-  const fill = document.getElementById('login-preload-fill');
-  const msg  = document.getElementById('login-preload-msg');
-  if (fill) fill.style.width = '15%';
-  if (msg)  msg.textContent  = 'Cargando flota en segundo plano…';
-
-  _precargaPromise = (async () => {
-    try {
-      // Limpiar datos anteriores
-      datos = {};
-      pendientesGuardar.clear();
-
-      if (fill) fill.style.width = '20%';
-      if (msg)  msg.textContent  = 'Cargando datos en paralelo…';
-
-      // Lanzar todas las peticiones de lectura en paralelo — son independientes
-      const urlCuadrante = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
-      const urlIncid     = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
-
-      const [, , cuadranteJson] = await Promise.all([
-        cargarFlotaDesdeSheets(),
-        cargarConductoresDesdeSheets(),
-        fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
-        sincronizarRepostajesPendientes(),
-        sincronizarRepostajesFecha(),
-        fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null).then(jsonIncid => {
-          if (jsonIncid && jsonIncid.ok && jsonIncid.filas) {
-            jsonIncid.filas.forEach(f => {
-              const turno = f.turno || turnoActual;
-              const key = `${f.matricula}|${turno}|${fechaActual}`;
-              if (!datos[key]) datos[key] = {};
-              datos[key].incidencias = f.descripcion || datos[key].incidencias || '';
-            });
-          }
-        }),
-      ]);
-
-      if (fill) fill.style.width = '85%';
-
-      const json = cuadranteJson;
-      if (json && json.ok && json.filas) {
-        json.filas.forEach(fila => {
-          const key = `${fila.matricula}|${turnoActual}|${fechaActual}`;
-          datos[key] = {
-            operario:        fila.operario||'',
-            resp_entrega:    fila.resp_entrega||'',
-            resp_recibe:     fila.resp_recibe||'',
-            hora_entrega:    fila.hora_entrega||'',
-            hora_devolucion: fila.hora_devolucion||'',
-            num_tarjeta:     fila.num_tarjeta||'',
-            itv:             fila.itv||'',
-            incidencias:     datos[key]?.incidencias || fila.incidencias||'',
-          };
-        });
-      }
-
-      if (fill) fill.style.width = '100%';
-      if (msg)  msg.textContent  = '✓ Listo — identifícate para acceder';
-      _precargaLista = true;
-      _precargaTimestamp = Date.now();
-    } catch(e) {
-      if (msg) msg.textContent = 'Sin conexión — se reintentará al entrar';
-      _precargaLista = false;
-    }
-  })();
-
-  return _precargaPromise;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1821,11 +1702,7 @@ async function loginResponsable() {
     const hashClave = await hashStr(clave);
     const url = `${APPS_SCRIPT_URL}?accion=loginResponsable&numUsuario=${encodeURIComponent(numU)}&hashClave=${encodeURIComponent(hashClave)}`;
 
-    // Lanzar login Y esperar precarga en paralelo
-    const [loginResp] = await Promise.all([
-      fetch(url, { redirect: 'follow' }).then(r => r.json()),
-      _precargaPromise || Promise.resolve()
-    ]);
+    const loginResp = await fetch(url, { redirect: 'follow' }).then(r => r.json());
 
     if (loginResp.ok && loginResp.responsable) {
       usuarioActual = loginResp.responsable;
@@ -1838,22 +1715,11 @@ async function loginResponsable() {
       // Ocultar pantalla login con transición
       mostrarPantallaLogin(false);
 
-      const precargaEsReciente = _precargaLista && (Date.now() - _precargaTimestamp) < PRECARGA_MAX_EDAD_MS;
-
-      if (precargaEsReciente) {
-        // Precarga completada y reciente → renderizar al instante
-        actualizarBloqueoCuadrante();
-        renderTabla();
-        verificarConfig();
-        mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
-        iniciarSync();
-        iniciarTemporizadorSesion();
-      } else {
-        // Precarga no terminó o quedó desactualizada (login tardó) → recargar todo
-        await cargarCuadrante();
-        iniciarSync();
-        iniciarTemporizadorSesion();
-      }
+      // Cargar todo (flota, conductores, cuadrante, etc.) ahora que el usuario ha entrado
+      await cargarCuadrante();
+      mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
+      iniciarSync();
+      iniciarTemporizadorSesion();
     } else {
       const i1 = document.getElementById('mlr-num');
       const i2 = document.getElementById('mlr-clave');
@@ -1974,9 +1840,6 @@ function _cerrarSesionInterno() {
   usuarioActual = null;
   datos = {};
   pendientesGuardar.clear();
-  _precargaLista  = false;
-  _precargaPromise = null;
-  _precargaTimestamp = 0;
   document.getElementById('mlr-num').value = '';
   document.getElementById('mlr-clave').value = '';
   document.getElementById('mlr-error').style.display = 'none';
@@ -1985,7 +1848,6 @@ function _cerrarSesionInterno() {
   document.getElementById('user-pill').style.display = 'none';
   mostrarPantallaLogin(true);
   renderTabla();
-  setTimeout(() => iniciarPrecarga(), 400);
 }
 
 function cerrarSesion() {
@@ -2759,6 +2621,7 @@ function ocultarCargando() {
 
 async function cargarCuadrante() {
   if (!APPS_SCRIPT_URL) { ocultarSplash(); return; }
+  _cargaCuadranteFallida = false;
 
   // Mostrar modal de carga ANTES de cualquier await
   const fechaLabel = fechaActual
@@ -2778,7 +2641,7 @@ async function cargarCuadrante() {
     const urlIncid     = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
 
     // Todas las peticiones de lectura son independientes — se lanzan en paralelo
-    const [, , json, jsonIncid] = await Promise.all([
+    const [flotaOk, conductoresOk, json, jsonIncid] = await Promise.all([
       cargarFlotaDesdeSheets(),
       cargarConductoresDesdeSheets(),
       fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
@@ -2787,6 +2650,12 @@ async function cargarCuadrante() {
       sincronizarRepostajesFecha(),
       sincronizarOrdenesImpresas(),
     ]);
+
+    if (!flotaOk || !conductoresOk) {
+      // El modal de error con reintentar ya está visible (mostrado por la función que falló)
+      _cargaCuadranteFallida = true;
+      return;
+    }
 
     actualizarCargando('Procesando datos…', 75);
 
@@ -2825,12 +2694,15 @@ async function cargarCuadrante() {
     console.error(e);
     mostrarToast('⚠️ Error al conectar: ' + e.message, 'error');
   } finally {
-    actualizarCargando('Renderizando tabla…', 97);
-    renderTabla();
-    actualizarBloqueoCuadrante();
-    verificarConfig();
-    ocultarSplash();
-    ocultarCargando();
+    if (!_cargaCuadranteFallida) {
+      actualizarCargando('Renderizando tabla…', 97);
+      renderTabla();
+      actualizarBloqueoCuadrante();
+      verificarConfig();
+      ocultarSplash();
+      ocultarCargando();
+    }
+    _cargaCuadranteFallida = false;
   }
 }
 
@@ -3086,10 +2958,55 @@ async function syncSilencioso() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// MODAL ERROR DE CARGA — con botón Reintentar
+// ════════════════════════════════════════════════════════════════════════════
+// Guarda la última función de carga que falló, para poder reintentarla
+let _ultimaCargaFallida = null;
+let _cargaCuadranteFallida = false;
+
+function mostrarErrorCarga(titulo, detalle, retryFn) {
+  _ultimaCargaFallida = retryFn;
+  const modal = document.getElementById('modal-error-carga');
+  document.getElementById('err-carga-titulo').textContent  = titulo  || 'No se pudieron cargar los datos';
+  document.getElementById('err-carga-detalle').textContent = detalle || 'Comprueba tu conexión a Internet e inténtalo de nuevo.';
+  modal.classList.add('visible');
+  ocultarCargando();
+  ocultarSplash();
+}
+
+function ocultarErrorCarga() {
+  document.getElementById('modal-error-carga').classList.remove('visible');
+}
+
+async function reintentarCargaError() {
+  const btn = document.getElementById('err-carga-btn');
+  const fn  = _ultimaCargaFallida;
+  if (!fn) { ocultarErrorCarga(); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Reintentando…'; }
+  try {
+    const ok = await fn();
+    if (ok) {
+      // Si el modal de error sigue visible es porque otra carga falló también; no continuar
+      if (document.getElementById('modal-error-carga').classList.contains('visible')) return;
+      if (usuarioActual) {
+        await cargarCuadrante();
+      } else {
+        await iniciarPrecarga();
+      }
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Reintentar'; }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // FLOTA DESDE SHEETS
 // ════════════════════════════════════════════════════════════════════════════
 async function cargarFlotaDesdeSheets() {
-  if (!APPS_SCRIPT_URL) return;
+  if (!APPS_SCRIPT_URL) {
+    mostrarErrorCarga('Sin conexión configurada', 'No hay una URL de Apps Script configurada.', cargarFlotaDesdeSheets);
+    return false;
+  }
   try {
     const resp = await fetch(`${APPS_SCRIPT_URL}?accion=cargarFlota`, { redirect:'follow' });
     const json = await resp.json();
@@ -3101,13 +3018,15 @@ async function cargarFlotaDesdeSheets() {
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
         g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'' });
       });
+      ocultarErrorCarga();
+      return true;
     } else {
-      // Sheets vacío: subir los vehículos locales por defecto
-      await sincronizarVehiculosConSheets();
+      mostrarErrorCarga('No se pudo cargar la flota', 'La hoja "Vehiculos" está vacía o no respondió correctamente.', cargarFlotaDesdeSheets);
+      return false;
     }
   } catch(e) {
-    console.warn('No se pudo cargar flota desde Sheets, usando datos locales:', e);
-    // No resetear GRUPOS — usar los que ya hay definidos localmente
+    mostrarErrorCarga('Error de conexión', 'No se pudo cargar la flota de vehículos.', cargarFlotaDesdeSheets);
+    return false;
   }
 }
 
@@ -3129,24 +3048,25 @@ async function sincronizarVehiculosConSheets() {
 // CONDUCTORES — SYNC CON GOOGLE SHEETS
 // ════════════════════════════════════════════════════════════════════════════
 async function cargarConductoresDesdeSheets() {
-  if (!APPS_SCRIPT_URL) return;
+  if (!APPS_SCRIPT_URL) {
+    mostrarErrorCarga('Sin conexión configurada', 'No hay una URL de Apps Script configurada.', cargarConductoresDesdeSheets);
+    return false;
+  }
   try {
     const resp = await fetch(`${APPS_SCRIPT_URL}?accion=cargarConductores`, { redirect: 'follow' });
     const json = await resp.json();
     if (json.ok && json.conductores && json.conductores.length > 0) {
       CONDUCTORES.length = 0;
       json.conductores.forEach(c => CONDUCTORES.push(c));
+      ocultarErrorCarga();
+      return true;
     } else {
-      // Sheets vacío: subir la semilla local por primera vez
-      CONDUCTORES.length = 0;
-      CONDUCTORES_SEMILLA.forEach(c => CONDUCTORES.push(c));
-      await sincronizarConductoresConSheets();
+      mostrarErrorCarga('No se pudo cargar conductores', 'La hoja "Conductores" está vacía o no respondió correctamente.', cargarConductoresDesdeSheets);
+      return false;
     }
   } catch(e) {
-    console.warn('No se pudo cargar conductores desde Sheets, usando semilla local:', e);
-    if (CONDUCTORES.length === 0) {
-      CONDUCTORES_SEMILLA.forEach(c => CONDUCTORES.push(c));
-    }
+    mostrarErrorCarga('Error de conexión', 'No se pudo cargar la lista de conductores.', cargarConductoresDesdeSheets);
+    return false;
   }
 }
 

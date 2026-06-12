@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.8">
+  <meta name="app-version" content="2.4.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -90,6 +90,10 @@
     .status-dot.ok { background: #2ecc71; }
     .status-dot.warn { background: #f39c12; animation: blink 1s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    @keyframes badge-pulse {
+      0%,100% { box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+      50%      { box-shadow: 0 0 0 6px rgba(245,158,11,0.30); }
+    }
     .status-text { font-size: 10px; color: #ccc; font-weight: 600; }
     .status-text strong { color: #fff; display: block; font-size: 11px; }
     .sb-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 12px; }
@@ -834,9 +838,8 @@
   <button class="btn-action btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
   <button class="btn-action btn-secondary" onclick="window.print()">🖨️ Imprimir cuadrante</button>
   <button class="btn-action btn-secondary" onclick="if(usuarioActual) cargarCuadrante()">↺ Recargar</button>
-  <button class="btn-action btn-secondary" onclick="abrirModalRecibirLlaves()" style="background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;" id="btn-recibir-llaves">🔑 Recibir llaves</button>
-  <button class="btn-action btn-secondary" onclick="abrirModalRepostaje()" style="background:#2a2a1a;color:#ffd54a;border:1.5px solid #5a5a2a;" id="btn-registrar-repostaje">⛽ Registrar repostaje</button>
-  <button class="btn-action btn-secondary" onclick="abrirModalRepostajesPendientes()" style="background:#1a2a3a;color:#5ab4ff;border:1.5px solid #2a4a5a;" id="btn-repostajes-pendientes">🧾 Repostajes pendientes</button>
+
+
   <button class="btn-action btn-secondary" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;">🔐 Panel Admin</button>
 </div>
 
@@ -952,6 +955,35 @@
         style="flex:2;padding:11px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background 0.15s"
         onmouseover="this.style.background='#c63030'" onmouseout="this.style.background='#e84545'">
         ✓ Confirmar asignación
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMAR RECIBIR LLAVES -->
+<div class="modal-overlay" id="modal-confirmar-recibir-llaves">
+  <div style="background:white;border-radius:16px;padding:28px 28px 22px;width:400px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;">
+    <div style="font-size:32px;margin-bottom:10px;text-align:center">🔑</div>
+    <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;text-align:center">Confirmar recepción</div>
+    <div style="font-size:12px;color:#8899aa;margin-bottom:18px;text-align:center">¿Confirmas que has recibido las llaves?</div>
+    <div style="background:#f0fff4;border:1.5px solid #a9dfbf;border-radius:10px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:22px">🚛</span>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Vehículo</div>
+        <div id="confirmar-recibir-matricula" style="font-size:15px;font-weight:900;color:#1a1a2e;"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button
+        onclick="document.getElementById('modal-confirmar-recibir-llaves').classList.remove('open')"
+        style="flex:1;padding:11px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:background 0.15s"
+        onmouseover="this.style.background='#eaecf2'" onmouseout="this.style.background='#f4f5f8'">
+        Cancelar
+      </button>
+      <button id="btn-confirmar-recibir-ok"
+        style="flex:2;padding:11px;background:#16a34a;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background 0.15s"
+        onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+        🔑 Sí, recibir llaves
       </button>
     </div>
   </div>
@@ -1298,7 +1330,7 @@
 
 <!-- MODAL: REGISTRAR REPOSTAJE -->
 <div class="modal-overlay" id="modal-registrar-repostaje">
-  <div style="background:white;border-radius:20px;width:540px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;display:flex;flex-direction:column;">
+  <div style="background:white;border-radius:20px;width:540px;max-width:96vw;max-height:92vh;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;">
 
     <!-- CABECERA -->
     <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;">
@@ -1349,14 +1381,12 @@
       <!-- Chofer -->
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
         <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Usuario / Chofer</label>
-        <div class="operario-search-wrap" style="min-width:unset">
-          <input class="operario-search-input" id="repo-chofer"
-            placeholder="Buscar nombre, DNI…"
+        <div style="position:relative;">
+          <input id="repo-chofer" readonly tabindex="-1"
+            placeholder="—"
             autocomplete="off"
-            style="border-radius:10px;"
-            onfocus="abrirBuscadorOperarioRepo(this)"
-            oninput="filtrarBuscadorOperarioRepo(this)">
-          <span class="operario-search-icon">🔍</span>
+            style="width:100%;padding:11px 40px 11px 12px;border:1.5px solid #e8eaf0;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;color:#1a1a2e;outline:none;background:#f4f5f8;box-sizing:border-box;cursor:default;pointer-events:none;">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:#d0d4db;pointer-events:none;user-select:none;">🔒</span>
         </div>
       </div>
 
@@ -1370,20 +1400,117 @@
 
       <!-- Sección: Antes de repostar -->
       <div style="background:#fffbeb;border:1px solid #fde8a0;border-left:4px solid #e8a23d;padding:14px 16px;border-radius:0 10px 10px 0;margin-bottom:20px;">
-        <div style="font-size:10px;font-weight:800;color:#b07a10;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">⛽ Depósitos antes de repostar</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:1px;text-transform:uppercase;">Gasoil (%)</label>
-            <input type="number" id="repo-gasoil-antes" placeholder="0 – 100" min="0" max="100"
-              style="padding:11px 12px;border:1.5px solid #fde68a;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;outline:none;background:white;transition:border-color .2s,box-shadow .2s;"
-              onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#fde68a';this.style.boxShadow='none'">
+        <div style="font-size:10px;font-weight:800;color:#b07a10;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;">⛽ Depósitos antes de repostar</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+
+          <!-- GASOIL: medidor semicircular tipo velocímetro (igual al PDF) -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <label style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:1px;text-transform:uppercase;align-self:flex-start;">Gasoil</label>
+            <div style="background:white;border:1.5px solid #fde68a;border-radius:12px;padding:10px 10px 6px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;"
+                 onclick="abrirSelectorGasoil(event)"
+                 onmouseover="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.12)'"
+                 onmouseout="this.style.borderColor='#fde68a';this.style.boxShadow='none'"
+                 title="Pulsa para seleccionar nivel">
+              <!-- SVG medidor semicircular -->
+              <svg id="svg-gasoil" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
+                <defs>
+                  <clipPath id="clip-gauge-gasoil">
+                    <rect x="0" y="0" width="120" height="70"/>
+                  </clipPath>
+                </defs>
+                <!-- Arco fondo gris (semicírculo de 180°) -->
+                <path id="arc-bg-gasoil"
+                  d="M 10,60 A 50,50 0 0 1 110,60"
+                  fill="none" stroke="#dde1ea" stroke-width="10" stroke-linecap="round"/>
+                <!-- Arco coloreado (nivel actual) -->
+                <path id="arc-fill-gasoil"
+                  d="M 10,60 A 50,50 0 0 1 110,60"
+                  fill="none" stroke="#dde1ea" stroke-width="10" stroke-linecap="butt"
+                  pathLength="100" stroke-dasharray="0 100"
+                  style="transition:stroke-dasharray 0.4s ease,stroke 0.3s ease,opacity 0.3s ease;opacity:0;"/>
+                <!-- Marcas de cuartos -->
+                <line x1="60" y1="10" x2="60" y2="18" stroke="#e8d8b0" stroke-width="1.5"/>
+                <line x1="17.6" y1="24.6" x2="22.9" y2="31.7" stroke="#e8d8b0" stroke-width="1.5"/>
+                <line x1="102.4" y1="24.6" x2="97.1" y2="31.7" stroke="#e8d8b0" stroke-width="1.5"/>
+                <!-- Aguja -->
+                <line id="needle-gasoil" x1="60" y1="60" x2="10" y2="60"
+                  stroke="#556" stroke-width="2" stroke-linecap="round"
+                  style="transform-origin:60px 60px;transform:rotate(0deg);transition:transform 0.4s cubic-bezier(.34,1.2,.64,1);"/>
+                <!-- Centro -->
+                <circle cx="60" cy="60" r="4" fill="#556"/>
+                <circle cx="60" cy="60" r="2" fill="white"/>
+                <!-- Etiquetas E / F -->
+                <text x="6"   y="68" text-anchor="middle" font-size="9" fill="#92600a" font-family="Barlow,sans-serif" font-weight="800">E</text>
+                <text x="114" y="68" text-anchor="middle" font-size="9" fill="#92600a" font-family="Barlow,sans-serif" font-weight="800">F</text>
+                <!-- Porcentaje central -->
+                <text id="pct-gasoil" x="60" y="52" text-anchor="middle" font-size="11" fill="#92600a" font-family="Barlow,sans-serif" font-weight="900">—</text>
+              </svg>
+              <div style="font-size:9px;color:#b07a10;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+            </div>
+            <!-- Dropdown niveles gasoil -->
+            <div id="dropdown-gasoil" style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #fde68a;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.15);padding:6px 0;min-width:145px;">
+              <div style="padding:5px 12px 4px;font-size:9px;font-weight:800;color:#b07a10;letter-spacing:1px;border-bottom:1px solid #fde68a;margin-bottom:3px;">NIVEL GASOIL</div>
+              <div onclick="setGasoil(0)"   style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Vacío (0%)</div>
+              <div onclick="setGasoil(10)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Casi vacío (~10%)</div>
+              <div onclick="setGasoil(25)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>1/4 (25%)</div>
+              <div onclick="setGasoil(50)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Mitad (50%)</div>
+              <div onclick="setGasoil(75)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>3/4 (75%)</div>
+              <div onclick="setGasoil(100)" style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>Lleno (100%)</div>
+            </div>
+            <input type="hidden" id="repo-gasoil-antes" value="">
           </div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:1px;text-transform:uppercase;">AdBlue (%)</label>
-            <input type="number" id="repo-adblue-antes" placeholder="0 – 100" min="0" max="100"
-              style="padding:11px 12px;border:1.5px solid #fde68a;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;outline:none;background:white;transition:border-color .2s,box-shadow .2s;"
-              onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#fde68a';this.style.boxShadow='none'">
+
+          <!-- ADBLUE: barra vertical con depósito -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <label style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:1px;text-transform:uppercase;align-self:flex-start;">AdBlue</label>
+            <div style="background:white;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 10px 8px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;"
+                 onclick="abrirSelectorAdblue(event)"
+                 onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                 onmouseout="this.style.borderColor='#bfdbfe';this.style.boxShadow='none'"
+                 title="Pulsa para seleccionar nivel">
+              <svg id="svg-adblue" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
+                <defs>
+                  <linearGradient id="grad-adblue-fill" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#60a5fa"/>
+                    <stop offset="100%" stop-color="#1d4ed8"/>
+                  </linearGradient>
+                </defs>
+                <!-- Cuerpo barra horizontal (fondo) -->
+                <rect x="12" y="24" width="96" height="22" rx="11" fill="#e8f0fe" stroke="#bfdbfe" stroke-width="1.5"/>
+                <!-- Relleno nivel -->
+                <rect id="fill-adblue" x="12" y="24" width="0" height="22" rx="11" fill="url(#grad-adblue-fill)" style="transition:width 0.4s cubic-bezier(.34,1.2,.64,1);"/>
+                <!-- Marcas de referencia -->
+                <line x1="36" y1="20" x2="36" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                <line x1="60" y1="18" x2="60" y2="26" stroke="#bfdbfe" stroke-width="1.5"/>
+                <line x1="84" y1="20" x2="84" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                <!-- Etiquetas -->
+                <text x="9"   y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">E</text>
+                <text x="111" y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">F</text>
+                <text x="36"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">25%</text>
+                <text x="60"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">50%</text>
+                <text x="84"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">75%</text>
+                <!-- Borde encima del relleno -->
+                <rect x="12" y="24" width="96" height="22" rx="11" fill="none" stroke="#bfdbfe" stroke-width="1.5"/>
+                <!-- Label AdBlue -->
+                <text x="60" y="14" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" letter-spacing="1">ADBLUE</text>
+                <!-- Porcentaje -->
+                <text id="pct-adblue" x="60" y="38" text-anchor="middle" font-size="10" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" style="transition:opacity 0.3s;">—</text>
+              </svg>
+              <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+            </div>
+            <!-- Dropdown niveles adblue -->
+            <div id="dropdown-adblue" style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #bfdbfe;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.15);padding:6px 0;min-width:145px;">
+              <div style="padding:5px 12px 4px;font-size:9px;font-weight:800;color:#1d4ed8;letter-spacing:1px;border-bottom:1px solid #bfdbfe;margin-bottom:3px;">NIVEL ADBLUE</div>
+              <div onclick="setAdblue(0)"   style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Vacío (0%)</div>
+              <div onclick="setAdblue(10)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Casi vacío (~10%)</div>
+              <div onclick="setAdblue(25)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#60a5fa;display:inline-block;flex-shrink:0;"></span>1/4 (25%)</div>
+              <div onclick="setAdblue(50)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#3b82f6;display:inline-block;flex-shrink:0;"></span>Mitad (50%)</div>
+              <div onclick="setAdblue(75)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#1d4ed8;display:inline-block;flex-shrink:0;"></span>3/4 (75%)</div>
+              <div onclick="setAdblue(100)" style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#1d4ed8;display:inline-block;flex-shrink:0;"></span>Lleno (100%)</div>
+            </div>
+            <input type="hidden" id="repo-adblue-antes" value="">
           </div>
+
         </div>
       </div>
 
@@ -1435,7 +1562,7 @@
 
 <!-- MODAL: DEVOLUCIÓN DIRECTA DESDE CUADRANTE -->
 <div class="modal-overlay" id="modal-devolucion-directa">
-  <div style="background:white;border-radius:20px;width:480px;max-width:96vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+  <div style="background:white;border-radius:20px;width:580px;max-width:96vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
     <!-- CABECERA -->
     <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;">
       <div style="width:44px;height:44px;background:#f59e0b;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⛽</div>
@@ -1463,20 +1590,112 @@
       </div>
     </div>
     <!-- ANTES -->
-    <div style="padding:10px 26px 0;font-size:10px;color:#8899aa;font-weight:700;" id="devdir-antes"></div>
+    <div style="padding:10px 26px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;" id="devdir-antes"></div>
     <!-- INPUTS -->
-    <div style="padding:16px 26px 22px;display:flex;gap:14px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:5px;">
-        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.2px;text-transform:uppercase;">Gasoil después (%)</label>
-        <input type="number" min="0" max="100" placeholder="0 – 100" id="devdir-gasoil"
-          style="width:100%;padding:11px 12px;border:1.5px solid #e8eaf0;border-radius:9px;font-family:Barlow,sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;outline:none;background:#f8f9fc;transition:border-color .2s,box-shadow .2s;"
-          onfocus="this.style.borderColor='#e84545';this.style.boxShadow='0 0 0 3px rgba(232,69,69,0.09)'" onblur="this.style.borderColor='#e8eaf0';this.style.boxShadow='none'">
-      </div>
-      <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:5px;">
-        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.2px;text-transform:uppercase;">AdBlue después (%)</label>
-        <input type="number" min="0" max="100" placeholder="0 – 100" id="devdir-adblue"
-          style="width:100%;padding:11px 12px;border:1.5px solid #e8eaf0;border-radius:9px;font-family:Barlow,sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;outline:none;background:#f8f9fc;transition:border-color .2s,box-shadow .2s;"
-          onfocus="this.style.borderColor='#e84545';this.style.boxShadow='0 0 0 3px rgba(232,69,69,0.09)'" onblur="this.style.borderColor='#e8eaf0';this.style.boxShadow='none'">
+    <div style="padding:16px 26px 22px;">
+      <div style="background:#fffbeb;border:1px solid #fde8a0;border-left:4px solid #e8a23d;padding:14px 16px;border-radius:0 10px 10px 0;">
+        <div style="font-size:10px;font-weight:800;color:#b07a10;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;">⛽ Depósitos después de repostar</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+
+          <!-- GASOIL después: velocímetro -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <label style="font-size:10px;font-weight:700;color:#92600a;letter-spacing:1px;text-transform:uppercase;align-self:flex-start;">Gasoil</label>
+            <div style="background:white;border:1.5px solid #fde68a;border-radius:12px;padding:10px 10px 6px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;"
+                 onclick="abrirSelectorDevGasoil(event)"
+                 onmouseover="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.12)'"
+                 onmouseout="this.style.borderColor='#fde68a';this.style.boxShadow='none'"
+                 title="Pulsa para seleccionar nivel">
+              <svg id="svg-dev-gasoil" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
+                <defs>
+                  <clipPath id="clip-gauge-dev-gasoil">
+                    <rect x="0" y="0" width="120" height="70"/>
+                  </clipPath>
+                </defs>
+                <path id="arc-bg-dev-gasoil"
+                  d="M 10,60 A 50,50 0 0 1 110,60"
+                  fill="none" stroke="#dde1ea" stroke-width="10" stroke-linecap="round"/>
+                <!-- Arco fantasma "antes" en gris clarito -->
+                <path id="arc-antes-dev-gasoil"
+                  d="M 10,60 A 50,50 0 0 1 110,60"
+                  fill="none" stroke="#c8cdd6" stroke-width="10" stroke-linecap="butt"
+                  pathLength="100" stroke-dasharray="0 100" opacity="0.55"/>
+                <path id="arc-fill-dev-gasoil"
+                  d="M 10,60 A 50,50 0 0 1 110,60"
+                  fill="none" stroke="#dde1ea" stroke-width="10" stroke-linecap="butt"
+                  pathLength="100" stroke-dasharray="0 100"
+                  style="transition:stroke-dasharray 0.4s ease,stroke 0.3s ease,opacity 0.3s ease;opacity:0;"/>
+                <line x1="60" y1="10" x2="60" y2="18" stroke="#e8d8b0" stroke-width="1.5"/>
+                <line x1="17.6" y1="24.6" x2="22.9" y2="31.7" stroke="#e8d8b0" stroke-width="1.5"/>
+                <line x1="102.4" y1="24.6" x2="97.1" y2="31.7" stroke="#e8d8b0" stroke-width="1.5"/>
+                <line id="needle-dev-gasoil" x1="60" y1="60" x2="10" y2="60"
+                  stroke="#556" stroke-width="2" stroke-linecap="round"
+                  style="transform-origin:60px 60px;transform:rotate(0deg);transition:transform 0.4s cubic-bezier(.34,1.2,.64,1);"/>
+                <circle cx="60" cy="60" r="4" fill="#556"/>
+                <circle cx="60" cy="60" r="2" fill="white"/>
+                <text x="6"   y="68" text-anchor="middle" font-size="9" fill="#92600a" font-family="Barlow,sans-serif" font-weight="800">E</text>
+                <text x="114" y="68" text-anchor="middle" font-size="9" fill="#92600a" font-family="Barlow,sans-serif" font-weight="800">F</text>
+                <text id="pct-dev-gasoil" x="60" y="52" text-anchor="middle" font-size="11" fill="#92600a" font-family="Barlow,sans-serif" font-weight="900">—</text>
+              </svg>
+              <div style="font-size:9px;color:#b07a10;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+            </div>
+            <div id="dropdown-dev-gasoil" style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #fde68a;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.15);padding:6px 0;min-width:145px;">
+              <div style="padding:5px 12px 4px;font-size:9px;font-weight:800;color:#b07a10;letter-spacing:1px;border-bottom:1px solid #fde68a;margin-bottom:3px;">NIVEL GASOIL</div>
+              <div onclick="setDevGasoil(0)"   style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Vacío (0%)</div>
+              <div onclick="setDevGasoil(10)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Casi vacío (~10%)</div>
+              <div onclick="setDevGasoil(25)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>1/4 (25%)</div>
+              <div onclick="setDevGasoil(50)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0;"></span>Mitad (50%)</div>
+              <div onclick="setDevGasoil(75)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>3/4 (75%)</div>
+              <div onclick="setDevGasoil(100)" style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>Lleno (100%)</div>
+            </div>
+            <input type="hidden" id="devdir-gasoil" value="">
+          </div>
+
+          <!-- ADBLUE después: barra -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <label style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:1px;text-transform:uppercase;align-self:flex-start;">AdBlue</label>
+            <div style="background:white;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 10px 8px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;"
+                 onclick="abrirSelectorDevAdblue(event)"
+                 onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                 onmouseout="this.style.borderColor='#bfdbfe';this.style.boxShadow='none'"
+                 title="Pulsa para seleccionar nivel">
+              <svg id="svg-dev-adblue" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
+                <defs>
+                  <linearGradient id="grad-dev-adblue-fill" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#60a5fa"/>
+                    <stop offset="100%" stop-color="#1d4ed8"/>
+                  </linearGradient>
+                </defs>
+                <rect x="12" y="24" width="96" height="22" rx="11" fill="#e8f0fe" stroke="#bfdbfe" stroke-width="1.5"/>
+                <!-- Barra fantasma "antes" en gris clarito -->
+                <rect id="fill-antes-dev-adblue" x="12" y="24" width="0" height="22" rx="11" fill="#c8cdd6" opacity="0.55"/>
+                <rect id="fill-dev-adblue" x="12" y="24" width="0" height="22" rx="11" fill="url(#grad-dev-adblue-fill)" style="transition:width 0.4s cubic-bezier(.34,1.2,.64,1);"/>
+                <line x1="36" y1="20" x2="36" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                <line x1="60" y1="18" x2="60" y2="26" stroke="#bfdbfe" stroke-width="1.5"/>
+                <line x1="84" y1="20" x2="84" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                <text x="9"   y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">E</text>
+                <text x="111" y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">F</text>
+                <text x="36"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">25%</text>
+                <text x="60"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">50%</text>
+                <text x="84"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">75%</text>
+                <rect x="12" y="24" width="96" height="22" rx="11" fill="none" stroke="#bfdbfe" stroke-width="1.5"/>
+                <text x="60" y="14" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" letter-spacing="1">ADBLUE</text>
+                <text id="pct-dev-adblue" x="60" y="38" text-anchor="middle" font-size="10" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" style="transition:opacity 0.3s;">—</text>
+              </svg>
+              <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+            </div>
+            <div id="dropdown-dev-adblue" style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #bfdbfe;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.15);padding:6px 0;min-width:145px;">
+              <div style="padding:5px 12px 4px;font-size:9px;font-weight:800;color:#1d4ed8;letter-spacing:1px;border-bottom:1px solid #bfdbfe;margin-bottom:3px;">NIVEL ADBLUE</div>
+              <div onclick="setDevAdblue(0)"   style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Vacío (0%)</div>
+              <div onclick="setDevAdblue(10)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Casi vacío (~10%)</div>
+              <div onclick="setDevAdblue(25)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#60a5fa;display:inline-block;flex-shrink:0;"></span>1/4 (25%)</div>
+              <div onclick="setDevAdblue(50)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#3b82f6;display:inline-block;flex-shrink:0;"></span>Mitad (50%)</div>
+              <div onclick="setDevAdblue(75)"  style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#1d4ed8;display:inline-block;flex-shrink:0;"></span>3/4 (75%)</div>
+              <div onclick="setDevAdblue(100)" style="padding:7px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"><span style="width:10px;height:10px;border-radius:2px;background:#1d4ed8;display:inline-block;flex-shrink:0;"></span>Lleno (100%)</div>
+            </div>
+            <input type="hidden" id="devdir-adblue" value="">
+          </div>
+
+        </div>
       </div>
     </div>
     <!-- PIE -->
@@ -1575,8 +1794,8 @@ const UBIC = {
 // ════════════════════════════════════════════════════════════════════════════
 const COLUMNAS = [
   { key: 'resp_entrega',    label: 'Resp. Entrega',      clase: '' },
-  { key: 'resp_recibe',     label: 'Resp. Recibe',       clase: '' },
   { key: 'hora_entrega',    label: 'H. Entrega',         clase: 'hora' },
+  { key: 'resp_recibe',     label: 'Resp. Recibe',       clase: '' },
   { key: 'hora_devolucion', label: 'H. Devolución',      clase: 'hora' },
   { key: 'num_tarjeta',     label: 'Nº Tarjeta',         clase: 'num' },
   { key: 'itv',             label: 'ITV',                clase: 'num' },
@@ -2283,7 +2502,7 @@ function renderTabla() {
 
           if (repoInfo) {
             // Tarjeta entregada HOY y pendiente de devolución → badge amarillo, abre modal devolución directa
-            html += `<td><span style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:pointer"
+            html += `<td style="text-align:center;padding:4px 6px;"><span style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;"
               onclick="abrirDevolucionDirecta(${JSON.stringify(repoInfo).replace(/"/g,'&quot;')})" title="Tarjeta pendiente — click para registrar devolución">
               ⛽ ${esc(repoInfo.num_tarjeta||'GASOIL')}
             </span></td>`;
@@ -2302,10 +2521,10 @@ function renderTabla() {
               </span></td>`;
             } else {
               // Entregada pero sin devolución (pendiente histórico) → fondo amarillo, abre devolución directa
-              html += `<td><span
+              html += `<td style="text-align:center;padding:4px 6px;"><span
                 onclick="abrirDevolucionDirecta(${JSON.stringify(repoFecha).replace(/"/g,'&quot;')})"
                 title="Tarjeta pendiente de devolución — click para registrar devolución"
-                style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:pointer">
+                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;">
                 ⛽ ${esc(repoFecha.num_tarjeta)}
               </span></td>`;
             }
@@ -2354,8 +2573,8 @@ function renderTabla() {
                   adblue_antes:   '',
                   resp_entrega:   d.resp_entrega || '',
                 };
-                html += `<td><span
-                  style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:3px 8px;white-space:nowrap;cursor:pointer"
+                html += `<td style="text-align:center;padding:4px 6px;"><span
+                  style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;"
                   onclick="abrirDevolucionDirecta(${JSON.stringify(repoLocal).replace(/"/g,'&quot;')})"
                   title="Tarjeta pendiente — click para registrar devolución">
                   ⛽ ${esc(numTarjetaLocal)}
@@ -2423,6 +2642,21 @@ function renderTabla() {
             html += `<td><span style="font-size:9px;font-weight:700;color:#2ecc71;background:#eafaf1;border:1px solid #a9dfbf;border-radius:5px;padding:2px 6px;">✅ En vigor</span></td>`;
             return;
           }
+        }
+
+        // ── Resp. Recibe: botón inline si asignado y pendiente de recibir ──
+        if (col.key === 'resp_recibe' && esHoy && asignado && !devuelto && !cuadranteBloqueado) {
+          html += `<td style="padding:4px 6px;">
+            <button
+              onclick="pedirConfirmacionRecibirLlave('${esc(v.matricula)}')"
+              style="display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:5px 10px;background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;border-radius:7px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s,box-shadow .15s;box-sizing:border-box;"
+              onmouseover="this.style.background='#143022';this.style.boxShadow='0 0 0 3px rgba(74,222,128,0.2)'"
+              onmouseout="this.style.background='#1a3a2a';this.style.boxShadow='none'"
+              title="Confirmar recepción de llaves">
+              🔑 Recibir
+            </button>
+          </td>`;
+          return;
         }
 
         if (cuadranteBloqueado || asignado || esCampoAuto) {
@@ -4070,6 +4304,18 @@ function renderListaRecibirLlaves() {
     </div>`).join('');
 }
 
+function pedirConfirmacionRecibirLlave(matricula) {
+  const modal = document.getElementById('modal-confirmar-recibir-llaves');
+  const label = document.getElementById('confirmar-recibir-matricula');
+  const btn   = document.getElementById('btn-confirmar-recibir-ok');
+  if (label) label.textContent = matricula;
+  if (btn)   btn.onclick = () => {
+    modal.classList.remove('open');
+    confirmarRecibirLlave(matricula);
+  };
+  if (modal) modal.classList.add('open');
+}
+
 async function confirmarRecibirLlave(matricula) {
   if (!usuarioActual) return;
 
@@ -4182,6 +4428,91 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ── Selector de nivel GASOIL ──────────────────────────────────────────────────
+function abrirSelectorGasoil(event) {
+  event.stopPropagation();
+  const dd = document.getElementById('dropdown-gasoil');
+  const ddA = document.getElementById('dropdown-adblue');
+  if (ddA) ddA.style.display = 'none';
+  if (!dd) return;
+  if (dd.style.display === 'block') { dd.style.display = 'none'; return; }
+  const rect = event.currentTarget.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 6) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.display = 'block';
+}
+
+function setGasoil(pct) {
+  document.getElementById('dropdown-gasoil').style.display = 'none';
+  document.getElementById('repo-gasoil-antes').value = pct;
+
+  // Actualizar aguja del velocímetro
+  const needle = document.getElementById('needle-gasoil');
+  const arcFill = document.getElementById('arc-fill-gasoil');
+  const pctLabel = document.getElementById('pct-gasoil');
+
+  if (needle) {
+    // La aguja parte apuntando a la izquierda (E), 0%=0deg, 100%=180deg
+    const deg = (pct / 100) * 180;
+    needle.style.transform = 'rotate(' + deg + 'deg)';
+  }
+
+  if (arcFill) {
+    // Con pathLength=100, stroke-dasharray trabaja directamente en %
+    let color = '#ef4444';
+    if (pct >= 50) color = '#22c55e';
+    else if (pct >= 25) color = '#f97316';
+    arcFill.setAttribute('stroke-dasharray', pct + ' ' + (100 - pct));
+    arcFill.setAttribute('stroke', color);
+    arcFill.style.opacity = '1';
+  }
+
+  if (pctLabel) pctLabel.textContent = pct + '%';
+}
+
+// ── Selector de nivel ADBLUE ──────────────────────────────────────────────────
+function abrirSelectorAdblue(event) {
+  event.stopPropagation();
+  const dd = document.getElementById('dropdown-adblue');
+  const ddG = document.getElementById('dropdown-gasoil');
+  if (ddG) ddG.style.display = 'none';
+  if (!dd) return;
+  if (dd.style.display === 'block') { dd.style.display = 'none'; return; }
+  const rect = event.currentTarget.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 6) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.display = 'block';
+}
+
+function setAdblue(pct) {
+  document.getElementById('dropdown-adblue').style.display = 'none';
+  document.getElementById('repo-adblue-antes').value = pct;
+
+  // Actualizar barra horizontal
+  const fill = document.getElementById('fill-adblue');
+  const pctLabel = document.getElementById('pct-adblue');
+
+  if (fill) {
+    // Barra: x=12, ancho máximo=96
+    const w = (pct / 100) * 96;
+    fill.setAttribute('width', w);
+  }
+
+  if (pctLabel) pctLabel.textContent = pct > 0 ? pct + '%' : '—';
+}
+
+// Cerrar dropdowns al hacer clic fuera
+document.addEventListener('click', function() {
+  const ddG = document.getElementById('dropdown-gasoil');
+  const ddA = document.getElementById('dropdown-adblue');
+  const ddDG = document.getElementById('dropdown-dev-gasoil');
+  const ddDA = document.getElementById('dropdown-dev-adblue');
+  if (ddG)  ddG.style.display  = 'none';
+  if (ddA)  ddA.style.display  = 'none';
+  if (ddDG) ddDG.style.display = 'none';
+  if (ddDA) ddDA.style.display = 'none';
+});
+
 function abrirModalRepostaje() {
   if (!usuarioActual) {
     mostrarToast('Debes iniciar sesión para registrar un repostaje', 'error');
@@ -4220,6 +4551,20 @@ function abrirModalRepostaje() {
   document.getElementById('repo-km').value            = '';
   document.getElementById('repo-gasoil-antes').value   = '';
   document.getElementById('repo-adblue-antes').value   = '';
+
+  // Resetear visualmente el velocímetro gasoil
+  const needle = document.getElementById('needle-gasoil');
+  const arcFill = document.getElementById('arc-fill-gasoil');
+  const pctGasoil = document.getElementById('pct-gasoil');
+  if (needle)   { needle.style.transform = 'rotate(-90deg)'; }
+  if (arcFill)  { arcFill.setAttribute('stroke-dasharray', '0 100'); arcFill.setAttribute('stroke', '#dde1ea'); arcFill.style.opacity = '0'; }
+  if (pctGasoil){ pctGasoil.textContent = '—'; }
+
+  // Resetear visualmente la barra adblue
+  const fillAdblue = document.getElementById('fill-adblue');
+  const pctAdblue  = document.getElementById('pct-adblue');
+  if (fillAdblue) fillAdblue.setAttribute('width', '0');
+  if (pctAdblue)  pctAdblue.textContent = '—';
   document.getElementById('repo-chofer').value         = '';
 
   // Resetear botón por si quedó en estado de carga
@@ -4403,15 +4748,104 @@ function renderListaRepostajesPendientes(filas) {
 // ── Devolución directa desde badge del cuadrante ────────────────────────────
 let _devDirRepostaje = null; // repostaje activo para devolución directa
 
+// ── Selectores DEVOLUCIÓN: Gasoil ────────────────────────────────────────────
+function abrirSelectorDevGasoil(event) {
+  event.stopPropagation();
+  const dd = document.getElementById('dropdown-dev-gasoil');
+  const ddA = document.getElementById('dropdown-dev-adblue');
+  if (ddA) ddA.style.display = 'none';
+  if (!dd) return;
+  if (dd.style.display === 'block') { dd.style.display = 'none'; return; }
+  const rect = event.currentTarget.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 6) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.display = 'block';
+}
+
+function setDevGasoil(pct) {
+  document.getElementById('dropdown-dev-gasoil').style.display = 'none';
+  document.getElementById('devdir-gasoil').value = pct;
+  const needle   = document.getElementById('needle-dev-gasoil');
+  const arcFill  = document.getElementById('arc-fill-dev-gasoil');
+  const pctLabel = document.getElementById('pct-dev-gasoil');
+  if (needle) needle.style.transform = 'rotate(' + (pct / 100) * 180 + 'deg)';
+  if (arcFill) {
+    let color = '#ef4444';
+    if (pct >= 50) color = '#22c55e';
+    else if (pct >= 25) color = '#f97316';
+    arcFill.setAttribute('stroke-dasharray', pct + ' ' + (100 - pct));
+    arcFill.setAttribute('stroke', color);
+    arcFill.style.opacity = '1';
+  }
+  if (pctLabel) pctLabel.textContent = pct + '%';
+}
+
+// ── Selectores DEVOLUCIÓN: AdBlue ────────────────────────────────────────────
+function abrirSelectorDevAdblue(event) {
+  event.stopPropagation();
+  const dd = document.getElementById('dropdown-dev-adblue');
+  const ddG = document.getElementById('dropdown-dev-gasoil');
+  if (ddG) ddG.style.display = 'none';
+  if (!dd) return;
+  if (dd.style.display === 'block') { dd.style.display = 'none'; return; }
+  const rect = event.currentTarget.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 6) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.display = 'block';
+}
+
+function setDevAdblue(pct) {
+  document.getElementById('dropdown-dev-adblue').style.display = 'none';
+  document.getElementById('devdir-adblue').value = pct;
+  const fill     = document.getElementById('fill-dev-adblue');
+  const pctLabel = document.getElementById('pct-dev-adblue');
+  if (fill) fill.setAttribute('width', (pct / 100) * 96);
+  if (pctLabel) pctLabel.textContent = pct > 0 ? pct + '%' : '—';
+}
+
 function abrirDevolucionDirecta(repo) {
   _devDirRepostaje = repo;
   document.getElementById('devdir-matricula').textContent = repo.matricula || '—';
   document.getElementById('devdir-tarjeta').textContent   = repo.num_tarjeta || 'GASOIL';
   document.getElementById('devdir-chofer').textContent    = repo.usuario_chofer || '—';
   document.getElementById('devdir-sub').textContent       = `Matrícula ${repo.matricula} · entregada a las ${repo.hora_entrega||'—'}`;
-  document.getElementById('devdir-antes').textContent     = `Antes de repostar: ⛽ Gasoil ${repo.gasoil_antes}%   🧪 AdBlue ${repo.adblue_antes}%`;
+  // Badges "antes" con colorcito
+  const gAntes = parseFloat(repo.gasoil_antes);
+  const aAntes = parseFloat(repo.adblue_antes);
+  const antesDiv = document.getElementById('devdir-antes');
+  if (antesDiv) {
+    const gColor = isNaN(gAntes) ? '#aab' : (gAntes < 25 ? '#ef4444' : gAntes < 50 ? '#f97316' : '#22c55e');
+    const aColor = isNaN(aAntes) ? '#aab' : (aAntes < 25 ? '#ef4444' : aAntes < 50 ? '#60a5fa' : '#1d4ed8');
+    antesDiv.innerHTML =
+      `<span style="font-size:9px;font-weight:800;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-right:4px;">Antes:</span>` +
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:#f4f5f8;border:1px solid #dde1e8;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:${gColor};">⛽ ${isNaN(gAntes)?'—':gAntes+'%'}</span>` +
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:${aColor};">🧪 AdBlue ${isNaN(aAntes)?'—':aAntes+'%'}</span>`;
+  }
+  // Dibujar arco fantasma gasoil "antes"
+  const arcAntes = document.getElementById('arc-antes-dev-gasoil');
+  if (arcAntes && !isNaN(gAntes)) {
+    arcAntes.setAttribute('stroke-dasharray', gAntes + ' ' + (100 - gAntes));
+  } else if (arcAntes) {
+    arcAntes.setAttribute('stroke-dasharray', '0 100');
+  }
+  // Dibujar barra fantasma adblue "antes"
+  const fillAntes = document.getElementById('fill-antes-dev-adblue');
+  if (fillAntes) fillAntes.setAttribute('width', isNaN(aAntes) ? 0 : (aAntes / 100) * 96);
+
   document.getElementById('devdir-gasoil').value = '';
   document.getElementById('devdir-adblue').value = '';
+  // Resetear dibujos gasoil
+  const dneedle = document.getElementById('needle-dev-gasoil');
+  const darcFill = document.getElementById('arc-fill-dev-gasoil');
+  const dpctG = document.getElementById('pct-dev-gasoil');
+  if (dneedle)  dneedle.style.transform = 'rotate(0deg)';
+  if (darcFill) { darcFill.setAttribute('stroke-dasharray','0 100'); darcFill.setAttribute('stroke','#dde1ea'); darcFill.style.opacity='0'; }
+  if (dpctG)    dpctG.textContent = '—';
+  // Resetear barra adblue
+  const dfillA = document.getElementById('fill-dev-adblue');
+  const dpctA  = document.getElementById('pct-dev-adblue');
+  if (dfillA) dfillA.setAttribute('width','0');
+  if (dpctA)  dpctA.textContent = '—';
   const btn = document.getElementById('btn-devdir-confirmar');
   if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar devolución'; }
   document.getElementById('modal-devolucion-directa').classList.add('open');

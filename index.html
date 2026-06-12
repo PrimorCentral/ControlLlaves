@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.5">
+  <meta name="app-version" content="2.4.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2203,6 +2203,13 @@ function renderTabla() {
   GRUPOS.forEach((grupo, gi) => {
     html += `<tr class="group-header ${gi===0?'first':''}"><td colspan="${colCount}">${grupo.nombre}</td></tr>`;
     grupo.vehiculos.forEach(v => {
+      // Vehículos archivados: solo visibles en fechas pasadas donde tuvieron actividad
+      if (v.archivado) {
+        const hoyStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+        if (fechaActual >= hoyStr) return; // ocultar en hoy y futuro
+        const d = getDato(v.matricula);
+        if (!d.operario && !d.resp_entrega && !d.hora_entrega && !d.resp_recibe) return; // ocultar si no hubo actividad ese día
+      }
       const d        = getDato(v.matricula);
       const asignado = d.operario && d.operario.trim();
       const devuelto = asignado && d.resp_recibe && d.resp_recibe.trim();
@@ -3068,7 +3075,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -3608,16 +3615,19 @@ function renderAdminVehiculos() {
       } else {
         itvBadge = `<span style="font-size:9px;font-weight:700;color:#aaa;background:#f5f5f5;border:1px solid #ddd;border-radius:5px;padding:2px 7px;margin-left:6px;">Sin ITV</span>`;
       }
-      html += `<div class="admin-item">
-        <div class="admin-item-mat ${v.restringido?'restringido':''}">${esc(v.matricula)}</div>
+      html += `<div class="admin-item" ${v.archivado ? 'style="opacity:0.55;background:#f8f8f8;"' : ''}>
+        <div class="admin-item-mat ${v.restringido?'restringido':''}">${esc(v.matricula)}${v.archivado ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#e84545;border-radius:4px;padding:1px 6px;vertical-align:middle;">BAJA</span>' : ''}</div>
         <div class="admin-item-tipo">${esc(v.tipo)}</div>
         <div class="admin-item-nota">${esc(v.nota||'')}${itvBadge}</div>
         <div class="admin-item-actions">
           <button class="btn-item-action" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV" style="background:#f0f4ff;color:#3b5bdb;border-color:#c5d0ff">📋 ITV</button>
-          <button class="btn-item-action restrict ${v.restringido?'active':''}" onclick="toggleRestringido(${gi},${vi})">
+          ${!v.archivado ? `<button class="btn-item-action restrict ${v.restringido?'active':''}" onclick="toggleRestringido(${gi},${vi})">
             ${v.restringido?'🔒 Restringido':'🔓 Libre'}
-          </button>
-          <button class="btn-item-action danger" onclick="eliminarVehiculo(${gi},${vi})">✕</button>
+          </button>` : ''}
+          ${v.archivado
+            ? `<button class="btn-item-action" onclick="desarchivarVehiculo(${gi},${vi})" style="background:#eafaf1;color:#27ae60;border-color:#a9dfbf">↩ Alta</button>`
+            : `<button class="btn-item-action danger" onclick="eliminarVehiculo(${gi},${vi})" title="Dar de baja el vehículo">✕ Baja</button>`
+          }
         </div>
       </div>`;
     });
@@ -3712,11 +3722,20 @@ function mostrarModalITVCaducada(matricula, fechaITV) {
 
 function eliminarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
-  if (!confirm(`¿Eliminar ${v.matricula}?`)) return;
-  GRUPOS[gi].vehiculos.splice(vi, 1);
-  if (!GRUPOS[gi].vehiculos.length) GRUPOS.splice(gi, 1);
+  if (!confirm(`¿Dar de baja ${v.matricula}?\n\nEl vehículo desaparecerá del cuadrante actual pero seguirá visible en los cuadrantes históricos de fechas anteriores.`)) return;
+  GRUPOS[gi].vehiculos[vi].archivado = true;
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
+  mostrarToast(`✓ ${v.matricula} dado de baja`, 'info');
+}
+
+function desarchivarVehiculo(gi, vi) {
+  const v = GRUPOS[gi].vehiculos[vi];
+  if (!confirm(`¿Dar de alta ${v.matricula}?\n\nVolverá a aparecer en el cuadrante activo.`)) return;
+  GRUPOS[gi].vehiculos[vi].archivado = false;
+  renderAdminVehiculos(); renderAdminStats(); renderTabla();
+  sincronizarVehiculosConSheets();
+  mostrarToast(`✓ ${v.matricula} dado de alta`, 'success');
 }
 
 function añadirVehiculo() {

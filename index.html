@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.6">
+  <meta name="app-version" content="2.4.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1332,9 +1332,17 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;">
           <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Número de tarjeta</label>
-          <input type="text" id="repo-tarjeta" value="GASOIL"
-            style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;transition:border-color .2s,box-shadow .2s;"
+          <select id="repo-tarjeta" onchange="this.style.color=this.value===''?'#b0bac8':'#1a1a2e'"
+            style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#b0bac8;outline:none;transition:border-color .2s,box-shadow .2s;background:white;cursor:pointer;appearance:auto;"
             onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#dde1ea';this.style.boxShadow='none'">
+            <option value="" disabled selected style="color:#b0bac8;">— Seleccionar tarjeta —</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
         </div>
       </div>
 
@@ -4208,7 +4216,7 @@ function abrirModalRepostaje() {
   }
 
   // Valores por defecto
-  document.getElementById('repo-tarjeta').value       = 'GASOIL';
+  document.getElementById('repo-tarjeta').value = ''; document.getElementById('repo-tarjeta').style.color = '#b0bac8';
   document.getElementById('repo-km').value            = '';
   document.getElementById('repo-gasoil-antes').value   = '';
   document.getElementById('repo-adblue-antes').value   = '';

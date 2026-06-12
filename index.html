@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.1">
+  <meta name="app-version" content="2.5.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2264,8 +2264,18 @@ function _renderDd(input, query) {
   const hdr  = document.getElementById('operario-dropdown-header');
 
   // Posicionar debajo del input (fixed → coordenadas de viewport)
+  // Si no hay espacio abajo, se abre hacia arriba
   const rect = input.getBoundingClientRect();
-  dd.style.top   = (rect.bottom + 4) + 'px';
+  const ddH  = 260; // max-height del dropdown
+  const spaceBelow = window.innerHeight - rect.bottom - 4;
+  const spaceAbove = rect.top - 4;
+  if (spaceBelow >= ddH || spaceBelow >= spaceAbove) {
+    dd.style.top    = (rect.bottom + 4) + 'px';
+    dd.style.bottom = 'auto';
+  } else {
+    dd.style.top    = 'auto';
+    dd.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+  }
   dd.style.left  = rect.left + 'px';
   dd.style.width = Math.max(rect.width, 290) + 'px';
 
@@ -4530,9 +4540,18 @@ function filtrarBuscadorOperarioRepo(input) {
         <span class="operario-item-meta">${esc(c.sociedad||'')} · DNI ${esc(c.dni)} · Nº ${esc(String(c.numUsuario))}</span>
       </div>`).join('')
     : '<div class="operario-dropdown-empty">Sin resultados</div>';
-  // Posicionar el dropdown debajo del input
+  // Posicionar el dropdown: abajo si hay espacio, si no, arriba
   const rect = input.getBoundingClientRect();
-  dd.style.top    = (rect.bottom + 4) + 'px';
+  const ddH2 = 260;
+  const spaceBelow2 = window.innerHeight - rect.bottom - 4;
+  const spaceAbove2 = rect.top - 4;
+  if (spaceBelow2 >= ddH2 || spaceBelow2 >= spaceAbove2) {
+    dd.style.top    = (rect.bottom + 4) + 'px';
+    dd.style.bottom = 'auto';
+  } else {
+    dd.style.top    = 'auto';
+    dd.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+  }
   dd.style.left   = rect.left + 'px';
   dd.style.width  = Math.max(280, rect.width) + 'px';
   dd.classList.add('open');

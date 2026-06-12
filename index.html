@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.1">
+  <meta name="app-version" content="2.4.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1946,9 +1946,25 @@ function expirarSesion() {
 }
 
 function cerrarSesionManual() {
-  if (!confirm('¿Cerrar sesión?')) return;
-  detenerTemporizadorSesion();
-  _cerrarSesionInterno();
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,12,30,0.72);z-index:10600;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+  ov.innerHTML = `
+    <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:360px;max-width:94vw;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);text-align:center;">
+      <div style="font-size:42px;margin-bottom:12px;">⏏️</div>
+      <div style="font-size:17px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Cerrar sesión?</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:24px;line-height:1.5;">Se cerrará tu sesión actual.<br>Tendrás que volver a identificarte para acceder.</div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button id="btn-logout-cancel" style="padding:11px 28px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="btn-logout-ok" style="padding:11px 28px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">⏏ Cerrar sesión</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#btn-logout-cancel').onclick = () => document.body.removeChild(ov);
+  ov.querySelector('#btn-logout-ok').onclick = () => {
+    document.body.removeChild(ov);
+    detenerTemporizadorSesion();
+    _cerrarSesionInterno();
+  };
 }
 
 function _cerrarSesionInterno() {
@@ -5449,7 +5465,13 @@ async function eliminarRepostajeAdmin(idx) {
       // Limpiar num_tarjeta del cuadrante en memoria y guardar en Registros
       setDato(rep.matricula, 'num_tarjeta', '');
       programarGuardado();
-      // Actualizar siempre el mapa de badges del cuadrante (sea pendiente o completado)
+      // Limpiar inmediatamente los mapas de badges para que renderTabla
+      // muestre el botón "Registrar" sin esperar al fetch
+      const matUp = (rep.matricula || '').trim().toUpperCase();
+      delete _repostajesPendientesMat[matUp];
+      delete _repostajesFechaMat[matUp];
+      renderTabla();
+      // Luego sincronizar con Sheets para confirmar estado real
       await sincronizarRepostajesPendientes();
       await sincronizarRepostajesFecha();
       renderTabla();

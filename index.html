@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.4.2">
+  <meta name="app-version" content="2.4.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1717,6 +1717,8 @@ function mostrarPantallaLogin(visible) {
 // ════════════════════════════════════════════════════════════════════════════
 let _precargaPromise = null;   // promesa de la precarga
 let _precargaLista   = false;  // true cuando la precarga terminó sin error
+let _precargaTimestamp = 0;    // momento (Date.now()) en que terminó la precarga
+const PRECARGA_MAX_EDAD_MS = 60000; // 60s — si el login tarda más, se recarga todo
 
 async function iniciarPrecarga() {
   if (!APPS_SCRIPT_URL) return;
@@ -1731,19 +1733,35 @@ async function iniciarPrecarga() {
       datos = {};
       pendientesGuardar.clear();
 
-      if (fill) fill.style.width = '30%';
-      await cargarFlotaDesdeSheets();
+      if (fill) fill.style.width = '20%';
+      if (msg)  msg.textContent  = 'Cargando datos en paralelo…';
 
-      if (fill) fill.style.width = '55%';
-      if (msg)  msg.textContent  = 'Cargando conductores…';
-      await cargarConductoresDesdeSheets();
+      // Lanzar todas las peticiones de lectura en paralelo — son independientes
+      const urlCuadrante = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
+      const urlIncid     = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
 
-      if (fill) fill.style.width = '75%';
-      if (msg)  msg.textContent  = 'Cargando cuadrante del día…';
-      const url  = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
-      const resp = await fetch(url, { redirect: 'follow' });
-      const json = await resp.json();
-      if (json.ok && json.filas) {
+      const [, , cuadranteJson] = await Promise.all([
+        cargarFlotaDesdeSheets(),
+        cargarConductoresDesdeSheets(),
+        fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
+        sincronizarRepostajesPendientes(),
+        sincronizarRepostajesFecha(),
+        fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null).then(jsonIncid => {
+          if (jsonIncid && jsonIncid.ok && jsonIncid.filas) {
+            jsonIncid.filas.forEach(f => {
+              const turno = f.turno || turnoActual;
+              const key = `${f.matricula}|${turno}|${fechaActual}`;
+              if (!datos[key]) datos[key] = {};
+              datos[key].incidencias = f.descripcion || datos[key].incidencias || '';
+            });
+          }
+        }),
+      ]);
+
+      if (fill) fill.style.width = '85%';
+
+      const json = cuadranteJson;
+      if (json && json.ok && json.filas) {
         json.filas.forEach(fila => {
           const key = `${fila.matricula}|${turnoActual}|${fechaActual}`;
           datos[key] = {
@@ -1754,34 +1772,15 @@ async function iniciarPrecarga() {
             hora_devolucion: fila.hora_devolucion||'',
             num_tarjeta:     fila.num_tarjeta||'',
             itv:             fila.itv||'',
-            incidencias:     fila.incidencias||'',
+            incidencias:     datos[key]?.incidencias || fila.incidencias||'',
           };
         });
       }
 
-      // Cargar incidencias del día para mostrar el botón ⚠️ Ver en el cuadrante
-      try {
-        const urlIncid = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
-        const respIncid = await fetch(urlIncid, { redirect: 'follow' });
-        const jsonIncid = await respIncid.json();
-        if (jsonIncid.ok && jsonIncid.filas) {
-          jsonIncid.filas.forEach(f => {
-            const turno = f.turno || turnoActual;
-            const key = `${f.matricula}|${turno}|${fechaActual}`;
-            if (!datos[key]) datos[key] = {};
-            datos[key].incidencias = f.descripcion || datos[key].incidencias || '';
-          });
-        }
-      } catch(e) { /* sin incidencias cargadas — no es crítico */ }
-
-      // Sincronizar repostajes para que el badge aparezca correcto desde el primer render
-      if (msg) msg.textContent = 'Verificando repostajes...';
-      await sincronizarRepostajesPendientes();
-      await sincronizarRepostajesFecha();
-
       if (fill) fill.style.width = '100%';
       if (msg)  msg.textContent  = '✓ Listo — identifícate para acceder';
       _precargaLista = true;
+      _precargaTimestamp = Date.now();
     } catch(e) {
       if (msg) msg.textContent = 'Sin conexión — se reintentará al entrar';
       _precargaLista = false;
@@ -1839,8 +1838,10 @@ async function loginResponsable() {
       // Ocultar pantalla login con transición
       mostrarPantallaLogin(false);
 
-      if (_precargaLista) {
-        // Precarga completada → renderizar al instante
+      const precargaEsReciente = _precargaLista && (Date.now() - _precargaTimestamp) < PRECARGA_MAX_EDAD_MS;
+
+      if (precargaEsReciente) {
+        // Precarga completada y reciente → renderizar al instante
         actualizarBloqueoCuadrante();
         renderTabla();
         verificarConfig();
@@ -1848,7 +1849,7 @@ async function loginResponsable() {
         iniciarSync();
         iniciarTemporizadorSesion();
       } else {
-        // Precarga no terminó → carga completa normal
+        // Precarga no terminó o quedó desactualizada (login tardó) → recargar todo
         await cargarCuadrante();
         iniciarSync();
         iniciarTemporizadorSesion();
@@ -1975,6 +1976,7 @@ function _cerrarSesionInterno() {
   pendientesGuardar.clear();
   _precargaLista  = false;
   _precargaPromise = null;
+  _precargaTimestamp = 0;
   document.getElementById('mlr-num').value = '';
   document.getElementById('mlr-clave').value = '';
   document.getElementById('mlr-error').style.display = 'none';
@@ -2770,22 +2772,27 @@ async function cargarCuadrante() {
   pendientesGuardar.clear();
 
   try {
-    // 1) Cargar flota
-    actualizarCargando('Cargando flota de vehículos…', 20);
-    await cargarFlotaDesdeSheets();
+    actualizarCargando('Cargando datos en paralelo…', 30);
 
-    // 2) Cargar conductores
-    actualizarCargando('Cargando conductores…', 45);
-    await cargarConductoresDesdeSheets();
+    const urlCuadrante = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
+    const urlIncid     = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
 
-    // 3) Cargar cuadrante del día
-    actualizarCargando('Cargando asignaciones del día…', 65);
-    const url = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
-    const resp = await fetch(url, { redirect: 'follow' });
-    const json = await resp.json();
+    // Todas las peticiones de lectura son independientes — se lanzan en paralelo
+    const [, , json, jsonIncid] = await Promise.all([
+      cargarFlotaDesdeSheets(),
+      cargarConductoresDesdeSheets(),
+      fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
+      fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
+      sincronizarRepostajesPendientes(),
+      sincronizarRepostajesFecha(),
+      sincronizarOrdenesImpresas(),
+    ]);
 
-    if (json.ok && json.filas && json.filas.length > 0) {
+    actualizarCargando('Procesando datos…', 75);
+
+    if (json && json.ok && json.filas && json.filas.length > 0) {
       json.filas.forEach(fila => {
+
         const key = `${fila.matricula}|${turnoActual}|${fechaActual}`;
         datos[key] = {
           operario:        fila.operario||'',
@@ -2803,30 +2810,16 @@ async function cargarCuadrante() {
       mostrarToast('Cuadrante vacío para hoy — puedes empezar a asignar', 'info');
     }
 
-    // 4) Cargar incidencias
-    actualizarCargando('Cargando incidencias…', 80);
-    try {
-      const urlIncid = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
-      const respIncid = await fetch(urlIncid, { redirect: 'follow' });
-      const jsonIncid = await respIncid.json();
-      if (jsonIncid.ok && jsonIncid.filas) {
-        jsonIncid.filas.forEach(f => {
-          const turno = f.turno || turnoActual;
-          const key = `${f.matricula}|${turno}|${fechaActual}`;
-          if (!datos[key]) datos[key] = {};
-          if (f.descripcion) datos[key].incidencias = f.descripcion;
-        });
-      }
-    } catch(e) { console.warn('No se pudieron cargar incidencias:', e); }
+    // Procesar incidencias del día (ya cargadas en paralelo arriba)
+    if (jsonIncid && jsonIncid.ok && jsonIncid.filas) {
+      jsonIncid.filas.forEach(f => {
+        const turno = f.turno || turnoActual;
+        const key = `${f.matricula}|${turno}|${fechaActual}`;
+        if (!datos[key]) datos[key] = {};
+        if (f.descripcion) datos[key].incidencias = f.descripcion;
+      });
+    }
 
-    // 5) Sincronizar repostajes pendientes + repostajes del día
-    actualizarCargando('Verificando repostajes activos…', 87);
-    await sincronizarRepostajesPendientes();
-    await sincronizarRepostajesFecha();
-
-    // 6) Sincronizar órdenes impresas desde el log
-    actualizarCargando('Verificando órdenes impresas…', 90);
-    await sincronizarOrdenesImpresas();
 
   } catch(e) {
     console.error(e);
@@ -2932,11 +2925,11 @@ async function _ejecutarGuardado(mostrarErrores) {
   // Marcar como "en vuelo" para que el sync no las borre mientras se guardan
   snap.forEach(k => _enVuelo.add(k));
 
-  for (const mat of matriculas) {
-    const ok = await guardarFilaUpsert(mat, mostrarErrores);
-    if (!ok) fallidas.push(`${mat}|${turnoActual}|${fechaActual}`);
+  const resultados = await Promise.all(matriculas.map(mat => guardarFilaUpsert(mat, mostrarErrores)));
+  matriculas.forEach((mat, idx) => {
+    if (!resultados[idx]) fallidas.push(`${mat}|${turnoActual}|${fechaActual}`);
     _enVuelo.delete(`${mat}|${turnoActual}|${fechaActual}`);
-  }
+  });
 
   if (fallidas.length === 0) {
     setSaveIndicator('saved', `✓ ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`);

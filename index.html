@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.9">
+  <meta name="app-version" content="2.6.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -5707,33 +5707,37 @@ function _devolStorageKey() {
 async function comprobarDevolPendientes() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
 
-  // 1) Si ya tenemos pendientes guardados localmente (sesión cerrada sin resolver),
-  //    mostrar el modal directamente sin esperar al servidor.
-  const cached = localStorage.getItem(_devolStorageKey());
-  if (cached) {
-    try {
-      const pendientesCached = JSON.parse(cached);
-      if (pendientesCached && pendientesCached.length > 0) {
-        abrirModalDevolPendientes(pendientesCached);
-        return;
-      }
-    } catch(e) { localStorage.removeItem(_devolStorageKey()); }
-  }
-
-  // 2) Si no hay nada en caché, consultar el servidor
   const hoy = new Date().toISOString().slice(0, 10);
+
   try {
+    // SIEMPRE consultar el servidor primero — es la fuente de verdad.
+    // El localStorage solo se usa si no hay conexión.
     const url = `${APPS_SCRIPT_URL}?accion=devolPendientes&responsable=${encodeURIComponent(usuarioActual.nombre)}&hoy=${encodeURIComponent(hoy)}`;
     const resp = await fetch(url, { redirect: 'follow' });
     const json = await resp.json();
-    if (!json.ok || !json.pendientes || json.pendientes.length === 0) return;
 
-    // Guardar en localStorage: si el usuario cierra la app sin resolver,
-    // al volver a entrar el modal aparece de nuevo automáticamente.
+    if (!json.ok || !json.pendientes || json.pendientes.length === 0) {
+      // El servidor dice que no hay pendientes (o ya fueron resueltos desde fuera)
+      // → limpiar caché local por si quedó algo antiguo
+      localStorage.removeItem(_devolStorageKey());
+      return;
+    }
+
+    // Hay pendientes reales según el servidor → guardar en caché y mostrar modal
     localStorage.setItem(_devolStorageKey(), JSON.stringify(json.pendientes));
     abrirModalDevolPendientes(json.pendientes);
+
   } catch(e) {
-    // Sin conexión o error — no bloquear el flujo
+    // Sin conexión — usar caché local si existe para no perder el aviso
+    const cached = localStorage.getItem(_devolStorageKey());
+    if (cached) {
+      try {
+        const pendientesCached = JSON.parse(cached);
+        if (pendientesCached && pendientesCached.length > 0) {
+          abrirModalDevolPendientes(pendientesCached);
+        }
+      } catch(e2) { localStorage.removeItem(_devolStorageKey()); }
+    }
   }
 }
 

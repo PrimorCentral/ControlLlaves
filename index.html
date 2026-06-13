@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.2">
+  <meta name="app-version" content="2.5.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -6410,6 +6410,155 @@ function forzarActualizacion() {
     });
   }
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL: REQUIERE INSTALACIÓN COMO APP
+     Bloquea el acceso si la app no se está usando "instalada"
+     (modo standalone). Pide al usuario que la instale.
+═══════════════════════════════════════════════════════════ -->
+<style>
+  #modal-requiere-instalacion {
+    display: none;
+    position: fixed; inset: 0; z-index: 999999;
+    background: rgba(10,10,30,0.85);
+    backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  #modal-requiere-instalacion.visible { display: flex; }
+  #modal-requiere-instalacion .ri-box {
+    background: white; border-radius: 18px;
+    padding: 36px 32px 28px; width: 400px; max-width: 92vw;
+    text-align: center;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+    font-family: 'Barlow', sans-serif;
+    animation: nv-in 0.3s cubic-bezier(.34,1.56,.64,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  #modal-requiere-instalacion .ri-icon  { font-size: 52px; margin-bottom: 10px; }
+  #modal-requiere-instalacion .ri-title { font-size: 20px; font-weight: 900; color: #1a1a2e; margin-bottom: 8px; }
+  #modal-requiere-instalacion .ri-desc  { font-size: 13px; color: #6b7a94; line-height: 1.6; margin-bottom: 18px; }
+  #modal-requiere-instalacion .ri-pasos {
+    text-align: left; background: #f6f8fc; border: 1.5px solid #e3e8f5;
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 22px;
+    font-size: 12.5px; color: #3a3a4a; line-height: 1.9;
+  }
+  #modal-requiere-instalacion .ri-pasos b { color: #1a1a2e; }
+  #modal-requiere-instalacion .btn-instalar {
+    width: 100%; padding: 14px;
+    background: #e84545; color: white; border: none;
+    border-radius: 11px; font-family: 'Barlow', sans-serif;
+    font-size: 15px; font-weight: 900; letter-spacing: 1.5px;
+    text-transform: uppercase; cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 6px 20px rgba(232,69,69,0.35);
+    margin-bottom: 10px;
+    display: none; /* se muestra solo si beforeinstallprompt está disponible */
+  }
+  #modal-requiere-instalacion .btn-instalar:hover  { background: #c63030; transform: translateY(-1px); }
+  #modal-requiere-instalacion .btn-instalar:active { transform: translateY(0); }
+  #modal-requiere-instalacion .btn-ya-instalado {
+    width: 100%; padding: 12px;
+    background: transparent; color: #6b7a94; border: 1.5px solid #d8dee8;
+    border-radius: 11px; font-family: 'Barlow', sans-serif;
+    font-size: 12px; font-weight: 800; letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #modal-requiere-instalacion .btn-ya-instalado:hover { border-color: #aab4c8; color: #3a3a4a; }
+</style>
+
+<div id="modal-requiere-instalacion">
+  <div class="ri-box">
+    <div class="ri-icon">📲</div>
+    <div class="ri-title">Instala la aplicación</div>
+    <div class="ri-desc">
+      Gestión de Flota Primor debe utilizarse como aplicación instalada,
+      no desde el navegador. Instálala para continuar.
+    </div>
+
+    <div class="ri-pasos" id="ri-pasos-chrome">
+      <b>En Chrome / Edge (PC):</b><br>
+      1. Pulsa el icono <b>⊕ instalar</b> que aparece en la barra de direcciones (a la derecha).<br>
+      2. Pulsa <b>Instalar</b> en el cuadro que aparece.<br>
+      3. Abre la app desde el icono creado en tu escritorio / menú de inicio.
+    </div>
+
+    <div class="ri-pasos" id="ri-pasos-android" style="display:none;">
+      <b>En Android (Chrome):</b><br>
+      1. Pulsa el botón rojo <b>"Instalar aplicación"</b> de abajo.<br>
+      2. Confirma pulsando <b>Instalar</b>.<br>
+      3. Abre la app desde el icono que aparece en tu pantalla de inicio.
+    </div>
+
+    <div class="ri-pasos" id="ri-pasos-ios" style="display:none;">
+      <b>En iPhone / iPad (Safari):</b><br>
+      1. Pulsa el icono <b>Compartir</b> (cuadrado con flecha hacia arriba).<br>
+      2. Selecciona <b>"Añadir a pantalla de inicio"</b>.<br>
+      3. Pulsa <b>Añadir</b> y abre la app desde el icono creado.
+    </div>
+
+    <button class="btn-instalar" id="btn-instalar-app">⬇️ Instalar aplicación</button>
+    <button class="btn-ya-instalado" id="btn-ya-instalado">Ya la he instalado · Recargar</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  function appEstaInstalada() {
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true            // iOS
+        || document.referrer.startsWith('android-app://'); // TWA Android
+  }
+
+  var modal = document.getElementById('modal-requiere-instalacion');
+
+  if (appEstaInstalada()) {
+    return; // todo correcto, no hacemos nada
+  }
+
+  // Mostrar instrucciones según plataforma
+  var ua = navigator.userAgent;
+  var esIOS = /iPad|iPhone|iPod/.test(ua);
+  var esAndroid = /Android/.test(ua);
+
+  document.getElementById('ri-pasos-chrome').style.display  = (!esIOS && !esAndroid) ? 'block' : 'none';
+  document.getElementById('ri-pasos-android').style.display = esAndroid ? 'block' : 'none';
+  document.getElementById('ri-pasos-ios').style.display     = esIOS ? 'block' : 'none';
+
+  modal.classList.add('visible');
+
+  // Bloquear scroll/interacción del fondo
+  document.body.style.overflow = 'hidden';
+
+  // Capturar el evento de instalación (Chrome/Edge/Android)
+  var deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('btn-instalar-app').style.display = 'block';
+  });
+
+  document.getElementById('btn-instalar-app').addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function (choice) {
+      if (choice.outcome === 'accepted') {
+        setTimeout(function () { window.location.reload(); }, 1000);
+      }
+    });
+  });
+
+  document.getElementById('btn-ya-instalado').addEventListener('click', function () {
+    window.location.reload();
+  });
+
+  // Si la instalación se completa por otra vía, recargamos solos
+  window.addEventListener('appinstalled', function () {
+    setTimeout(function () { window.location.reload(); }, 800);
+  });
+})();
+</script>
+
 
 </body>
 </html>

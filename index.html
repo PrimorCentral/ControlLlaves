@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.3">
+  <meta name="app-version" content="2.5.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -896,12 +896,14 @@
       <div class="login-field">
         <label>Número de usuario</label>
         <input type="text" id="mlr-num" placeholder="Tu número de usuario" maxlength="10"
+          autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
           oninput="this.value=this.value.replace(/\D/g,'')"
           onkeydown="if(event.key==='Enter') document.getElementById('mlr-clave').focus()">
       </div>
       <div class="login-field">
         <label>Clave de acceso</label>
         <input type="password" id="mlr-clave" placeholder="••••••" maxlength="20"
+          autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
           onkeydown="if(event.key==='Enter') loginResponsable()">
       </div>
 
@@ -1046,6 +1048,7 @@
     <p id="admin-login-subtitle">Introduce la contraseña de administrador</p>
     <div class="error-msg" id="admin-error-msg">Contraseña incorrecta</div>
     <input type="password" id="inp-admin-password" placeholder="• • • • •" maxlength="20"
+      autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
       onkeydown="if(event.key==='Enter') verificarPasswordAdmin()">
     <button class="btn-entrar" id="btn-admin-entrar" onclick="verificarPasswordAdmin()">Entrar</button>
     <div id="admin-login-loading" style="display:none;margin:10px 0 4px;display:none;align-items:center;justify-content:center;gap:10px;padding:10px 0">
@@ -1242,11 +1245,13 @@
         <div class="admin-list" id="admin-lista-responsables"></div>
         <div class="admin-add-form" style="flex-direction:column;gap:8px;margin-top:12px">
           <div style="display:flex;gap:8px">
-            <input type="text" id="resp-num" placeholder="Nº Usuario" maxlength="10" style="flex:1">
+            <input type="text" id="resp-num" placeholder="Nº Usuario" maxlength="10" style="flex:1"
+              autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
             <input type="text" id="resp-nombre" placeholder="Nombre completo" style="flex:2" oninput="this.value=this.value.toUpperCase()">
           </div>
           <div style="display:flex;gap:8px">
-            <input type="password" id="resp-clave" placeholder="Clave de acceso" style="flex:1">
+            <input type="password" id="resp-clave" placeholder="Clave de acceso" style="flex:1"
+              autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
             <input type="text" id="resp-rol" placeholder="Rol (ej: Responsable Turno)" style="flex:2">
           </div>
           <button class="btn-add-item" onclick="añadirResponsable()" style="align-self:flex-start">+ Añadir responsable</button>
@@ -1277,8 +1282,10 @@
           <span id="admin-pass-sync-text">Comprobando estado en Sheets…</span>
         </div>
         <div class="admin-add-form" style="flex-direction:column;gap:10px">
-          <input type="password" id="admin-pass-nueva" placeholder="Nueva contraseña (mínimo 4 caracteres)">
-          <input type="password" id="admin-pass-confirm" placeholder="Repetir nueva contraseña">
+          <input type="password" id="admin-pass-nueva" placeholder="Nueva contraseña (mínimo 4 caracteres)"
+            autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+          <input type="password" id="admin-pass-confirm" placeholder="Repetir nueva contraseña"
+            autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
           <button class="btn-add-item" id="btn-cambiar-pass" onclick="cambiarPasswordAdmin()" style="background:#e84545">🔑 Cambiar y guardar en Sheets</button>
         </div>
       </div>

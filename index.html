@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.8">
+  <meta name="app-version" content="2.5.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -210,12 +210,12 @@
     }
     #modal-devol-pendientes .dp-foot {
       padding:16px 24px; border-top:1px solid #f0f3f8;
-      display:flex; gap:10px; justify-content:flex-end; flex-shrink:0;
+      display:flex; gap:10px; justify-content:center; flex-shrink:0;
     }
     #modal-devol-pendientes .dp-btn-guardar {
-      padding:10px 24px; background:#e84545; color:white; border:none;
+      padding:12px 48px; background:#e84545; color:white; border:none;
       border-radius:9px; font-family:'Barlow',sans-serif;
-      font-size:13px; font-weight:800; cursor:pointer;
+      font-size:14px; font-weight:800; cursor:pointer;
       transition:background .15s; letter-spacing:0.5px;
     }
     #modal-devol-pendientes .dp-btn-guardar:hover { background:#c63030; }
@@ -5699,26 +5699,38 @@ function actualizarEstadoPassSync(ok, msg) {
 // Llama a Sheets para buscar filas donde este responsable entregó llaves
 // (resp_entrega = su nombre) en fechas anteriores a hoy, con operario relleno
 // pero hora_devolucion vacía.
+// Clave de localStorage donde guardamos los pendientes sin resolver
+function _devolStorageKey() {
+  return 'devol_pendientes_' + (usuarioActual.numUsuario || usuarioActual.nombre);
+}
+
 async function comprobarDevolPendientes() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
 
-  // Clave única para "cuántos pendientes mostré hoy a este usuario"
-  const hoy = new Date().toISOString().slice(0, 10);
-  const storageKey = 'devol_aviso_' + (usuarioActual.numUsuario || usuarioActual.nombre) + '_' + hoy;
+  // 1) Si ya tenemos pendientes guardados localmente (sesión cerrada sin resolver),
+  //    mostrar el modal directamente sin esperar al servidor.
+  const cached = localStorage.getItem(_devolStorageKey());
+  if (cached) {
+    try {
+      const pendientesCached = JSON.parse(cached);
+      if (pendientesCached && pendientesCached.length > 0) {
+        abrirModalDevolPendientes(pendientesCached);
+        return;
+      }
+    } catch(e) { localStorage.removeItem(_devolStorageKey()); }
+  }
 
+  // 2) Si no hay nada en caché, consultar el servidor
+  const hoy = new Date().toISOString().slice(0, 10);
   try {
     const url = `${APPS_SCRIPT_URL}?accion=devolPendientes&responsable=${encodeURIComponent(usuarioActual.nombre)}&hoy=${encodeURIComponent(hoy)}`;
     const resp = await fetch(url, { redirect: 'follow' });
     const json = await resp.json();
     if (!json.ok || !json.pendientes || json.pendientes.length === 0) return;
 
-    // Solo mostrar si hay más pendientes que la última vez que se mostró el modal
-    const yaVistosStr = localStorage.getItem(storageKey);
-    const yaVistos = yaVistosStr ? parseInt(yaVistosStr, 10) : 0;
-    if (json.pendientes.length <= yaVistos) return; // no hay novedades
-
-    // Marcar cuántos se están mostrando ahora
-    localStorage.setItem(storageKey, String(json.pendientes.length));
+    // Guardar en localStorage: si el usuario cierra la app sin resolver,
+    // al volver a entrar el modal aparece de nuevo automáticamente.
+    localStorage.setItem(_devolStorageKey(), JSON.stringify(json.pendientes));
     abrirModalDevolPendientes(json.pendientes);
   } catch(e) {
     // Sin conexión o error — no bloquear el flujo
@@ -5772,16 +5784,14 @@ function onDpHoraInput(el) {
 
 function cerrarModalDevolPendientes(guardado) {
   document.getElementById('modal-devol-pendientes').classList.remove('visible');
-  if (!guardado) {
-    // Activar banner naranja persistente en el cuadrante
-    const banner = document.getElementById('banner-devol-pendientes');
-    if (banner) banner.classList.add('visible');
-    mostrarToast('⚠️ Recuerda registrar las devoluciones pendientes', 'info');
-  } else {
-    // Ocultar banner si se guardó correctamente
+  if (guardado) {
+    // Limpiar caché local y ocultar banner
+    if (usuarioActual) localStorage.removeItem(_devolStorageKey());
     const banner = document.getElementById('banner-devol-pendientes');
     if (banner) banner.classList.remove('visible');
   }
+  // Si no se guardó, el modal simplemente se oculta visualmente pero los datos
+  // siguen en localStorage: la próxima vez que entre a la app volverá a aparecer.
 }
 
 function reabrirModalDevolPendientes() {
@@ -7004,11 +7014,10 @@ function forzarActualizacion() {
       </div>
     </div>
     <div class="dp-aviso">
-      🔑 Tienes devoluciones sin registrar del turno anterior. Indica la hora aproximada de cada una — si no la recuerdas con exactitud, pon una hora aproximada. Puedes posponerlo, pero quedará un aviso visible hasta que lo resuelvas.
+      🔑 Tienes devoluciones sin registrar del turno anterior. Indica la hora aproximada de cada una — si no la recuerdas exactamente, pon una aproximada. Este aviso seguirá apareciendo cada vez que entres hasta que las registres.
     </div>
     <div class="dp-lista" id="dp-lista"></div>
     <div class="dp-foot">
-      <button class="dp-btn-skip" onclick="cerrarModalDevolPendientes(false)">⏸ Posponer</button>
       <button class="dp-btn-guardar" id="dp-btn-guardar" onclick="guardarDevolPendientes()">💾 Guardar devoluciones</button>
     </div>
   </div>

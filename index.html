@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.7">
+  <meta name="app-version" content="2.5.8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -142,8 +142,8 @@
     }
     #modal-devol-pendientes.visible { display:flex; }
     #modal-devol-pendientes .dp-box {
-      background:white; border-radius:20px; width:520px; max-width:95vw;
-      max-height:88vh; display:flex; flex-direction:column;
+      background:white; border-radius:20px; width:680px; max-width:96vw;
+      min-height:420px; max-height:92vh; display:flex; flex-direction:column;
       box-shadow:0 40px 100px rgba(0,0,0,0.45);
       font-family:'Barlow',sans-serif;
       animation:nv-in 0.28s cubic-bezier(.34,1.56,.64,1);
@@ -196,9 +196,9 @@
       display:flex; align-items:center; gap:6px; flex-shrink:0;
     }
     #modal-devol-pendientes .dp-hora-input {
-      width:72px; padding:5px 8px; border:1.5px solid #dde1ea;
+      width:110px; padding:6px 10px; border:1.5px solid #dde1ea;
       border-radius:7px; font-family:'Barlow',sans-serif;
-      font-size:13px; font-weight:700; color:#1a1a2e;
+      font-size:14px; font-weight:700; color:#1a1a2e;
       outline:none; text-align:center; background:white;
       transition:border-color .15s, box-shadow .15s;
     }
@@ -5702,10 +5702,9 @@ function actualizarEstadoPassSync(ok, msg) {
 async function comprobarDevolPendientes() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
 
-  // Clave única para "ya mostré el aviso hoy a este usuario"
+  // Clave única para "cuántos pendientes mostré hoy a este usuario"
   const hoy = new Date().toISOString().slice(0, 10);
   const storageKey = 'devol_aviso_' + (usuarioActual.numUsuario || usuarioActual.nombre) + '_' + hoy;
-  if (localStorage.getItem(storageKey)) return; // ya se mostró hoy
 
   try {
     const url = `${APPS_SCRIPT_URL}?accion=devolPendientes&responsable=${encodeURIComponent(usuarioActual.nombre)}&hoy=${encodeURIComponent(hoy)}`;
@@ -5713,8 +5712,13 @@ async function comprobarDevolPendientes() {
     const json = await resp.json();
     if (!json.ok || !json.pendientes || json.pendientes.length === 0) return;
 
-    // Marcar como mostrado para hoy antes de abrir el modal
-    localStorage.setItem(storageKey, '1');
+    // Solo mostrar si hay más pendientes que la última vez que se mostró el modal
+    const yaVistosStr = localStorage.getItem(storageKey);
+    const yaVistos = yaVistosStr ? parseInt(yaVistosStr, 10) : 0;
+    if (json.pendientes.length <= yaVistos) return; // no hay novedades
+
+    // Marcar cuántos se están mostrando ahora
+    localStorage.setItem(storageKey, String(json.pendientes.length));
     abrirModalDevolPendientes(json.pendientes);
   } catch(e) {
     // Sin conexión o error — no bloquear el flujo

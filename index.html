@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.5">
+  <meta name="app-version" content="2.5.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -138,22 +138,26 @@
 
     .main-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 13px 22px 12px;
+      padding: 0 22px;
+      height: 38px;
       background: white;
       border-bottom: 1px solid #e8eaf0;
-      box-shadow: 0 1px 6px rgba(26,26,46,0.06);
+      box-shadow: 0 1px 4px rgba(26,26,46,0.05);
       flex-shrink: 0; gap: 16px;
     }
-    .main-eyebrow { font-size: 9px; font-weight: 800; color: #b0bac8; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 2px; }
-    .main-title { font-size: 21px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.5px; line-height: 1.15; }
-    .main-sub { font-size: 11px; color: #a0aab8; margin-top: 1px; font-weight: 500; }
+    .main-eyebrow { display: none; }
+    .main-title { font-size: 14px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.3px; line-height: 1; white-space: nowrap; }
+    .main-title .turno-label { color: #e84545; }
+    .main-title .sep { color: #dde1ea; font-weight: 400; margin: 0 6px; }
+    .main-title .fecha-label { font-size: 13px; font-weight: 600; color: #6b7a94; }
+    .main-sub { display: none; }
     .turno-badge {
-      display: flex; align-items: center; gap: 7px;
-      padding: 7px 16px; border-radius: 10px;
-      font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
-      text-transform: uppercase; flex-shrink: 0; border: 2px solid transparent;
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 8px;
+      font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
+      text-transform: uppercase; flex-shrink: 0; border: 1.5px solid transparent;
     }
-    .turno-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .turno-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .turno-badge.manana { background: #fffbeb; color: #92600a; border-color: #fde68a; }
     .turno-badge.manana::before { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
     .turno-badge.tarde { background: #fff5f0; color: #9a3412; border-color: #fecaca; }
@@ -162,7 +166,7 @@
     /* ─── TABLE ─── */
     .table-wrap {
       flex: 1; min-height: 0; overflow: auto; background: white;
-      margin: 12px 16px 0; border-radius: 12px;
+      margin: 8px 16px 0; border-radius: 12px;
       border: 1px solid #e8eaf0;
       box-shadow: 0 2px 12px rgba(26,26,46,0.06); position: relative;
     }
@@ -849,11 +853,7 @@
 <!-- MAIN -->
 <div class="main">
   <div class="main-header">
-    <div class="main-header-left">
-      <div class="main-eyebrow">Cuadrante diario</div>
-      <div class="main-title" id="titulo-main">Gestión de Flota</div>
-      <div class="main-sub" id="sub-main">Selecciona fecha y turno</div>
-    </div>
+    <div class="main-title" id="titulo-main">Gestión de Flota</div>
     <div class="turno-badge manana" id="turno-badge">MAÑANA</div>
   </div>
   <div class="table-container">
@@ -2167,15 +2167,13 @@ function seleccionarTurno(btn) {
 function actualizarHeader() {
   const badge  = document.getElementById('turno-badge');
   const titulo = document.getElementById('titulo-main');
-  const sub    = document.getElementById('sub-main');
   badge.textContent = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
   badge.className   = 'turno-badge ' + (turnoActual === 'MANANA' ? 'manana' : 'tarde');
   const fechaStr = fechaActual
     ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
     : '—';
   const turnoLabel = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
-  titulo.innerHTML = `Turno ${turnoLabel} &middot; <span style="color:#e84545">${fechaStr}</span>`;
-  sub.textContent  = 'Cuadrante de llaves y asignación de vehículos';
+  titulo.innerHTML = `<span class="turno-label">Turno ${turnoLabel}</span><span class="sep">·</span><span class="fecha-label">${fechaStr}</span>`;
 }
 
 // ─── BLOQUEO DE CUADRANTE POR FECHA ─────────────────────────────────────────

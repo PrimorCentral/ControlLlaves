@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.4">
+  <meta name="app-version" content="2.5.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1075,6 +1075,7 @@
       <button class="admin-tab" id="tab-btn-repostajes" onclick="cambiarTab('repostajes')">⛽ Repostajes</button>
       <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')">👥 Responsables</button>
       <button class="admin-tab" id="tab-btn-config" onclick="cambiarTab('config')">⚙️ Config</button>
+      <button class="admin-tab" id="tab-btn-activos" onclick="cambiarTab('activos')">🟢 Usuarios Activos</button>
     </div>
 
     <!-- TAB: VEHÍCULOS -->
@@ -1255,6 +1256,28 @@
             <input type="text" id="resp-rol" placeholder="Rol (ej: Responsable Turno)" style="flex:2">
           </div>
           <button class="btn-add-item" onclick="añadirResponsable()" style="align-self:flex-start">+ Añadir responsable</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: USUARIOS ACTIVOS -->
+    <div class="admin-tab-panel" id="tab-panel-activos" style="flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+          <div style="font-size:11px;font-weight:900;color:#1a1a2e;letter-spacing:1px">USUARIOS CON SESIÓN INICIADA</div>
+          <div style="font-size:11px;color:#8899aa;margin-top:2px">Se actualiza cada 30 segundos · Se considera activo si el heartbeat tiene menos de 2 minutos</div>
+        </div>
+        <button class="btn-add-item" onclick="cargarUsuariosActivos()" style="background:#2ecc71;flex-shrink:0">🔄 Recargar</button>
+      </div>
+      <!-- Contador resumen -->
+      <div id="activos-resumen" style="display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0"></div>
+      <!-- Lista de usuarios -->
+      <div class="admin-section" style="flex:1;min-height:0">
+        <div class="admin-section-title">Sesiones abiertas ahora mismo</div>
+        <div id="activos-lista" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto">
+          <div style="text-align:center;padding:40px 0;color:#b0bac8;font-size:13px;font-weight:600">
+            Abre esta pestaña para ver los usuarios activos
+          </div>
         </div>
       </div>
     </div>
@@ -1962,6 +1985,7 @@ async function loginResponsable() {
       mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
       iniciarSync();
       iniciarTemporizadorSesion();
+      iniciarHeartbeat();
     } else {
       const i1 = document.getElementById('mlr-num');
       const i2 = document.getElementById('mlr-clave');
@@ -2079,6 +2103,8 @@ function cerrarSesionManual() {
 function _cerrarSesionInterno() {
   detenerSync();
   detenerTemporizadorSesion();
+  detenerHeartbeat();
+  enviarDesconexion();
   usuarioActual = null;
   datos = {};
   pendientesGuardar.clear();
@@ -5304,8 +5330,121 @@ function cerrarAdmin() {
   document.getElementById('modal-admin').classList.remove('open');
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// PRESENCIA — USUARIOS ACTIVOS
+// ════════════════════════════════════════════════════════════════════════════
+let _heartbeatInterval = null;
+
+/** Envía un heartbeat al Apps Script para registrar que este usuario sigue activo */
+async function enviarHeartbeat() {
+  if (!APPS_SCRIPT_URL || !usuarioActual) return;
+  try {
+    const params = new URLSearchParams({
+      accion:      'registrarPresencia',
+      numUsuario:  usuarioActual.numUsuario || '',
+      nombre:      usuarioActual.nombre     || '',
+      rol:         usuarioActual.rol        || 'Responsable',
+    });
+    await fetch(`${APPS_SCRIPT_URL}?${params}`, { redirect: 'follow' });
+  } catch(e) {
+    // silencioso — no interrumpir la app si falla
+  }
+}
+
+/** Marca al usuario como desconectado en el Apps Script */
+async function enviarDesconexion() {
+  if (!APPS_SCRIPT_URL || !usuarioActual) return;
+  try {
+    const params = new URLSearchParams({
+      accion:     'registrarDesconexion',
+      numUsuario: usuarioActual.numUsuario || '',
+    });
+    await fetch(`${APPS_SCRIPT_URL}?${params}`, { redirect: 'follow' });
+  } catch(e) { /* silencioso */ }
+}
+
+/** Inicia el heartbeat cada 30 segundos tras el login */
+function iniciarHeartbeat() {
+  detenerHeartbeat();
+  enviarHeartbeat(); // inmediato al login
+  _heartbeatInterval = setInterval(enviarHeartbeat, 30_000);
+}
+
+function detenerHeartbeat() {
+  if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
+}
+
+/** Carga la lista de usuarios activos desde el Apps Script y la renderiza */
+async function cargarUsuariosActivos() {
+  const lista   = document.getElementById('activos-lista');
+  const resumen = document.getElementById('activos-resumen');
+  if (!lista) return;
+
+  lista.innerHTML = `<div style="text-align:center;padding:30px 0;color:#8899aa;font-size:12px;font-weight:700">
+    <div style="font-size:28px;margin-bottom:8px">⏳</div>Cargando sesiones…</div>`;
+
+  if (!APPS_SCRIPT_URL) {
+    lista.innerHTML = `<div style="text-align:center;padding:30px 0;color:#e84545;font-size:12px;font-weight:700">Sin URL de Apps Script configurada.</div>`;
+    return;
+  }
+
+  try {
+    const url  = `${APPS_SCRIPT_URL}?accion=cargarPresencia&_t=${Date.now()}`;
+    const data = await fetch(url, { redirect: 'follow' }).then(r => r.json());
+    const usuarios = data.usuarios || [];
+
+    // ── Resumen ──
+    if (resumen) {
+      resumen.innerHTML = `
+        <div style="background:white;border:1.5px solid #d1fae5;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:10px">
+          <div style="width:10px;height:10px;border-radius:50%;background:#2ecc71;box-shadow:0 0 0 4px rgba(46,204,113,0.2)"></div>
+          <div>
+            <div style="font-size:22px;font-weight:900;color:#1a1a2e">${usuarios.length}</div>
+            <div style="font-size:10px;color:#6b7a94;font-weight:700;letter-spacing:0.5px">USUARIO${usuarios.length!==1?'S':''} ACTIVO${usuarios.length!==1?'S':''}</div>
+          </div>
+        </div>
+        <div style="background:white;border:1.5px solid #dde1e8;border-radius:10px;padding:12px 18px">
+          <div style="font-size:11px;color:#8899aa;font-weight:700">Última actualización</div>
+          <div style="font-size:13px;font-weight:800;color:#1a1a2e">${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+        </div>`;
+    }
+
+    // ── Lista ──
+    if (usuarios.length === 0) {
+      lista.innerHTML = `<div style="text-align:center;padding:40px 0;color:#b0bac8;font-size:13px;font-weight:600">
+        <div style="font-size:36px;margin-bottom:10px">😴</div>
+        No hay usuarios con sesión iniciada en este momento</div>`;
+      return;
+    }
+
+    lista.innerHTML = usuarios.map(u => {
+      const hace      = u.hace || '—';
+      const esReciente = (u.segundos || 999) < 60;
+      const dotColor  = esReciente ? '#2ecc71' : '#f39c12';
+      const dotShadow = esReciente ? 'rgba(46,204,113,0.25)' : 'rgba(243,156,18,0.25)';
+      const etiqueta  = esReciente ? 'Activo ahora' : `Hace ${hace}`;
+      return `
+        <div style="display:flex;align-items:center;gap:12px;background:white;border:1.5px solid #e8eaf0;border-radius:10px;padding:12px 14px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 0 4px ${dotShadow};flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nombre || '—'}</div>
+            <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px">${u.rol || 'Responsable'} · Nº ${u.numUsuario || '—'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:11px;font-weight:800;color:${dotColor}">${etiqueta}</div>
+            <div style="font-size:10px;color:#b0bac8;font-weight:600;margin-top:1px">${u.ultimaVez || '—'}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    lista.innerHTML = `<div style="text-align:center;padding:30px 0;color:#e84545;font-size:12px;font-weight:700">
+      <div style="font-size:28px;margin-bottom:8px">⚠️</div>Error al cargar: ${e.message}</div>`;
+  }
+}
+
 function cambiarTab(tab) {
-  ['vehiculos','conductores','historial','log','incidencias','repostajes','responsables','config'].forEach(t => {
+  ['vehiculos','conductores','historial','log','incidencias','repostajes','responsables','config','activos'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
   });
@@ -5340,6 +5479,7 @@ function cambiarTab(tab) {
   if (tab === 'responsables') cargarResponsables();
   if (tab === 'conductores') renderAdminConductores();
   if (tab === 'config') cargarEstadoPassAdmin();
+  if (tab === 'activos') cargarUsuariosActivos();
 }
 
 function guardarConfigAdmin() {

@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.6.1">
+  <meta name="app-version" content="2.6.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -255,30 +255,9 @@
     #banner-devol-pendientes .bdp-btn:hover { background: #d68910; }
 
     /* ─── MAIN ─── */
-    .main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; padding: 0 0 10px; }
+    .main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; padding: 10px 0 10px; }
 
-    .main-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 13px 22px 12px;
-      background: white;
-      border-bottom: 1px solid #e8eaf0;
-      box-shadow: 0 1px 6px rgba(26,26,46,0.06);
-      flex-shrink: 0; gap: 16px;
-    }
-    .main-eyebrow { font-size: 9px; font-weight: 800; color: #b0bac8; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 2px; }
-    .main-title { font-size: 21px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.5px; line-height: 1.15; }
-    .main-sub { font-size: 11px; color: #a0aab8; margin-top: 1px; font-weight: 500; }
-    .turno-badge {
-      display: flex; align-items: center; gap: 7px;
-      padding: 7px 16px; border-radius: 10px;
-      font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
-      text-transform: uppercase; flex-shrink: 0; border: 2px solid transparent;
-    }
-    .turno-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .turno-badge.manana { background: #fffbeb; color: #92600a; border-color: #fde68a; }
-    .turno-badge.manana::before { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
-    .turno-badge.tarde { background: #fff5f0; color: #9a3412; border-color: #fecaca; }
-    .turno-badge.tarde::before { background: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.2); }
+    /* main-header eliminado – info movida al sidebar */
 
     /* ─── TABLE ─── */
     .table-wrap {
@@ -901,6 +880,23 @@
     </div>
   </div>
 
+  <!-- Pastilla turno/fecha en sidebar -->
+  <div id="sb-turno-info" style="
+    background:#252540; border:1px solid #3a3a5a; border-radius:9px;
+    padding:8px 10px; margin-bottom:8px; display:flex; flex-direction:column; gap:3px;
+  ">
+    <div id="sb-turno-badge" style="
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:11px; font-weight:800; color:#f97316; letter-spacing:1px;
+      text-transform:uppercase;
+    ">
+      <span style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block"></span>
+      <span id="sb-turno-texto">TARDE</span>
+    </div>
+    <div id="sb-fecha-texto" style="font-size:10px;color:#ccc;font-weight:600;letter-spacing:0.3px;">—</div>
+    <div id="sb-sub-texto" style="font-size:9px;color:#8899aa;font-weight:500;">Cuadrante de llaves</div>
+  </div>
+
   <div class="user-pill" id="user-pill" style="display:none">
     <div class="user-pill-icon">👤</div>
     <div style="flex:1">
@@ -969,14 +965,6 @@
 
 <!-- MAIN -->
 <div class="main">
-  <div class="main-header">
-    <div class="main-header-left">
-      <div class="main-eyebrow">Cuadrante diario</div>
-      <div class="main-title" id="titulo-main">Gestión de Flota</div>
-      <div class="main-sub" id="sub-main">Selecciona fecha y turno</div>
-    </div>
-    <div class="turno-badge manana" id="turno-badge">MAÑANA</div>
-  </div>
   <div id="banner-devol-pendientes">
     <span class="bdp-icon">⚠️</span>
     <span class="bdp-texto"><strong>Tienes devoluciones pendientes del turno anterior.</strong> Regístralas para mantener el cuadrante correcto.</span>
@@ -2292,17 +2280,21 @@ function seleccionarTurno(btn) {
 }
 
 function actualizarHeader() {
-  const badge  = document.getElementById('turno-badge');
-  const titulo = document.getElementById('titulo-main');
-  const sub    = document.getElementById('sub-main');
-  badge.textContent = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
-  badge.className   = 'turno-badge ' + (turnoActual === 'MANANA' ? 'manana' : 'tarde');
-  const fechaStr = fechaActual
-    ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
-    : '—';
-  const turnoLabel = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
-  titulo.innerHTML = `Turno ${turnoLabel} &middot; <span style="color:#e84545">${fechaStr}</span>`;
-  sub.textContent  = 'Cuadrante de llaves y asignación de vehículos';
+  // Pastilla de turno/fecha en el sidebar
+  const sbTexto  = document.getElementById('sb-turno-texto');
+  const sbFecha  = document.getElementById('sb-fecha-texto');
+  const sbBadge  = document.getElementById('sb-turno-badge');
+  const esTarde  = turnoActual !== 'MANANA';
+  const turnoLabel = esTarde ? 'TARDE' : 'MAÑANA';
+  const color      = esTarde ? '#f97316' : '#f59e0b';
+  if (sbTexto)  sbTexto.textContent = turnoLabel;
+  if (sbBadge)  sbBadge.style.color = color;
+  if (sbBadge)  sbBadge.querySelector('span').style.background = color;
+  if (sbFecha) {
+    sbFecha.textContent = fechaActual
+      ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+      : '—';
+  }
 }
 
 // ─── BLOQUEO DE CUADRANTE POR FECHA ─────────────────────────────────────────

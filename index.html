@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.5.6">
+  <meta name="app-version" content="2.5.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -133,31 +133,148 @@
     #modal-sesion-expira .btn-continuar:hover { background:#2a2a4e; }
     #modal-sesion-expira .btn-salir { padding:11px 20px; background:#f4f5f8; color:#556; border:none; border-radius:9px; font-family:Barlow,sans-serif; font-size:12px; font-weight:700; cursor:pointer; }
 
+
+    /* ─── MODAL DEVOLUCIONES PENDIENTES ─── */
+    #modal-devol-pendientes {
+      display:none; position:fixed; inset:0; z-index:11000;
+      background:rgba(10,10,30,0.72); backdrop-filter:blur(4px);
+      align-items:center; justify-content:center;
+    }
+    #modal-devol-pendientes.visible { display:flex; }
+    #modal-devol-pendientes .dp-box {
+      background:white; border-radius:20px; width:520px; max-width:95vw;
+      max-height:88vh; display:flex; flex-direction:column;
+      box-shadow:0 40px 100px rgba(0,0,0,0.45);
+      font-family:'Barlow',sans-serif;
+      animation:nv-in 0.28s cubic-bezier(.34,1.56,.64,1);
+      overflow:hidden;
+    }
+    #modal-devol-pendientes .dp-head {
+      background:#1a1a2e; padding:22px 24px 18px;
+      display:flex; align-items:center; gap:14px; flex-shrink:0;
+    }
+    #modal-devol-pendientes .dp-head-icon {
+      width:46px; height:46px; background:#e84545; border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:22px; flex-shrink:0;
+    }
+    #modal-devol-pendientes .dp-head-title {
+      font-size:16px; font-weight:900; color:#fff; line-height:1.2;
+    }
+    #modal-devol-pendientes .dp-head-sub {
+      font-size:11px; color:#6b7a94; margin-top:3px;
+    }
+    #modal-devol-pendientes .dp-aviso {
+      background:#fff8f0; border-bottom:1px solid #fde68a;
+      padding:12px 24px; font-size:12px; color:#92600a; font-weight:600;
+      flex-shrink:0; line-height:1.5;
+    }
+    #modal-devol-pendientes .dp-lista {
+      overflow-y:auto; flex:1; padding:16px 24px;
+    }
+    #modal-devol-pendientes .dp-item {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 12px; background:#f8f9fc; border-radius:10px;
+      margin-bottom:8px; border:1px solid #e8eaf0;
+    }
+    #modal-devol-pendientes .dp-item-mat {
+      font-size:12px; font-weight:800; color:#1a1a2e;
+      background:#eef0f5; border:1px solid #dde1ea; border-radius:6px;
+      padding:3px 8px; white-space:nowrap; flex-shrink:0;
+    }
+    #modal-devol-pendientes .dp-item-info {
+      flex:1; min-width:0;
+    }
+    #modal-devol-pendientes .dp-item-op {
+      font-size:11px; font-weight:700; color:#1a1a2e;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    #modal-devol-pendientes .dp-item-meta {
+      font-size:10px; color:#8899aa; margin-top:1px;
+    }
+    #modal-devol-pendientes .dp-item-hora {
+      display:flex; align-items:center; gap:6px; flex-shrink:0;
+    }
+    #modal-devol-pendientes .dp-hora-input {
+      width:72px; padding:5px 8px; border:1.5px solid #dde1ea;
+      border-radius:7px; font-family:'Barlow',sans-serif;
+      font-size:13px; font-weight:700; color:#1a1a2e;
+      outline:none; text-align:center; background:white;
+      transition:border-color .15s, box-shadow .15s;
+    }
+    #modal-devol-pendientes .dp-hora-input:focus {
+      border-color:#e84545; box-shadow:0 0 0 3px rgba(232,69,69,0.1);
+    }
+    #modal-devol-pendientes .dp-hora-input.filled {
+      border-color:#2ecc71; background:#f2fdf5;
+    }
+    #modal-devol-pendientes .dp-foot {
+      padding:16px 24px; border-top:1px solid #f0f3f8;
+      display:flex; gap:10px; justify-content:flex-end; flex-shrink:0;
+    }
+    #modal-devol-pendientes .dp-btn-guardar {
+      padding:10px 24px; background:#e84545; color:white; border:none;
+      border-radius:9px; font-family:'Barlow',sans-serif;
+      font-size:13px; font-weight:800; cursor:pointer;
+      transition:background .15s; letter-spacing:0.5px;
+    }
+    #modal-devol-pendientes .dp-btn-guardar:hover { background:#c63030; }
+    #modal-devol-pendientes .dp-btn-guardar:disabled {
+      background:#ccc; cursor:not-allowed;
+    }
+    #modal-devol-pendientes .dp-btn-skip {
+      padding:10px 18px; background:#f4f5f8; color:#556; border:none;
+      border-radius:9px; font-family:'Barlow',sans-serif;
+      font-size:12px; font-weight:700; cursor:pointer;
+    }
+
+
+    /* ─── BANNER DEVOLUCIONES POSPUESTAS ─── */
+    #banner-devol-pendientes {
+      display: none;
+      position: sticky; top: 0; z-index: 25;
+      background: #fff8f0;
+      border-bottom: 2px solid #f39c12;
+      padding: 9px 18px;
+      font-family: 'Barlow', sans-serif;
+      font-size: 12px; font-weight: 700; color: #854f0b;
+      align-items: center; gap: 10px;
+      animation: nv-in 0.2s ease;
+    }
+    #banner-devol-pendientes.visible { display: flex; }
+    #banner-devol-pendientes .bdp-icon { font-size: 16px; flex-shrink: 0; }
+    #banner-devol-pendientes .bdp-texto { flex: 1; }
+    #banner-devol-pendientes .bdp-texto strong { font-weight: 900; }
+    #banner-devol-pendientes .bdp-btn {
+      padding: 5px 13px; background: #f39c12; color: white;
+      border: none; border-radius: 7px;
+      font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800;
+      cursor: pointer; letter-spacing: 0.5px; flex-shrink: 0;
+      transition: background .15s;
+    }
+    #banner-devol-pendientes .bdp-btn:hover { background: #d68910; }
+
     /* ─── MAIN ─── */
     .main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; padding: 0 0 10px; }
 
     .main-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 22px;
-      height: 38px;
+      padding: 13px 22px 12px;
       background: white;
       border-bottom: 1px solid #e8eaf0;
-      box-shadow: 0 1px 4px rgba(26,26,46,0.05);
+      box-shadow: 0 1px 6px rgba(26,26,46,0.06);
       flex-shrink: 0; gap: 16px;
     }
-    .main-eyebrow { display: none; }
-    .main-title { font-size: 14px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.3px; line-height: 1; white-space: nowrap; }
-    .main-title .turno-label { color: #e84545; }
-    .main-title .sep { color: #dde1ea; font-weight: 400; margin: 0 6px; }
-    .main-title .fecha-label { font-size: 13px; font-weight: 600; color: #6b7a94; }
-    .main-sub { display: none; }
+    .main-eyebrow { font-size: 9px; font-weight: 800; color: #b0bac8; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 2px; }
+    .main-title { font-size: 21px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.5px; line-height: 1.15; }
+    .main-sub { font-size: 11px; color: #a0aab8; margin-top: 1px; font-weight: 500; }
     .turno-badge {
-      display: flex; align-items: center; gap: 5px;
-      padding: 4px 11px; border-radius: 8px;
-      font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
-      text-transform: uppercase; flex-shrink: 0; border: 1.5px solid transparent;
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 16px; border-radius: 10px;
+      font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+      text-transform: uppercase; flex-shrink: 0; border: 2px solid transparent;
     }
-    .turno-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .turno-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .turno-badge.manana { background: #fffbeb; color: #92600a; border-color: #fde68a; }
     .turno-badge.manana::before { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
     .turno-badge.tarde { background: #fff5f0; color: #9a3412; border-color: #fecaca; }
@@ -166,7 +283,7 @@
     /* ─── TABLE ─── */
     .table-wrap {
       flex: 1; min-height: 0; overflow: auto; background: white;
-      margin: 8px 16px 0; border-radius: 12px;
+      margin: 12px 16px 0; border-radius: 12px;
       border: 1px solid #e8eaf0;
       box-shadow: 0 2px 12px rgba(26,26,46,0.06); position: relative;
     }
@@ -853,8 +970,17 @@
 <!-- MAIN -->
 <div class="main">
   <div class="main-header">
-    <div class="main-title" id="titulo-main">Gestión de Flota</div>
+    <div class="main-header-left">
+      <div class="main-eyebrow">Cuadrante diario</div>
+      <div class="main-title" id="titulo-main">Gestión de Flota</div>
+      <div class="main-sub" id="sub-main">Selecciona fecha y turno</div>
+    </div>
     <div class="turno-badge manana" id="turno-badge">MAÑANA</div>
+  </div>
+  <div id="banner-devol-pendientes">
+    <span class="bdp-icon">⚠️</span>
+    <span class="bdp-texto"><strong>Tienes devoluciones pendientes del turno anterior.</strong> Regístralas para mantener el cuadrante correcto.</span>
+    <button class="bdp-btn" onclick="reabrirModalDevolPendientes()">Registrar ahora</button>
   </div>
   <div class="table-container">
     <div class="table-wrap" id="table-wrap">
@@ -1983,6 +2109,7 @@ async function loginResponsable() {
       // Cargar todo (flota, conductores, cuadrante, etc.) ahora que el usuario ha entrado
       await cargarCuadrante();
       mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
+      setTimeout(comprobarDevolPendientes, 1500); // esperar a que el cuadrante se pinte
       iniciarSync();
       iniciarTemporizadorSesion();
       iniciarHeartbeat();
@@ -2167,13 +2294,15 @@ function seleccionarTurno(btn) {
 function actualizarHeader() {
   const badge  = document.getElementById('turno-badge');
   const titulo = document.getElementById('titulo-main');
+  const sub    = document.getElementById('sub-main');
   badge.textContent = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
   badge.className   = 'turno-badge ' + (turnoActual === 'MANANA' ? 'manana' : 'tarde');
   const fechaStr = fechaActual
     ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
     : '—';
   const turnoLabel = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
-  titulo.innerHTML = `<span class="turno-label">Turno ${turnoLabel}</span><span class="sep">·</span><span class="fecha-label">${fechaStr}</span>`;
+  titulo.innerHTML = `Turno ${turnoLabel} &middot; <span style="color:#e84545">${fechaStr}</span>`;
+  sub.textContent  = 'Cuadrante de llaves y asignación de vehículos';
 }
 
 // ─── BLOQUEO DE CUADRANTE POR FECHA ─────────────────────────────────────────
@@ -5564,6 +5693,159 @@ function actualizarEstadoPassSync(ok, msg) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// DEVOLUCIONES PENDIENTES DEL TURNO ANTERIOR
+// ════════════════════════════════════════════════════════════════════════════
+
+// Llama a Sheets para buscar filas donde este responsable entregó llaves
+// (resp_entrega = su nombre) en fechas anteriores a hoy, con operario relleno
+// pero hora_devolucion vacía.
+async function comprobarDevolPendientes() {
+  if (!APPS_SCRIPT_URL || !usuarioActual) return;
+
+  // Clave única para "ya mostré el aviso hoy a este usuario"
+  const hoy = new Date().toISOString().slice(0, 10);
+  const storageKey = 'devol_aviso_' + (usuarioActual.numUsuario || usuarioActual.nombre) + '_' + hoy;
+  if (localStorage.getItem(storageKey)) return; // ya se mostró hoy
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?accion=devolPendientes&responsable=${encodeURIComponent(usuarioActual.nombre)}&hoy=${encodeURIComponent(hoy)}`;
+    const resp = await fetch(url, { redirect: 'follow' });
+    const json = await resp.json();
+    if (!json.ok || !json.pendientes || json.pendientes.length === 0) return;
+
+    // Marcar como mostrado para hoy antes de abrir el modal
+    localStorage.setItem(storageKey, '1');
+    abrirModalDevolPendientes(json.pendientes);
+  } catch(e) {
+    // Sin conexión o error — no bloquear el flujo
+  }
+}
+
+let _devolPendientesList = [];
+
+function abrirModalDevolPendientes(pendientes) {
+  _devolPendientesList = pendientes;
+  const modal = document.getElementById('modal-devol-pendientes');
+  const lista = document.getElementById('dp-lista');
+  const sub   = document.getElementById('dp-head-sub');
+
+  // Agrupar por turno+fecha para el subtítulo
+  const resumen = [...new Set(pendientes.map(p => {
+    const f = (p.fecha || '').split('-').reverse().join('/');
+    const t = p.turno === 'MANANA' ? 'Mañana' : 'Tarde';
+    return `${t} ${f}`;
+  }))].join(', ');
+  sub.textContent = resumen || 'Turno anterior';
+
+  lista.innerHTML = pendientes.map((p, i) => {
+    const f = (p.fecha || '').split('-').reverse().join('/');
+    const turnoLabel = p.turno === 'MANANA' ? 'Mañana' : 'Tarde';
+    return `
+    <div class="dp-item">
+      <div class="dp-item-mat">${p.matricula || '—'}</div>
+      <div class="dp-item-info">
+        <div class="dp-item-op">${p.operario || '—'}</div>
+        <div class="dp-item-meta">${turnoLabel} · ${f} · Entregada a las ${p.hora_entrega || '—'}</div>
+      </div>
+      <div class="dp-item-hora">
+        <input
+          class="dp-hora-input"
+          type="time"
+          id="dp-hora-${i}"
+          placeholder="HH:MM"
+          oninput="onDpHoraInput(this)"
+          title="Hora de devolución de ${p.matricula}">
+      </div>
+    </div>`;
+  }).join('');
+
+  modal.classList.add('visible');
+}
+
+function onDpHoraInput(el) {
+  el.classList.toggle('filled', el.value !== '');
+}
+
+function cerrarModalDevolPendientes(guardado) {
+  document.getElementById('modal-devol-pendientes').classList.remove('visible');
+  if (!guardado) {
+    // Activar banner naranja persistente en el cuadrante
+    const banner = document.getElementById('banner-devol-pendientes');
+    if (banner) banner.classList.add('visible');
+    mostrarToast('⚠️ Recuerda registrar las devoluciones pendientes', 'info');
+  } else {
+    // Ocultar banner si se guardó correctamente
+    const banner = document.getElementById('banner-devol-pendientes');
+    if (banner) banner.classList.remove('visible');
+  }
+}
+
+function reabrirModalDevolPendientes() {
+  if (_devolPendientesList && _devolPendientesList.length > 0) {
+    document.getElementById('modal-devol-pendientes').classList.add('visible');
+  }
+}
+
+async function guardarDevolPendientes() {
+  const btn = document.getElementById('dp-btn-guardar');
+  const pendientes = _devolPendientesList;
+
+  // Recoger horas introducidas
+  const items = pendientes.map((p, i) => {
+    const inputEl = document.getElementById('dp-hora-' + i);
+    return { ...p, hora_devolucion: inputEl ? inputEl.value : '' };
+  });
+
+  const sinHora = items.filter(it => !it.hora_devolucion);
+  if (sinHora.length > 0) {
+    mostrarToast(`Introduce la hora de devolución de ${sinHora.length} vehículo(s)`, 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando…';
+
+  let errores = 0;
+  for (const item of items) {
+    try {
+      const fila = {
+        fecha:           item.fecha,
+        turno:           item.turno,
+        matricula:       item.matricula,
+        tipo:            item.tipo || '',
+        operario:        item.operario        || '',
+        resp_entrega:    item.resp_entrega     || '',
+        resp_recibe:     item.resp_recibe      || '',
+        hora_entrega:    item.hora_entrega     || '',
+        hora_devolucion: item.hora_devolucion,
+        num_tarjeta:     item.num_tarjeta      || '',
+        itv:             item.itv              || '',
+        incidencias:     item.incidencias      || '',
+      };
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
+        body: JSON.stringify({ accion: 'guardarFila', fila }),
+      });
+      const json = await resp.json();
+      if (!json.ok) errores++;
+    } catch(e) {
+      errores++;
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '💾 Guardar devoluciones';
+
+  if (errores === 0) {
+    mostrarToast(`✓ ${items.length} devolución(es) registradas correctamente`, 'success');
+    cerrarModalDevolPendientes(true);
+  } else {
+    mostrarToast(`⚠️ ${errores} devolución(es) no se pudieron guardar`, 'error');
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
 // TOAST, SPLASH, UTILS
 // ════════════════════════════════════════════════════════════════════════════
 let toastTimer;
@@ -6703,6 +6985,30 @@ function forzarActualizacion() {
   });
 })();
 </script>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: DEVOLUCIONES PENDIENTES DEL TURNO ANTERIOR
+═══════════════════════════════════════════════════════ -->
+<div id="modal-devol-pendientes">
+  <div class="dp-box">
+    <div class="dp-head">
+      <div class="dp-head-icon">🔑</div>
+      <div>
+        <div class="dp-head-title">Devoluciones sin registrar</div>
+        <div class="dp-head-sub" id="dp-head-sub">Turno anterior</div>
+      </div>
+    </div>
+    <div class="dp-aviso">
+      🔑 Tienes devoluciones sin registrar del turno anterior. Indica la hora aproximada de cada una — si no la recuerdas con exactitud, pon una hora aproximada. Puedes posponerlo, pero quedará un aviso visible hasta que lo resuelvas.
+    </div>
+    <div class="dp-lista" id="dp-lista"></div>
+    <div class="dp-foot">
+      <button class="dp-btn-skip" onclick="cerrarModalDevolPendientes(false)">⏸ Posponer — me lo recordarán</button>
+      <button class="dp-btn-guardar" id="dp-btn-guardar" onclick="guardarDevolPendientes()">💾 Guardar devoluciones</button>
+    </div>
+  </div>
+</div>
 
 
 </body>

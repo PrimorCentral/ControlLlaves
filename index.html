@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.6.2">
+  <meta name="app-version" content="2.6.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -276,8 +276,7 @@
     tbody tr { border-bottom: 1px solid #f0f3f8; transition: background 0.12s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover td { background: #f8f9fc !important; }
-    tbody tr.restringido td { background: #fff8f8; }
-    tbody tr.restringido:hover td { background: #fff2f2 !important; }
+    /* restringido: sin resaltado visual en la fila – el aviso aparece solo al asignar conductor */
     tbody tr.asignado td { background: #f5f7ff; }
     tbody tr.asignado:hover td { background: #edf0ff !important; }
     tbody tr.devuelto td { background: #f2fdf5; }
@@ -286,12 +285,12 @@
     td:last-child { border-right: none; }
     .col-mat-cell { display: flex; align-items: center; gap: 7px; padding: 2px 4px; }
     .mat-badge { font-size: 11px; font-weight: 800; color: #1a1a2e; background: #eef0f5; border-radius: 6px; padding: 3px 8px; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; border: 1px solid #dde1ea; }
-    .mat-badge.restringido { background: #ffe4e4; color: #c62020; border-color: #ffc5c5; }
+    /* .mat-badge.restringido – sin estilo especial */
     .tipo-tag { font-size: 9px; font-weight: 700; color: #a0aab8; white-space: nowrap; line-height: 1.3; }
     .estado-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #dde1e8; }
     .estado-dot.asignado { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
     .estado-dot.pendiente { background: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
-    .estado-dot.restringido { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+    /* .estado-dot.restringido – sin estilo especial */
 
     /* ─── BUSCADOR OPERARIO ─── */
     .operario-search-wrap {
@@ -371,7 +370,7 @@
     }
     .cell-input-locked.hora { max-width: 68px; }
     .cell-input-locked.num  { max-width: 55px; }
-    tr.bloqueada.restringido td { background: #fff5f5 !important; }
+    /* tr.bloqueada.restringido – sin estilo especial */
 
     /* ─── FILA REASIGNADA (gris) ─── */
     tr.reasignada td { background: #f0f0f0 !important; opacity: 0.72; }
@@ -2612,7 +2611,7 @@ function renderTabla() {
       const devuelto = asignado && d.resp_recibe && d.resp_recibe.trim();
       // "reasignado" = operario original existe pero está marcado como reasignado
       const reasignado = d._reasignado && d._operarioAnterior;
-      const rowClass = v.restringido ? 'restringido' : (devuelto ? 'devuelto' : (asignado ? 'asignado' : ''));
+      const rowClass = devuelto ? 'devuelto' : (asignado ? 'asignado' : '');
       if (v.restringido) hayRestringidos = true;
 
       const extraClass = asignado ? ' bloqueada' : '';
@@ -2622,8 +2621,8 @@ function renderTabla() {
 
       // Columna matrícula
       html += `<td style="min-width:175px"><div class="col-mat-cell">
-        <div class="estado-dot ${devuelto?'asignado':''} ${!devuelto&&asignado?'pendiente':''} ${v.restringido?'restringido':''}"></div>
-        <div class="mat-badge ${v.restringido?'restringido':''}">${esc(v.matricula)}</div>
+        <div class="estado-dot ${devuelto?'asignado':''} ${!devuelto&&asignado?'pendiente':''}"></div>
+        <div class="mat-badge">${esc(v.matricula)}</div>
         <div class="tipo-tag">${esc(v.tipo)}${v.nota?' · '+v.nota:''}${reasignado?` <span style="color:#e84545;font-size:9px">↺ reasig.</span>`:''}</div>
       </div></td>`;
 
@@ -2870,9 +2869,7 @@ function renderTabla() {
     });
   });
 
-  if (hayRestringidos) {
-    html += `<tr class="nota-row"><td colspan="${colCount}">⚠️ Las matriculas con fondo ROJO solo lo podrán utilizar las personas AUTORIZADAS.</td></tr>`;
-  }
+
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 }

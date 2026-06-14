@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.6.5">
+  <meta name="app-version" content="2.6.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1259,9 +1259,10 @@
           <option value="MAÑANA">Mañana</option>
           <option value="TARDE">Tarde</option>
         </select>
-        <input type="text" id="hist-matricula" placeholder="Filtrar matrícula…">
+        <select id="hist-matricula"><option value="">Todas las matrículas</option></select>
         <button class="btn-add-item" onclick="cargarHistorial()" style="background:#3498db">🔍 Buscar</button>
         <button class="btn-add-item" onclick="exportarCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="exportarPDF('historial')" style="background:#e84545">📄 PDF</button>
       </div>
       <div class="hist-table-wrap">
         <table class="hist-table">
@@ -1283,6 +1284,7 @@
         <input type="text" id="log-filtro-usuario" placeholder="Filtrar responsable…">
         <button class="btn-add-item" onclick="cargarLog()" style="background:#3498db">🔍 Buscar</button>
         <button class="btn-add-item" onclick="exportarLogCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="exportarPDF('log')" style="background:#e84545">📄 PDF</button>
       </div>
       <div class="hist-table-wrap">
         <table class="log-table">
@@ -1301,9 +1303,10 @@
       <div class="hist-filters">
         <input type="date" id="reasig-fecha-desde">
         <input type="date" id="reasig-fecha-hasta">
-        <input type="text" id="reasig-filtro-matricula" placeholder="Filtrar matrícula…" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <select id="reasig-filtro-matricula"><option value="">Todas las matrículas</option></select>
         <button class="btn-add-item" onclick="cargarReasignaciones()" style="background:#3498db">🔍 Buscar</button>
         <button class="btn-add-item" onclick="exportarReasignacionesCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="exportarPDF('reasignaciones')" style="background:#e84545">📄 PDF</button>
       </div>
       <div class="hist-table-wrap">
         <table class="hist-table">
@@ -1323,9 +1326,10 @@
       <div class="hist-filters">
         <input type="date" id="incid-fecha-desde">
         <input type="date" id="incid-fecha-hasta">
-        <input type="text" id="incid-filtro-matricula" placeholder="Filtrar matrícula…">
+        <select id="incid-filtro-matricula"><option value="">Todas las matrículas</option></select>
         <button class="btn-add-item" onclick="cargarTabIncidencias()" style="background:#3498db">🔍 Buscar</button>
         <button class="btn-add-item" onclick="exportarIncidenciasCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="exportarPDF('incidencias')" style="background:#e84545">📄 PDF</button>
         <button class="btn-add-item" onclick="cargarTabIncidencias()" style="background:#2ecc71" title="Recargar desde Sheets">🔄 Recargar</button>
       </div>
       <div class="hist-table-wrap">
@@ -1344,7 +1348,7 @@
       <div class="hist-filters">
         <input type="date" id="repo-tab-fecha-desde">
         <input type="date" id="repo-tab-fecha-hasta">
-        <input type="text" id="repo-tab-filtro-matricula" placeholder="Filtrar matrícula…" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <select id="repo-tab-filtro-matricula"><option value="">Todas las matrículas</option></select>
         <select id="repo-tab-filtro-estado" style="padding:7px 10px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
           <option value="">Todos los estados</option>
           <option value="PENDIENTE">⏳ Pendiente devolución</option>
@@ -1352,6 +1356,7 @@
         </select>
         <button class="btn-add-item" onclick="cargarTabRepostajes()" style="background:#3498db">🔍 Buscar</button>
         <button class="btn-add-item" onclick="exportarRepostajesCSV()">⬇ CSV</button>
+        <button class="btn-add-item" onclick="exportarPDF('repostajes')" style="background:#e84545">📄 PDF</button>
         <button class="btn-add-item" onclick="cargarTabRepostajes()" style="background:#2ecc71" title="Recargar desde Sheets">🔄 Recargar</button>
       </div>
       <!-- Resumen estadístico -->
@@ -4049,6 +4054,8 @@ async function eliminarReasignacion(idx) {
     reasigCache.splice(idx, 1);
     renderReasignaciones();
     mostrarToast('✓ Registro de reasignación eliminado', 'success');
+    // Refrescar cuadrante para quitar el badge en tiempo real
+    if (usuarioActual) cargarCuadrante();
   } catch(e) {
     mostrarToast('Error al eliminar: ' + e.message, 'error');
   }
@@ -4611,6 +4618,224 @@ function exportarCSV() {
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
   a.download = `historial_${fechaActual}.csv`;
   a.click();
+}
+
+// ── Poblar desplegables de matrícula en el panel admin ───────────────────────
+function poblarSelectsMatricula() {
+  const ids = ['hist-matricula','reasig-filtro-matricula','incid-filtro-matricula','repo-tab-filtro-matricula'];
+  const matriculas = [];
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => { if (v.matricula) matriculas.push(v.matricula); }));
+  matriculas.sort();
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Todas las matrículas</option>';
+    matriculas.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = m;
+      if (m === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ── Exportar PDF visual para cada pestaña ───────────────────────────────────
+function exportarPDF(tipo) {
+  const { jsPDF } = window.jspdf;
+
+  const configs = {
+    historial:      { cache: () => historialCache,    titulo: 'HISTORIAL DE REGISTROS',    color: [26,26,46],   accentR: 232, accentG: 69,  accentB: 69  },
+    log:            { cache: () => logCache,          titulo: 'LOG DE ÓRDENES DE TRABAJO', color: [26,26,46],   accentR: 29,  accentG: 78,  accentB: 216 },
+    reasignaciones: { cache: () => reasigCache,       titulo: 'REGISTRO DE REASIGNACIONES',color: [26,26,46],   accentR: 180, accentG: 83,  accentB: 9   },
+    incidencias:    { cache: () => incidenciasCache,  titulo: 'REGISTRO DE INCIDENCIAS',   color: [26,26,46],   accentR: 232, accentG: 69,  accentB: 69  },
+    repostajes:     { cache: () => repostajesCache,   titulo: 'REGISTRO DE REPOSTAJES',    color: [26,26,46],   accentR: 14,  accentG: 165, accentB: 233 },
+  };
+
+  const cfg   = configs[tipo];
+  if (!cfg) return;
+  const filas = cfg.cache();
+  if (!filas || !filas.length) { mostrarToast('Sin datos para exportar', 'info'); return; }
+
+  const columnas = {
+    historial:      [
+      { k:'fecha',          l:'Fecha',        w:20 },
+      { k:'turno',          l:'Turno',        w:16, fmt: v => v==='MANANA'?'Mañana':v },
+      { k:'matricula',      l:'Matrícula',    w:24 },
+      { k:'tipo',           l:'Tipo',         w:22 },
+      { k:'operario',       l:'Operario',     w:38 },
+      { k:'resp_entrega',   l:'Resp. Entrega',w:34 },
+      { k:'resp_recibe',    l:'Resp. Recibe', w:34 },
+      { k:'hora_entrega',   l:'H.Entr.',      w:14 },
+      { k:'hora_devolucion',l:'H.Dev.',       w:14 },
+    ],
+    log:            [
+      { k:'fecha',             l:'Fecha',       w:20 },
+      { k:'turno',             l:'Turno',       w:16, fmt: v => v==='MANANA'?'Mañana':v },
+      { k:'nombreResponsable', l:'Responsable', w:38 },
+      { k:'matricula',         l:'Matrícula',   w:22 },
+      { k:'operario',          l:'Operario',    w:38 },
+      { k:'empresa',           l:'Empresa',     w:36 },
+      { k:'ruta',              l:'Ruta',        w:46 },
+    ],
+    reasignaciones: [
+      { k:'fecha',             l:'Fecha',         w:20 },
+      { k:'turno',             l:'Turno',         w:16, fmt: v => v==='MANANA'?'Mañana':v },
+      { k:'matricula',         l:'Matrícula',     w:22 },
+      { k:'operario',          l:'Cond. anterior',w:38 },
+      { k:'resp_entrega',      l:'Resp. Entrega', w:34 },
+      { k:'resp_recibe',       l:'Resp. Recibe',  w:34 },
+      { k:'hora_entrega',      l:'H.Entr.',       w:14 },
+      { k:'hora_reasignacion', l:'H.Reasig.',     w:14 },
+    ],
+    incidencias:    [
+      { k:'fecha',       l:'Fecha',       w:20 },
+      { k:'turno',       l:'Turno',       w:16, fmt: v => v==='MANANA'?'Mañana':v },
+      { k:'matricula',   l:'Matrícula',   w:22 },
+      { k:'responsable', l:'Responsable', w:38 },
+      { k:'descripcion', l:'Descripción', w:80 },
+    ],
+    repostajes:     [
+      { k:'fecha',          l:'Fecha',      w:20 },
+      { k:'matricula',      l:'Matrícula',  w:22 },
+      { k:'usuario_chofer', l:'Chofer',     w:36 },
+      { k:'kilometraje',    l:'Km',         w:18 },
+      { k:'num_tarjeta',    l:'Tarjeta',    w:14 },
+      { k:'hora_entrega',   l:'H.Entr.',    w:14 },
+      { k:'hora_devolucion',l:'H.Dev.',     w:14 },
+      { k:'gasoil_antes',   l:'Gsl Antes',  w:18 },
+      { k:'gasoil_despues', l:'Gsl Desp.',  w:18 },
+      { k:'estado',         l:'Estado',     w:20 },
+    ],
+  };
+
+  const cols = columnas[tipo];
+  const totalW = cols.reduce((s, c) => s + c.w, 0);
+  const isLandscape = totalW > 160;
+  const doc   = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = isLandscape ? 297 : 210;
+  const pageH = isLandscape ? 210 : 297;
+  const margin = 12;
+  const contentW = pageW - margin * 2;
+
+  const [r, g, b] = cfg.color;
+  const [ar, ag, ab] = [cfg.accentR, cfg.accentG, cfg.accentB];
+
+  const ahora = new Date();
+  const fechaStr = ahora.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const horaStr  = ahora.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+
+  let pageNum = 1;
+
+  function drawHeader() {
+    // Fondo cabecera
+    doc.setFillColor(r, g, b);
+    doc.rect(0, 0, pageW, 22, 'F');
+    // Acento lateral izquierdo
+    doc.setFillColor(ar, ag, ab);
+    doc.rect(0, 0, 5, 22, 'F');
+    // Título
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text(cfg.titulo, margin + 4, 14);
+    // Fecha generación
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(180, 190, 210);
+    doc.text(`Generado el ${fechaStr} a las ${horaStr}  ·  ${filas.length} registro(s)`, pageW - margin, 10, { align: 'right' });
+    doc.text('Gestión de Flota · Primor', pageW - margin, 17, { align: 'right' });
+  }
+
+  function drawTableHeader(y) {
+    // Fondo fila cabecera tabla
+    doc.setFillColor(ar, ag, ab);
+    doc.rect(margin, y, contentW, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    let x = margin;
+    const scale = contentW / totalW;
+    cols.forEach(col => {
+      const cw = col.w * scale;
+      doc.text(col.l.toUpperCase(), x + 2, y + 5, { maxWidth: cw - 3 });
+      x += cw;
+    });
+    return y + 7;
+  }
+
+  function drawFooter(pageNum) {
+    doc.setFillColor(240, 242, 245);
+    doc.rect(0, pageH - 8, pageW, 8, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(150, 160, 175);
+    doc.text('Gestión de Flota · Primor', margin, pageH - 3);
+    doc.text(`Página ${pageNum}`, pageW - margin, pageH - 3, { align: 'right' });
+  }
+
+  const scale = contentW / totalW;
+  const rowH  = 6.5;
+  const tableTop = 28;
+
+  drawHeader();
+  let y = drawTableHeader(tableTop);
+  drawFooter(pageNum);
+
+  filas.forEach((fila, fi) => {
+    if (y + rowH > pageH - 12) {
+      doc.addPage();
+      pageNum++;
+      drawHeader();
+      y = drawTableHeader(tableTop);
+      drawFooter(pageNum);
+    }
+
+    // Alternado de filas
+    if (fi % 2 === 0) {
+      doc.setFillColor(248, 249, 252);
+      doc.rect(margin, y, contentW, rowH, 'F');
+    }
+
+    // Borde inferior sutil
+    doc.setDrawColor(220, 224, 232);
+    doc.setLineWidth(0.15);
+    doc.line(margin, y + rowH, margin + contentW, y + rowH);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 35, 55);
+
+    let x = margin;
+    cols.forEach(col => {
+      const cw = col.w * scale;
+      let val = fila[col.k] || '—';
+      // Formatear fecha ISO
+      if (col.k === 'fecha' && val.length >= 10) val = val.substring(0,10).split('-').reverse().join('/');
+      if (col.k === 'timestamp' && val.length > 10) {
+        try { val = new Date(val).toLocaleString('es-ES', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); } catch(e){}
+      }
+      if (col.fmt) val = col.fmt(val);
+      // Color especial para estado
+      if (col.k === 'estado') {
+        if (val === 'PENDIENTE') doc.setTextColor(180, 83, 9);
+        else if (val === 'COMPLETADO') doc.setTextColor(22, 120, 60);
+        else doc.setTextColor(30, 35, 55);
+      } else {
+        doc.setTextColor(30, 35, 55);
+      }
+      doc.text(String(val), x + 2, y + rowH - 1.8, { maxWidth: cw - 3 });
+      x += cw;
+    });
+    y += rowH;
+  });
+
+  // Línea de cierre tabla
+  doc.setDrawColor(ar, ag, ab);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, margin + contentW, y);
+
+  doc.save(`${tipo}_${fechaStr.replace(/\//g,'-')}.pdf`);
 }
 
 async function eliminarHistorial(idx) {
@@ -5611,6 +5836,7 @@ function abrirAdmin() {
   document.getElementById('admin-config-url').value = APPS_SCRIPT_URL;
   renderAdminVehiculos();
   renderAdminStats();
+  poblarSelectsMatricula();
   cambiarTab('vehiculos');
   document.getElementById('modal-admin').classList.add('open');
 }
@@ -6002,7 +6228,7 @@ async function guardarDevolPendientes() {
         tipo:            item.tipo || '',
         operario:        item.operario        || '',
         resp_entrega:    item.resp_entrega     || '',
-        resp_recibe:     item.resp_recibe      || '',
+        resp_recibe:     usuarioActual ? usuarioActual.nombre : (item.resp_recibe || ''),
         hora_entrega:    item.hora_entrega     || '',
         hora_devolucion: item.hora_devolucion,
         num_tarjeta:     item.num_tarjeta      || '',

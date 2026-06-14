@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.6.4">
+  <meta name="app-version" content="2.6.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3090,16 +3090,18 @@ async function cargarCuadrante() {
 
     const urlCuadrante = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
     const urlIncid     = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
+    const urlReasig    = `${APPS_SCRIPT_URL}?accion=cargarReasignaciones&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}`;
 
     // Todas las peticiones de lectura son independientes — se lanzan en paralelo
     // (flota/conductores con mostrarError=false: el modal de error, si hace falta,
     //  se gestiona de forma centralizada abajo para evitar condiciones de carrera
     //  cuando una de las dos termina antes que la otra)
-    const [flotaOk, conductoresOk, json, jsonIncid] = await Promise.all([
+    const [flotaOk, conductoresOk, json, jsonIncid, jsonReasig] = await Promise.all([
       cargarFlotaDesdeSheets(false),
       cargarConductoresDesdeSheets(false),
       fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
+      fetch(urlReasig, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       sincronizarRepostajesPendientes(),
       sincronizarRepostajesFecha(),
       sincronizarOrdenesImpresas(),
@@ -3143,6 +3145,21 @@ async function cargarCuadrante() {
         const key = `${f.matricula}|${turno}|${fechaActual}`;
         if (!datos[key]) datos[key] = {};
         if (f.descripcion) datos[key].incidencias = f.descripcion;
+      });
+    }
+
+    // Marcar vehículos reasignados en este turno/fecha para mostrar el badge
+    if (jsonReasig && jsonReasig.ok && jsonReasig.filas) {
+      const turnoNormActual = turnoActual;
+      jsonReasig.filas.forEach(f => {
+        const fTurno = (f.turno || '').toUpperCase();
+        if (fTurno !== turnoNormActual && fTurno !== '') return;
+        const mat = (f.matricula || '').trim().toUpperCase();
+        if (!mat) return;
+        const key = `${mat}|${turnoActual}|${fechaActual}`;
+        if (!datos[key]) datos[key] = {};
+        datos[key]._reasignado     = 'SI';
+        datos[key]._operarioAnterior = f.operario || '?';
       });
     }
 

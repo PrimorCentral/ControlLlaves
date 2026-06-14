@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.6.3">
+  <meta name="app-version" content="2.6.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -375,6 +375,13 @@
     /* ─── FILA REASIGNADA (gris) ─── */
     tr.reasignada td { background: #f0f0f0 !important; opacity: 0.72; }
     tr.reasignada:hover td { background: #e8e8e8 !important; }
+    .badge-reasig {
+      display: inline-flex; align-items: center; gap: 3px;
+      background: #fff3cd; color: #b45309; border: 1px solid #fcd34d;
+      border-radius: 5px; font-size: 9px; font-weight: 800;
+      padding: 2px 6px; letter-spacing: 0.3px; vertical-align: middle;
+      margin-left: 4px; white-space: nowrap;
+    }
 
     /* ─── BANNER BLOQUEO FECHA ─── */
     #banner-bloqueo-fecha { font-size: 12px; }
@@ -1184,6 +1191,7 @@
       <button class="admin-tab" id="tab-btn-conductores" onclick="cambiarTab('conductores')">🧑‍✈️ Conductores</button>
       <button class="admin-tab" id="tab-btn-historial" onclick="cambiarTab('historial')">📋 Historial</button>
       <button class="admin-tab" id="tab-btn-log" onclick="cambiarTab('log')">📝 Log Órdenes</button>
+      <button class="admin-tab" id="tab-btn-reasignaciones" onclick="cambiarTab('reasignaciones')">↺ Reasignaciones</button>
       <button class="admin-tab" id="tab-btn-incidencias" onclick="cambiarTab('incidencias')">⚠️ Incidencias</button>
       <button class="admin-tab" id="tab-btn-repostajes" onclick="cambiarTab('repostajes')">⛽ Repostajes</button>
       <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')">👥 Responsables</button>
@@ -1284,6 +1292,28 @@
             <th class="col-acciones"></th>
           </tr></thead>
           <tbody id="log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: REASIGNACIONES -->
+    <div class="admin-tab-panel" id="tab-panel-reasignaciones" style="flex-direction:column;gap:10px">
+      <div class="hist-filters">
+        <input type="date" id="reasig-fecha-desde">
+        <input type="date" id="reasig-fecha-hasta">
+        <input type="text" id="reasig-filtro-matricula" placeholder="Filtrar matrícula…" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <button class="btn-add-item" onclick="cargarReasignaciones()" style="background:#3498db">🔍 Buscar</button>
+        <button class="btn-add-item" onclick="exportarReasignacionesCSV()">⬇ CSV</button>
+      </div>
+      <div class="hist-table-wrap">
+        <table class="hist-table">
+          <thead><tr>
+            <th>Fecha/Hora</th><th>Turno</th><th>Matrícula</th>
+            <th>Conductor anterior</th><th>Responsable entrega</th><th>Responsable recibe</th>
+            <th>H. Entrega</th><th>H. Reasig.</th>
+            <th class="col-acciones"></th>
+          </tr></thead>
+          <tbody id="reasig-tbody"><tr><td colspan="9" class="hist-empty">Usa el filtro para buscar reasignaciones.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2623,7 +2653,7 @@ function renderTabla() {
       html += `<td style="min-width:175px"><div class="col-mat-cell">
         <div class="estado-dot ${devuelto?'asignado':''} ${!devuelto&&asignado?'pendiente':''}"></div>
         <div class="mat-badge">${esc(v.matricula)}</div>
-        <div class="tipo-tag">${esc(v.tipo)}${v.nota?' · '+v.nota:''}${reasignado?` <span style="color:#e84545;font-size:9px">↺ reasig.</span>`:''}</div>
+        <div class="tipo-tag">${esc(v.tipo)}${v.nota?' · '+v.nota:''}${reasignado?` <span class="badge-reasig">↺ Reasignado</span>`:''}</div>
       </div></td>`;
 
       // Columna operario
@@ -2935,9 +2965,9 @@ function pedirReasignacion(matricula) {
     try {
       const horaReasig = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-      // 1) Registrar log de reasignación
+      // 1) Registrar en hoja Reasignaciones (separada del Log de Órdenes)
       if (operarioAnterior) {
-        await registrarLog(matricula, operarioAnterior, '— Reasignación —', `Conductor reasignado a las ${horaReasig}`);
+        await registrarReasignacion(matricula, operarioAnterior, horaReasig);
       }
 
       // 2) Guardar snapshot histórico en Registros (fila congelada, marcada como reasignada)
@@ -2953,7 +2983,7 @@ function pedirReasignacion(matricula) {
           tipo,
           operario:        operarioAnterior,
           resp_entrega:    dActual.resp_entrega    || '',
-          resp_recibe:     dActual.resp_recibe     || '',
+          resp_recibe:     usuarioActual ? usuarioActual.nombre : (dActual.resp_recibe || ''),
           hora_entrega:    dActual.hora_entrega    || '',
           hora_devolucion: horaReasig,   // ← hora exacta de la reasignación
           num_tarjeta:     dActual.num_tarjeta     || '',
@@ -3879,6 +3909,132 @@ async function registrarLog(matricula, operario, empresa, ruta) {
       }), redirect:'follow'
     });
   } catch(e) { console.warn('No se pudo registrar log:', e); }
+}
+
+async function registrarReasignacion(matricula, operarioAnterior, hora) {
+  if (!APPS_SCRIPT_URL || !usuarioActual) return;
+  const dActual = getDato(matricula);
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: {'Content-Type':'text/plain'},
+      body: JSON.stringify({
+        accion: 'registrarReasignacion',
+        reasignacion: {
+          timestamp:        new Date().toISOString(),
+          fecha:            fechaActual,
+          turno:            turnoActual,
+          matricula,
+          operario:         operarioAnterior,
+          resp_entrega:     dActual.resp_entrega || '',
+          resp_recibe:      usuarioActual.nombre,
+          hora_entrega:     dActual.hora_entrega || '',
+          hora_reasignacion: hora,
+          numUsuario:       usuarioActual.numUsuario,
+          nombreResponsable: usuarioActual.nombre,
+        }
+      }), redirect:'follow'
+    });
+  } catch(e) { console.warn('No se pudo registrar reasignación:', e); }
+}
+
+let reasigCache = [];
+
+async function cargarReasignaciones() {
+  if (!APPS_SCRIPT_URL) return;
+  const desde   = document.getElementById('reasig-fecha-desde').value;
+  const hasta   = document.getElementById('reasig-fecha-hasta').value;
+  const filtroM = document.getElementById('reasig-filtro-matricula').value.trim().toUpperCase();
+  const tbody   = document.getElementById('reasig-tbody');
+  tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">Cargando…</td></tr>';
+  try {
+    const url = `${APPS_SCRIPT_URL}?accion=cargarReasignaciones&desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&matricula=${encodeURIComponent(filtroM)}`;
+    const resp = await fetch(url, { redirect:'follow' });
+    const json = await resp.json();
+    reasigCache = json.filas || [];
+    renderReasignaciones();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" class="hist-empty">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderReasignaciones() {
+  const tbody = document.getElementById('reasig-tbody');
+  if (!reasigCache.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">Sin reasignaciones en este período.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = reasigCache.map((f, idx) => `<tr>
+    <td>${f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : f.timestamp}</td>
+    <td>${f.turno === 'MANANA' ? 'MAÑANA' : (f.turno||'—')}</td>
+    <td class="mat">${f.matricula||'—'}</td>
+    <td style="font-weight:700;color:#e84545">${f.operario||'—'}</td>
+    <td>${f.resp_entrega||'—'}</td>
+    <td style="font-weight:700">${f.resp_recibe||'—'}</td>
+    <td>${f.hora_entrega||'—'}</td>
+    <td style="font-weight:800;color:#b45309">${f.hora_reasignacion||'—'}</td>
+    <td class="col-acciones" style="text-align:center">
+      <button class="btn-item-action danger" onclick="eliminarReasignacion(${idx})" title="Eliminar registro" style="font-size:13px;padding:3px 8px">🗑</button>
+    </td>
+  </tr>`).join('');
+}
+
+function exportarReasignacionesCSV() {
+  if (!reasigCache.length) { mostrarToast('Sin datos', 'info'); return; }
+  const campos = ['timestamp','fecha','turno','matricula','operario','resp_entrega','resp_recibe','hora_entrega','hora_reasignacion'];
+  const csv = [campos.join(';'), ...reasigCache.map(f => campos.map(c => `"${(f[c]||'').replace(/"/g,'""')}"`).join(';'))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = `reasignaciones_${Date.now()}.csv`;
+  a.click();
+}
+
+async function eliminarReasignacion(idx) {
+  const f = reasigCache[idx];
+  if (!f) return;
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+
+  const confirmado = await new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ov.innerHTML = `
+      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Eliminar este registro de reasignación?</div>
+        <div style="font-size:12px;color:#8899aa;margin-bottom:14px;">
+          <span style="font-weight:700;color:#1a1a2e">${f.matricula||'—'}</span> · ${f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : ''}
+        </div>
+        <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.6;margin-bottom:16px;">
+          <strong>Conductor anterior:</strong> ${f.operario||'—'}<br>
+          <strong>Resp. entrega:</strong> ${f.resp_entrega||'—'} · <strong>Resp. recibe:</strong> ${f.resp_recibe||'—'}<br>
+          <strong>Hora reasignación:</strong> ${f.hora_reasignacion||'—'}
+        </div>
+        <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btn-relog-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="btn-relog-ok" style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🗑 Sí, eliminar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#btn-relog-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };
+    ov.querySelector('#btn-relog-ok').onclick     = () => { document.body.removeChild(ov); resolve(true); };
+  });
+
+  if (!confirmado) return;
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'eliminarReasignacion', timestamp: f.timestamp })
+    });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+    reasigCache.splice(idx, 1);
+    renderReasignaciones();
+    mostrarToast('✓ Registro de reasignación eliminado', 'success');
+  } catch(e) {
+    mostrarToast('Error al eliminar: ' + e.message, 'error');
+  }
 }
 
 let logCache = [];
@@ -5560,7 +5716,7 @@ async function cargarUsuariosActivos() {
 }
 
 function cambiarTab(tab) {
-  ['vehiculos','conductores','historial','log','incidencias','repostajes','responsables','config','activos'].forEach(t => {
+  ['vehiculos','conductores','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
   });
@@ -5577,6 +5733,13 @@ function cambiarTab(tab) {
       document.getElementById('log-fecha-hasta').value = fechaActual;
     }
     cargarLog();
+  }
+  if (tab === 'reasignaciones') {
+    if (!document.getElementById('reasig-fecha-desde').value) {
+      document.getElementById('reasig-fecha-desde').value = fechaActual;
+      document.getElementById('reasig-fecha-hasta').value = fechaActual;
+    }
+    cargarReasignaciones();
   }
   if (tab === 'incidencias') {
     if (!document.getElementById('incid-fecha-desde').value) {

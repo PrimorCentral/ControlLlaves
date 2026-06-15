@@ -7425,18 +7425,18 @@ function imprimirCuadrante() {
     let reasigHtml = '';
     if (reasignaciones.length > 0) {
       reasigHtml = reasignaciones.map(r => `
-        <tr style="background:#fff8f0;font-size:9px;color:#92600a;">
-          <td style="padding:4px 8px;border:1px solid #fde68a;">
-            <span style="font-size:9px;font-weight:700;color:#b45309;">↺ Reasig.</span>
-          </td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.operario||'—')}</td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_entrega||'—')}</td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.hora_entrega||'—')}</td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_recibe||'—')}</td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.hora_reasignacion||'—')}</td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
-          <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
-        </tr>`).join('');
+  <tr style="background:#fff8f0;font-size:9px;color:#92600a;">
+    <td style="padding:4px 8px;border:1px solid #fde68a;font-size:9px;color:#6b7a94;font-style:italic;">
+      ↺ Conductor anterior
+    </td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.operario||'—')}</td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_entrega||'—')}</td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(fmtHora(r.hora_entrega)||'—')}</td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_recibe||'—')}</td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(fmtHora(r.hora_reasignacion)||'—')}</td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
+    <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
+  </tr>`).join('');
     }
 
     return `
@@ -7457,6 +7457,7 @@ function imprimirCuadrante() {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>Cuadrante ${turnoLabel} · ${fechaActual}</title>
   <style>
     @page { size: A4 landscape; margin: 14mm 12mm; }

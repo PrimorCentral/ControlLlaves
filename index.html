@@ -2671,7 +2671,7 @@ function renderTabla() {
 
       const extraClass = asignado ? ' bloqueada' : '';
       // Estilo gris si el vehículo fue reasignado (historial de reasignación)
-      const reasigStyle = reasignado ? ' style="background:#f0f0f0!important;opacity:0.75"' : '';
+      const reasigStyle = reasignado ? ' style="background:#fff8f0!important;"' : '';
       html += `<tr class="${rowClass}${extraClass}" data-mat="${esc(v.matricula)}"${reasigStyle}>`;
 
       // Columna matrícula

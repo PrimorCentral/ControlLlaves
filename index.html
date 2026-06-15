@@ -7524,6 +7524,17 @@ function imprimirCuadrante() {
 }
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════
+  
+  // ════════════════════════════════════════════════════════════════════════════
+// CERRAR PESTAÑA — cerrar sesión automáticamente
+// ════════════════════════════════════════════════════════════════════════════
+window.addEventListener('beforeunload', e => {
+  if (usuarioActual) {
+    enviarDesconexion();
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════════════════

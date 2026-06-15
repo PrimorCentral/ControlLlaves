@@ -2308,6 +2308,11 @@ async function verificarConfig() {
     if (sub)    sub.textContent   = s;
     if (ltitle) ltitle.textContent = t;
     if (lsub)   lsub.textContent   = s;
+    const loginDot = document.querySelector('.login-brand-badge-dot');
+    if (loginDot) {
+      loginDot.style.background = ok ? '#2ecc71' : '#e84545';
+      loginDot.style.animation  = ok ? 'none' : 'blink 1.2s infinite';
+    }
   }
 
   if (!APPS_SCRIPT_URL) {

@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.7.1">
+  <meta name="app-version" content="2.7.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -5514,7 +5514,7 @@ function renderListaRepostajesPendientes(filas) {
   }
 
   lista.innerHTML = filas.map(f => `
-    <div class="repo-pend-row" id="rp-row-${esc(f.id)}">
+    <div class="repo-pend-row" id="rp-row-${esc(f.id)}" data-gasoil-antes="${esc(f.gasoil_antes)}" data-adblue-antes="${esc(f.adblue_antes)}">
       <div class="repo-pend-info">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
           <span style="font-size:12px;font-weight:800;color:#1a1a2e;background:#e8eaef;border-radius:5px;padding:2px 8px;white-space:nowrap">${esc(f.matricula)}</span>
@@ -5653,6 +5653,52 @@ function cerrarDevolucionDirecta() {
   _devDirRepostaje = null;
 }
 
+// Muestra un modal de aviso/confirmación cuando el nivel "después" es menor que el "antes"
+// Devuelve una Promise<boolean> -> true si el usuario quiere continuar igualmente
+function preguntarNivelMenorQueAntes({ gasoilAntes, gasoilDespues, adblueAntes, adblueDespues }) {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById('confirmar-nivel-menor-overlay');
+    if (overlay) overlay.remove();
+
+    const filas = [];
+    if (!isNaN(gasoilAntes) && !isNaN(gasoilDespues) && gasoilDespues <= gasoilAntes) {
+      filas.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;color:#92600a;">
+        <span>⛽ Gasoil</span><span>${gasoilAntes}% → ${gasoilDespues}%</span>
+      </div>`);
+    }
+    if (!isNaN(adblueAntes) && !isNaN(adblueDespues) && adblueDespues <= adblueAntes) {
+      filas.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;color:#1d4ed8;">
+        <span>🧪 AdBlue</span><span>${adblueAntes}% → ${adblueDespues}%</span>
+      </div>`);
+    }
+
+    overlay = document.createElement('div');
+    overlay.id = 'confirmar-nivel-menor-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5500;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:30px 32px;width:380px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Nivel igual o inferior al registrado al entregar</div>
+        <div style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:16px;">
+          Has indicado un nivel igual o menor al que ya teníamos anotado cuando se entregó la tarjeta. Revisa los datos antes de continuar:
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">${filas.join('')}</div>
+        <div style="display:flex;justify-content:center;gap:10px;">
+          <button id="btn-nivel-menor-cancelar"
+            style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;transition:background .15s;"
+            onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='#f4f5f8'">Revisar</button>
+          <button id="btn-nivel-menor-continuar"
+            style="padding:10px 26px;background:#e8a23d;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(232,162,61,0.35);transition:background .15s;"
+            onmouseover="this.style.background='#c8821d'" onmouseout="this.style.background='#e8a23d'">Sí, continuar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    document.getElementById('btn-nivel-menor-cancelar').onclick = () => { overlay.remove(); resolve(false); };
+    document.getElementById('btn-nivel-menor-continuar').onclick = () => { overlay.remove(); resolve(true); };
+  });
+}
+
 // Muestra un modal preguntando si se quiere imprimir el informe PDF del repostaje
 function preguntarImprimirInformeRepostaje(repo) {
   let overlay = document.getElementById('confirmar-imprimir-repostaje-overlay');
@@ -5688,6 +5734,22 @@ async function confirmarDevolucionDirecta() {
   if (gasoilDespues === '' || adblueDespues === '') {
     mostrarToast('Indica los depósitos después de repostar', 'error');
     return;
+  }
+
+  // Aviso si el nivel indicado es menor al registrado al entregar la tarjeta
+  const gAntesNum = parseFloat(repo.gasoil_antes);
+  const aAntesNum = parseFloat(repo.adblue_antes);
+  const gDespuesNum = parseFloat(gasoilDespues);
+  const aDespuesNum = parseFloat(adblueDespues);
+  const hayNivelMenor =
+    (!isNaN(gAntesNum) && !isNaN(gDespuesNum) && gDespuesNum <= gAntesNum) ||
+    (!isNaN(aAntesNum) && !isNaN(aDespuesNum) && aDespuesNum <= aAntesNum);
+  if (hayNivelMenor) {
+    const continuar = await preguntarNivelMenorQueAntes({
+      gasoilAntes: gAntesNum, gasoilDespues: gDespuesNum,
+      adblueAntes: aAntesNum, adblueDespues: aDespuesNum
+    });
+    if (!continuar) return;
   }
 
   const ahora = new Date();
@@ -5796,10 +5858,27 @@ async function confirmarDevolucionRepostaje(id, matricula) {
     return;
   }
 
+  const rowEl = document.getElementById(`rp-row-${id}`);
+
+  // Aviso si el nivel indicado es menor al registrado al entregar la tarjeta
+  const gAntesNum = rowEl ? parseFloat(rowEl.dataset.gasoilAntes) : NaN;
+  const aAntesNum = rowEl ? parseFloat(rowEl.dataset.adblueAntes) : NaN;
+  const gDespuesNum = parseFloat(gasoilDespues);
+  const aDespuesNum = parseFloat(adblueDespues);
+  const hayNivelMenor =
+    (!isNaN(gAntesNum) && !isNaN(gDespuesNum) && gDespuesNum <= gAntesNum) ||
+    (!isNaN(aAntesNum) && !isNaN(aDespuesNum) && aDespuesNum <= aAntesNum);
+  if (hayNivelMenor) {
+    const continuar = await preguntarNivelMenorQueAntes({
+      gasoilAntes: gAntesNum, gasoilDespues: gDespuesNum,
+      adblueAntes: aAntesNum, adblueDespues: aDespuesNum
+    });
+    if (!continuar) return;
+  }
+
   const ahora = new Date();
   const hora  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-  const rowEl = document.getElementById(`rp-row-${id}`);
   const btn   = rowEl ? rowEl.querySelector('.btn-confirmar-repo') : null;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
 

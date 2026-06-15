@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.7.3">
+  <meta name="app-version" content="2.7.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3466,9 +3466,16 @@ async function syncSilencioso() {
     }
 
     // ── Cada 3 ciclos (~15s) sincronizar repostajes pendientes ──
+    let hayNovedadesRepostaje = false;
     if (_syncCiclo === 1 || _syncCiclo % 3 === 0) {
+      const pendientesAntes = JSON.stringify(_repostajesPendientesMat);
+      const fechaAntes      = JSON.stringify(_repostajesFechaMat);
       await sincronizarRepostajesPendientes();
-    await sincronizarRepostajesFecha();
+      await sincronizarRepostajesFecha();
+      if (JSON.stringify(_repostajesPendientesMat) !== pendientesAntes ||
+          JSON.stringify(_repostajesFechaMat)      !== fechaAntes) {
+        hayNovedadesRepostaje = true;
+      }
     }
 
     // ── Sincronizar órdenes impresas cada 15s ──
@@ -3476,6 +3483,11 @@ async function syncSilencioso() {
     if (ahora - _ultimoSyncOrdenes > 15000) {
       _ultimoSyncOrdenes = ahora;
       await sincronizarOrdenesImpresas();
+    }
+
+    if (hayNovedadesRepostaje) {
+      renderTabla();
+      actualizarBloqueoCuadrante();
     }
 
     const url = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;

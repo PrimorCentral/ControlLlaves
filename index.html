@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.7.2">
+  <meta name="app-version" content="2.7.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -5821,6 +5821,23 @@ async function confirmarDevolucionDirecta() {
     if (json.ok) {
       const msgEl = document.getElementById('devdir-progreso-msg');
       if (msgEl) msgEl.innerHTML = 'Sincronizando repostajes…<br>Un momento.';
+
+      // Actualizar mapas locales al instante (no esperar a que Sheets refleje el cambio)
+      const matKey = (repo.matricula || '').trim().toUpperCase();
+      const repoCompletoInmediato = {
+        ...repo,
+        id:              repoId,
+        hora_devolucion: hora,
+        gasoil_despues:  gasoilDespues,
+        adblue_despues:  adblueDespues,
+        resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
+      };
+      if (matKey) {
+        delete _repostajesPendientesMat[matKey];
+        _repostajesFechaMat[matKey] = repoCompletoInmediato;
+      }
+      renderTabla();
+
       await sincronizarRepostajesPendientes();
       await sincronizarRepostajesFecha();
       if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
@@ -5829,13 +5846,7 @@ async function confirmarDevolucionDirecta() {
       mostrarToast(`✓ Tarjeta GASOIL de ${repo.matricula} devuelta — ${hora}`, 'success');
 
       // Preguntar si se quiere imprimir el informe de repostaje
-      const repoCompleto = {
-        ...repo,
-        hora_devolucion: hora,
-        gasoil_despues:  gasoilDespues,
-        adblue_despues:  adblueDespues,
-        resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
-      };
+      const repoCompleto = repoCompletoInmediato;
       preguntarImprimirInformeRepostaje(repoCompleto);
     } else {
       document.body.removeChild(modalProgreso);
@@ -5916,6 +5927,24 @@ async function confirmarDevolucionRepostaje(id, matricula) {
     if (json.ok) {
       const msgEl = document.getElementById('repo-devol-progreso-msg');
       if (msgEl) msgEl.innerHTML = 'Sincronizando repostajes…<br>Un momento.';
+
+      // Actualizar mapas locales al instante (no esperar a que Sheets refleje el cambio)
+      const matKey = (matricula || '').trim().toUpperCase();
+      if (matKey) {
+        const previo = _repostajesPendientesMat[matKey] || {};
+        _repostajesFechaMat[matKey] = {
+          ...previo,
+          id,
+          matricula,
+          hora_devolucion: hora,
+          gasoil_despues:  gasoilDespues,
+          adblue_despues:  adblueDespues,
+          resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
+        };
+        delete _repostajesPendientesMat[matKey];
+      }
+      renderTabla();
+
       await sincronizarRepostajesPendientes();
       await sincronizarRepostajesFecha();
       if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';

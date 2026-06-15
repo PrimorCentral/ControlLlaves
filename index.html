@@ -6154,6 +6154,7 @@ let _heartbeatInterval = null;
 /** Envía un heartbeat al Apps Script para registrar que este usuario sigue activo */
 async function enviarHeartbeat() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
+  if (document.hidden) return;
   try {
     const params = new URLSearchParams({
       accion:      'registrarPresencia',
@@ -6183,7 +6184,7 @@ async function enviarDesconexion() {
 function iniciarHeartbeat() {
   detenerHeartbeat();
   enviarHeartbeat(); // inmediato al login
-  _heartbeatInterval = setInterval(enviarHeartbeat, 30_000);
+  _heartbeatInterval = setInterval(enviarHeartbeat, 60_000);
 }
 
 function detenerHeartbeat() {

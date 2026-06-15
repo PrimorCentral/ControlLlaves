@@ -2061,13 +2061,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Turno automático según hora ──────────────────────────────────────────
-  // MAÑANA: 04:00 – 12:30   |   TARDE: 12:31 – 22:00
-  const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // minutos desde medianoche
-  const esTarde = horaActual >= (12 * 60 + 31) && horaActual <= (22 * 60);
-  turnoActual = esTarde ? 'TARDE' : 'MANANA';
-  document.querySelectorAll('.turno-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.turno === turnoActual);
-  });
+  // MAÑANA: 01:00 – 13:30   |   TARDE: 13:31 – 23:59
+const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // minutos desde medianoche
+const esTarde = horaActual >= (13 * 60 + 31) && horaActual <= (23 * 60 + 59);
+turnoActual = esTarde ? 'TARDE' : 'MANANA';
+document.querySelectorAll('.turno-btn').forEach(b => {
+  b.classList.toggle('active', b.dataset.turno === turnoActual);
+});
 
   actualizarHeader();
   actualizarBloqueoCuadrante();

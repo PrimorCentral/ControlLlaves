@@ -7398,14 +7398,12 @@ function imprimirCuadrante() {
     ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
     : fechaActual;
 
-  // Recoger solo vehículos con operario asignado
   const filas = [];
   GRUPOS.forEach(g => {
     g.vehiculos.forEach(v => {
       if (v.archivado) return;
       const d = getDato(v.matricula);
       if (!d.operario || !d.operario.trim()) return;
-
       const reasignaciones = d._reasignaciones || [];
       filas.push({ v, d, reasignaciones });
     });
@@ -7416,38 +7414,40 @@ function imprimirCuadrante() {
     return;
   }
 
+  const vacio = '-';
+
   const filasTbody = filas.map(({ v, d, reasignaciones }) => {
     const tieneIncid = d.incidencias && d.incidencias.trim();
     const incidBadge = tieneIncid
-      ? `<span style="color:#c47d00;font-weight:800;">⚠️ Sí</span>`
-      : `<span style="color:#27ae60;font-weight:700;">—</span>`;
+      ? `<span style="color:#c47d00;font-weight:800;">&#9888; Si</span>`
+      : `<span style="color:#aaa;">-</span>`;
 
     let reasigHtml = '';
     if (reasignaciones.length > 0) {
       reasigHtml = reasignaciones.map(r => `
-  <tr style="background:#fff8f0;font-size:9px;color:#92600a;">
-    <td style="padding:4px 8px;border:1px solid #fde68a;font-size:9px;color:#6b7a94;font-style:italic;">
-      ↺ Conductor anterior
-    </td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.operario||'—')}</td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_entrega||'—')}</td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(fmtHora(r.hora_entrega)||'—')}</td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_recibe||'—')}</td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(fmtHora(r.hora_reasignacion)||'—')}</td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
-    <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
-  </tr>`).join('');
+        <tr style="background:#fff8f0;font-size:9px;color:#92600a;">
+          <td style="padding:4px 8px;border:1px solid #fde68a;font-style:italic;color:#6b7a94;">
+            &#8635; Conductor anterior
+          </td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.operario||vacio)}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_entrega||vacio)}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(fmtHora(r.hora_entrega)||vacio)}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_recibe||vacio)}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(fmtHora(r.hora_reasignacion)||vacio)}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">-</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">-</td>
+        </tr>`).join('');
     }
 
     return `
       <tr>
         <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:800;font-size:11px;">${esc(v.matricula)}</td>
-        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.operario||'—')}</td>
-        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.resp_entrega||'—')}</td>
-        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.hora_entrega||'—')}</td>
-        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.resp_recibe||'—')}</td>
-        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.hora_devolucion||'—')}</td>
-        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.num_tarjeta||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.operario||vacio)}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.resp_entrega||vacio)}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.hora_entrega||vacio)}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.resp_recibe||vacio)}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.hora_devolucion||vacio)}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.num_tarjeta||vacio)}</td>
         <td style="padding:6px 8px;border:1px solid #dde1ea;text-align:center;">${incidBadge}</td>
       </tr>
       ${reasigHtml}`;
@@ -7457,8 +7457,8 @@ function imprimirCuadrante() {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>Cuadrante ${turnoLabel} · ${fechaActual}</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Cuadrante ${turnoLabel} - ${fechaActual}</title>
   <style>
     @page { size: A4 landscape; margin: 14mm 12mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -7472,11 +7472,10 @@ function imprimirCuadrante() {
     thead th {
       background: #1a1a2e !important; color: #fff; font-size: 10px;
       font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
-      padding: 8px 8px; text-align: left; border: 1px solid #2a2a4e;
+      padding: 8px; text-align: left; border: 1px solid #2a2a4e;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     tbody tr:nth-child(even) { background: #f8f9fc; }
-    tbody tr:hover { background: #f0f4ff; }
     .footer { margin-top: 14px; font-size: 9px; color: #b0bac8; text-align: right; }
     .badge-total { display: inline-block; background: #e84545; color: white; border-radius: 6px; padding: 2px 10px; font-size: 11px; font-weight: 800; margin-left: 8px; }
   </style>
@@ -7484,24 +7483,24 @@ function imprimirCuadrante() {
 <body>
   <div class="header">
     <div>
-      <div class="header-title">🔑 Cuadrante de Flota · Primor <span class="badge-total">${filas.length} vehículos</span></div>
-      <div class="header-sub">${fechaLabel} &nbsp;·&nbsp; Turno ${turnoLabel}</div>
+      <div class="header-title">&#128273; Cuadrante de Flota - Primor <span class="badge-total">${filas.length} vehiculos</span></div>
+      <div class="header-sub">${fechaLabel} - Turno ${turnoLabel}</div>
     </div>
     <div class="header-meta">
-      <strong>Gestión de Flota</strong>
+      <strong>Gestion de Flota</strong>
       Impreso: ${new Date().toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
     </div>
   </div>
   <table>
     <thead>
       <tr>
-        <th>Matrícula</th>
+        <th>Matricula</th>
         <th>Operario</th>
         <th>Resp. Entrega</th>
         <th>Hora Entrega</th>
         <th>Resp. Recibe</th>
-        <th>Hora Devolución</th>
-        <th>Nº Tarjeta</th>
+        <th>Hora Devolucion</th>
+        <th>Num. Tarjeta</th>
         <th>Incidencia</th>
       </tr>
     </thead>
@@ -7509,7 +7508,7 @@ function imprimirCuadrante() {
       ${filasTbody}
     </tbody>
   </table>
-  <div class="footer">Gestión de Flota · Primor &nbsp;·&nbsp; Documento generado automáticamente</div>
+  <div class="footer">Gestion de Flota - Primor - Documento generado automaticamente</div>
 </body>
 </html>`;
 

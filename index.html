@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.7.6">
+  <meta name="app-version" content="2.7.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4777,6 +4777,16 @@ function poblarSelectsMatricula() {
   });
 }
 
+// ── Trunca un texto con "…" para que quepa en un ancho dado (evita solapes entre filas) ──
+function truncarTexto(doc, texto, maxW) {
+  if (doc.getTextWidth(texto) <= maxW) return texto;
+  let truncado = texto;
+  while (truncado.length > 1 && doc.getTextWidth(truncado + '…') > maxW) {
+    truncado = truncado.slice(0, -1);
+  }
+  return truncado + '…';
+}
+
 // ── Exportar PDF visual para cada pestaña ───────────────────────────────────
 function exportarPDF(tipo) {
   const { jsPDF } = window.jspdf;
@@ -4963,7 +4973,7 @@ function exportarPDF(tipo) {
       } else {
         doc.setTextColor(30, 35, 55);
       }
-      doc.text(String(val), x + 2, y + rowH - 1.8, { maxWidth: cw - 3 });
+      doc.text(truncarTexto(doc, String(val), cw - 3), x + 2, y + rowH - 1.8);
       x += cw;
     });
     y += rowH;

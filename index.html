@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.7.4">
+  <meta name="app-version" content="2.7.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1883,6 +1883,26 @@
 
         </div>
       </div>
+
+      <!-- TICKET: referencia e importe -->
+      <div style="background:#f7f8fa;border:1.5px solid #dde1e8;border-radius:0 10px 10px 0;border-left:4px solid #8899aa;padding:14px 16px;margin-top:12px;">
+        <div style="font-size:10px;font-weight:800;color:#556;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">🧾 Ticket de repostaje</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Referencia ticket</label>
+            <input type="text" id="devdir-ticket-ref" placeholder="Nº de ticket"
+              style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;transition:border-color .15s;"
+              onfocus="this.style.borderColor='#e8a23d'" onblur="this.style.borderColor='#dde1e8'">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Importe €</label>
+            <input type="number" id="devdir-ticket-importe" placeholder="0.00" min="0" step="0.01" inputmode="decimal"
+              style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;transition:border-color .15s;"
+              onfocus="this.style.borderColor='#e8a23d'" onblur="this.style.borderColor='#dde1e8'">
+          </div>
+        </div>
+      </div>
+
     </div>
     <!-- PIE -->
     <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 26px;border-top:1px solid #f0f2f5;">
@@ -5548,6 +5568,14 @@ function renderListaRepostajesPendientes(filas) {
           <label>AdBlue después (%)</label>
           <input type="number" min="0" max="100" placeholder="0-100" id="rp-adblue-${esc(f.id)}">
         </div>
+        <div class="repo-field">
+          <label>Referencia ticket</label>
+          <input type="text" placeholder="Nº de ticket" id="rp-ticket-ref-${esc(f.id)}">
+        </div>
+        <div class="repo-field">
+          <label>Importe €</label>
+          <input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" id="rp-ticket-importe-${esc(f.id)}">
+        </div>
         <button class="btn-confirmar-repo" onclick="confirmarDevolucionRepostaje('${esc(f.id)}','${esc(f.matricula)}')">✓ Confirmar devolución</button>
       </div>
     </div>`).join('');
@@ -5642,6 +5670,8 @@ function abrirDevolucionDirecta(repo) {
 
   document.getElementById('devdir-gasoil').value = '';
   document.getElementById('devdir-adblue').value = '';
+  document.getElementById('devdir-ticket-ref').value = '';
+  document.getElementById('devdir-ticket-importe').value = '';
   // Resetear dibujos gasoil
   const dneedle = document.getElementById('needle-dev-gasoil');
   const darcFill = document.getElementById('arc-fill-dev-gasoil');
@@ -5742,6 +5772,8 @@ async function confirmarDevolucionDirecta() {
 
   const gasoilDespues = document.getElementById('devdir-gasoil').value;
   const adblueDespues = document.getElementById('devdir-adblue').value;
+  const ticketRef     = document.getElementById('devdir-ticket-ref').value.trim();
+  const ticketImporte = document.getElementById('devdir-ticket-importe').value;
 
   if (gasoilDespues === '' || adblueDespues === '') {
     mostrarToast('Indica los depósitos después de repostar', 'error');
@@ -5825,6 +5857,8 @@ async function confirmarDevolucionDirecta() {
         hora_devolucion: hora,
         gasoil_despues:  gasoilDespues,
         adblue_despues:  adblueDespues,
+        ticket_ref:      ticketRef,
+        ticket_importe:  ticketImporte,
         resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
       }}),
       redirect: 'follow'
@@ -5842,6 +5876,8 @@ async function confirmarDevolucionDirecta() {
         hora_devolucion: hora,
         gasoil_despues:  gasoilDespues,
         adblue_despues:  adblueDespues,
+        ticket_ref:      ticketRef,
+        ticket_importe:  ticketImporte,
         resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
       };
       if (matKey) {
@@ -5875,6 +5911,8 @@ async function confirmarDevolucionRepostaje(id, matricula) {
 
   const gasoilDespues = document.getElementById(`rp-gasoil-${id}`).value;
   const adblueDespues = document.getElementById(`rp-adblue-${id}`).value;
+  const ticketRef     = document.getElementById(`rp-ticket-ref-${id}`).value.trim();
+  const ticketImporte = document.getElementById(`rp-ticket-importe-${id}`).value;
 
   if (gasoilDespues === '' || adblueDespues === '') {
     mostrarToast('Indica los depósitos después de repostar', 'error');
@@ -5931,6 +5969,8 @@ async function confirmarDevolucionRepostaje(id, matricula) {
         hora_devolucion: hora,
         gasoil_despues:  gasoilDespues,
         adblue_despues:  adblueDespues,
+        ticket_ref:      ticketRef,
+        ticket_importe:  ticketImporte,
         resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
       }}),
       redirect: 'follow'
@@ -5951,6 +5991,8 @@ async function confirmarDevolucionRepostaje(id, matricula) {
           hora_devolucion: hora,
           gasoil_despues:  gasoilDespues,
           adblue_despues:  adblueDespues,
+          ticket_ref:      ticketRef,
+          ticket_importe:  ticketImporte,
           resp_recibe:     usuarioActual.nombre || usuarioActual.numUsuario,
         };
         delete _repostajesPendientesMat[matKey];

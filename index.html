@@ -962,7 +962,7 @@
 
   <div class="sb-label">Acciones</div>
   <button class="btn-action btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
-  <button class="btn-action btn-secondary" onclick="window.print()">🖨️ Imprimir cuadrante</button>
+  <button class="btn-action btn-secondary" onclick="imprimirCuadrante()">🖨️ Imprimir cuadrante</button>
   <button class="btn-action btn-secondary" onclick="if(usuarioActual) cargarCuadrante()">↺ Recargar</button>
 
 
@@ -7387,6 +7387,134 @@ async function eliminarIncidencia(idx) {
       document.body.removeChild(overlayBorrando);
     }
   });
+}
+  // ════════════════════════════════════════════════════════════════════════════
+// IMPRIMIR CUADRANTE — solo vehículos asignados, horizontal
+// ════════════════════════════════════════════════════════════════════════════
+function imprimirCuadrante() {
+  const turnoLabel = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
+  const fechaLabel = fechaActual
+    ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    : fechaActual;
+
+  // Recoger solo vehículos con operario asignado
+  const filas = [];
+  GRUPOS.forEach(g => {
+    g.vehiculos.forEach(v => {
+      if (v.archivado) return;
+      const d = getDato(v.matricula);
+      if (!d.operario || !d.operario.trim()) return;
+
+      const reasignaciones = d._reasignaciones || [];
+      filas.push({ v, d, reasignaciones });
+    });
+  });
+
+  if (filas.length === 0) {
+    mostrarToast('No hay vehículos asignados para imprimir', 'info');
+    return;
+  }
+
+  const filasTbody = filas.map(({ v, d, reasignaciones }) => {
+    const tieneIncid = d.incidencias && d.incidencias.trim();
+    const incidBadge = tieneIncid
+      ? `<span style="color:#c47d00;font-weight:800;">⚠️ Sí</span>`
+      : `<span style="color:#27ae60;font-weight:700;">—</span>`;
+
+    let reasigHtml = '';
+    if (reasignaciones.length > 0) {
+      reasigHtml = reasignaciones.map(r => `
+        <tr style="background:#fff8f0;font-size:9px;color:#92600a;">
+          <td style="padding:4px 8px;border:1px solid #fde68a;">
+            <span style="font-size:9px;font-weight:700;color:#b45309;">↺ Reasig.</span>
+          </td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.operario||'—')}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_entrega||'—')}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.hora_entrega||'—')}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.resp_recibe||'—')}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">${esc(r.hora_reasignacion||'—')}</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
+          <td style="padding:4px 8px;border:1px solid #fde68a;">—</td>
+        </tr>`).join('');
+    }
+
+    return `
+      <tr>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:800;font-size:11px;">${esc(v.matricula)}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.operario||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.resp_entrega||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.hora_entrega||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.resp_recibe||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;font-weight:700;">${esc(d.hora_devolucion||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;">${esc(d.num_tarjeta||'—')}</td>
+        <td style="padding:6px 8px;border:1px solid #dde1ea;text-align:center;">${incidBadge}</td>
+      </tr>
+      ${reasigHtml}`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cuadrante ${turnoLabel} · ${fechaActual}</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e; }
+    .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; border-bottom: 3px solid #e84545; padding-bottom: 10px; }
+    .header-title { font-size: 20px; font-weight: 900; color: #1a1a2e; letter-spacing: 0.5px; }
+    .header-sub { font-size: 12px; color: #6b7a94; margin-top: 3px; text-transform: capitalize; }
+    .header-meta { text-align: right; font-size: 10px; color: #8899aa; }
+    .header-meta strong { display: block; font-size: 13px; color: #1a1a2e; font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #1a1a2e !important; color: #fff; font-size: 10px;
+      font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+      padding: 8px 8px; text-align: left; border: 1px solid #2a2a4e;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    tbody tr:nth-child(even) { background: #f8f9fc; }
+    tbody tr:hover { background: #f0f4ff; }
+    .footer { margin-top: 14px; font-size: 9px; color: #b0bac8; text-align: right; }
+    .badge-total { display: inline-block; background: #e84545; color: white; border-radius: 6px; padding: 2px 10px; font-size: 11px; font-weight: 800; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="header-title">🔑 Cuadrante de Flota · Primor <span class="badge-total">${filas.length} vehículos</span></div>
+      <div class="header-sub">${fechaLabel} &nbsp;·&nbsp; Turno ${turnoLabel}</div>
+    </div>
+    <div class="header-meta">
+      <strong>Gestión de Flota</strong>
+      Impreso: ${new Date().toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Matrícula</th>
+        <th>Operario</th>
+        <th>Resp. Entrega</th>
+        <th>Hora Entrega</th>
+        <th>Resp. Recibe</th>
+        <th>Hora Devolución</th>
+        <th>Nº Tarjeta</th>
+        <th>Incidencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filasTbody}
+    </tbody>
+  </table>
+  <div class="footer">Gestión de Flota · Primor &nbsp;·&nbsp; Documento generado automáticamente</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=1100,height=700');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => win.print();
 }
 // La contraseña de admin por defecto es "admin123" — cámbiala en Panel Admin.
 // ════════════════════════════════════════════════════════════════════════════

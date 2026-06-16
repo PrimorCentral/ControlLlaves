@@ -2281,15 +2281,37 @@ document.addEventListener('DOMContentLoaded', () => {
   fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
   document.getElementById('fecha-input').value = fechaActual;
   document.getElementById('fecha-input').addEventListener('change', e => {
-    fechaActual = e.target.value;
-    // Si se cambia a una fecha distinta de hoy, bloquear cuadrante (requiere admin)
-    const hoyStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+    const nuevaFecha = e.target.value;
+    if (!nuevaFecha) return;
+    // Mostrar modal de selección de turno
+    const label = document.getElementById('modal-selturno-fecha-label');
+    if (label) {
+      const fechaFormateada = new Date(nuevaFecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      label.textContent = `¿Qué cuadrante quieres ver el ${fechaFormateada}?`;
+    }
+    // Guardar la fecha pendiente en una variable temporal y abrir el modal
+    window._fechaPendienteModal = nuevaFecha;
+    document.getElementById('modal-seleccionar-turno').classList.add('open');
+  });
+
+  // Función que se llama al elegir turno en el modal
+  window.elegirTurnoEnModal = function(turno) {
+    document.getElementById('modal-seleccionar-turno').classList.remove('open');
+    const nuevaFecha = window._fechaPendienteModal;
+    if (!nuevaFecha) return;
+    fechaActual = nuevaFecha;
     cuadranteDesbloqueadoPorAdmin = false;
-    _ordenesImpresas.clear(); // nueva fecha = nuevas impresiones
+    _ordenesImpresas.clear();
+    // Actualizar turno seleccionado
+    turnoActual = turno;
+    document.querySelectorAll('.turno-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.turno === turnoActual);
+    });
     actualizarHeader();
     actualizarBloqueoCuadrante();
     if (usuarioActual) cargarCuadrante();
-  });
+    window._fechaPendienteModal = null;
+  };
 
   // ── Turno automático según hora ──────────────────────────────────────────
   // MAÑANA: 01:00 – 13:30   |   TARDE: 13:31 – 23:59
@@ -8501,6 +8523,37 @@ function forzarActualizacion() {
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: SELECCIÓN DE TURNO AL CAMBIAR FECHA
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-seleccionar-turno" style="z-index:10400">
+  <div class="modal-box" style="width:360px;text-align:center;padding:32px 28px 26px;">
+    <div style="font-size:44px;margin-bottom:10px">📅</div>
+    <div style="font-size:17px;font-weight:900;color:#1a1a2e;margin-bottom:6px">Selecciona el turno</div>
+    <div style="font-size:13px;color:#8899aa;margin-bottom:24px;line-height:1.5" id="modal-selturno-fecha-label">¿Qué cuadrante quieres visualizar?</div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:8px">
+      <button id="btn-selturno-manana"
+        onclick="elegirTurnoEnModal('MANANA')"
+        style="flex:1;padding:16px 10px;background:#f0f2f5;color:#1a1a2e;border:2px solid #dde1e8;border-radius:12px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:6px;"
+        onmouseover="this.style.borderColor='#f39c12';this.style.background='#fffbf0'" onmouseout="this.style.borderColor='#dde1e8';this.style.background='#f0f2f5'">
+        <span style="font-size:26px">🌅</span>
+        <span>Mañana</span>
+      </button>
+      <button id="btn-selturno-tarde"
+        onclick="elegirTurnoEnModal('TARDE')"
+        style="flex:1;padding:16px 10px;background:#f0f2f5;color:#1a1a2e;border:2px solid #dde1e8;border-radius:12px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:6px;"
+        onmouseover="this.style.borderColor='#e84545';this.style.background='#fff5f5'" onmouseout="this.style.borderColor='#dde1e8';this.style.background='#f0f2f5'">
+        <span style="font-size:26px">🌆</span>
+        <span>Tarde</span>
+      </button>
+    </div>
+    <button onclick="document.getElementById('modal-seleccionar-turno').classList.remove('open')"
+      style="margin-top:10px;padding:9px 20px;background:transparent;color:#8899aa;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">
+      ✕ Cancelar
+    </button>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      MODAL: CONFIRMACIÓN CAMBIO DE TURNO INUSUAL

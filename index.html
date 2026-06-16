@@ -2823,9 +2823,10 @@ function mostrarInfoBloqueo(mat, motivo, bloqueado_por) {
         <div style="font-size:13px;color:#1a1a2e;line-height:1.6;">${esc(motivo || 'Sin especificar')}</div>
       </div>
       ${bloqueado_por ? `<div style="font-size:11px;color:#8899aa;margin-bottom:18px;">Bloqueado por <strong style="color:#556">${esc(bloqueado_por)}</strong></div>` : ''}
-      <button onclick="this.closest('[style]').remove()" style="width:100%;padding:12px;background:#1a1a2e;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cerrar</button>
+      <button id="btn-info-bloqueo-cerrar" style="width:100%;padding:12px;background:#1a1a2e;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cerrar</button>
     </div>`;
   document.body.appendChild(overlay);
+  overlay.querySelector('#btn-info-bloqueo-cerrar').onclick = () => document.body.removeChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
 }
 

@@ -116,6 +116,22 @@
     .user-pill-sub { font-size: 9px; color: #ccc; font-weight: 600; }
     .btn-logout { background: transparent; border: 1px solid #5a5a5a; color: #ccc; font-size: 10px; font-weight: 700; border-radius: 6px; padding: 4px 8px; cursor: pointer; transition: all 0.15s; margin-top: 2px; }
     .btn-logout:hover { border-color: #e84545; color: #e84545; }
+    /* ─── BOTONES CUADRADOS CON ICONO ─── */
+    .sb-action-btns { display: flex; gap: 7px; margin-bottom: 5px; }
+    .btn-icon-sq {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 5px; padding: 14px 6px 12px;
+      border-radius: 10px; border: 1.5px solid #5a5a5a;
+      font-family: 'Barlow', sans-serif; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+      min-height: 68px;
+    }
+    .btn-icon-sq .bsq-icon { font-size: 22px; line-height: 1; }
+    .btn-icon-sq .bsq-label { font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; line-height: 1; }
+    .btn-sq-secondary { background: #484848; color: #eee; }
+    .btn-sq-secondary:hover { background: #555; color: #fff; border-color: #888; }
+    .btn-sq-primary { background: #e84545; color: white; border-color: #e84545; }
+    .btn-sq-primary:hover { background: #c63030; border-color: #c63030; }
     /* Cuenta atrás sesión */
     .session-countdown { font-size: 9px; font-weight: 800; color: #ccc; letter-spacing: 0.5px; margin-top: 1px; transition: color 0.3s; }
     .session-countdown.warning { color: #f39c12; }
@@ -1039,9 +1055,16 @@
   <div class="divider"></div>
 
   <div class="sb-label">Acciones</div>
-  <button class="btn-action btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
-  <button class="btn-action btn-secondary" onclick="imprimirCuadrante()">🖨️ Imprimir cuadrante</button>
-  <button class="btn-action btn-secondary" onclick="if(usuarioActual) cargarCuadrante()">↺ Recargar</button>
+  <div class="sb-action-btns">
+    <button class="btn-icon-sq btn-sq-secondary" onclick="if(usuarioActual) cargarCuadrante()">
+      <span class="bsq-icon">↺</span>
+      <span class="bsq-label">Recargar</span>
+    </button>
+    <button class="btn-icon-sq btn-sq-primary" onclick="imprimirCuadrante()">
+      <span class="bsq-icon">🖨️</span>
+      <span class="bsq-label">Imprimir</span>
+    </button>
+  </div>
 
 
   <button class="btn-action btn-secondary" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;">🔐 Panel Admin</button>

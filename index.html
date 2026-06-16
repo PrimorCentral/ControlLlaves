@@ -5457,6 +5457,13 @@ function abrirModalRepostaje() {
   const pctAdblue  = document.getElementById('pct-adblue');
   if (fillAdblue) fillAdblue.setAttribute('width', '0');
   if (pctAdblue)  pctAdblue.textContent = '—';
+  // Resetear checkbox "Sin AdBlue"
+  const chkSinAdblue = document.getElementById('chk-sin-adblue');
+  if (chkSinAdblue) chkSinAdblue.checked = false;
+  const wrapGauge = document.getElementById('wrap-adblue-gauge');
+  const wrapBadge = document.getElementById('wrap-sin-adblue');
+  if (wrapGauge) wrapGauge.style.display = 'block';
+  if (wrapBadge) wrapBadge.style.display = 'none';
   document.getElementById('repo-chofer').value         = '';
 
   // Resetear botón por si quedó en estado de carga
@@ -5497,7 +5504,7 @@ async function enviarRegistroRepostaje() {
   if (!tarjeta)     { const sel = document.getElementById('repo-tarjeta'); sel.style.borderColor='#e84545'; sel.style.boxShadow='0 0 0 3px rgba(232,69,69,0.15)'; mostrarToast('Selecciona el número de tarjeta', 'error'); sel.focus(); setTimeout(()=>{sel.style.borderColor='#dde1ea';sel.style.boxShadow='none';},2500); return; }
   if (!chofer)      { mostrarToast('Indica el usuario/chofer', 'error'); return; }
   if (km === '')    { mostrarToast('Indica el kilometraje', 'error'); return; }
-  if (gasoilAntes === '' || (adblueAntes === '' && adblueAntes !== 'N/A')) {
+  if (gasoilAntes === '' || adblueAntes === '') {
     mostrarToast('Indica los depósitos antes de repostar', 'error');
     return;
   }

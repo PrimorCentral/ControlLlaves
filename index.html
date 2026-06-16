@@ -4510,12 +4510,16 @@ async function confirmarNuevoResponsable() {
     if (json.ok) {
       cerrarModalNuevoResponsable();
       mostrarToast(`✓ ${nombre} añadido`, 'success');
-      cargarDatosIniciales();
+      // Actualizar cache local inmediatamente
+      responsablesCache.push({ numUsuario: num, nombre, rol });
+      renderAdminResponsables();
+      // Recargar desde servidor en segundo plano
+      setTimeout(() => cargarResponsables(), 2000);
     } else {
       mostrarToast(json.error || 'Error al añadir', 'error');
     }
   } catch(e) {
-    mostrarToast('Error de conexión', 'error');
+    mostrarToast('Error: ' + e.message, 'error');
   } finally {
     if (btnAdd) { btnAdd.disabled = false; btnAdd.textContent = '✓ Añadir responsable'; }
   }

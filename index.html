@@ -4501,7 +4501,7 @@ async function confirmarNuevoResponsable() {
   if (!nombre) { mostrarToast('El nombre es obligatorio', 'error'); return; }
   if (!clave)  { mostrarToast('La clave es obligatoria', 'error'); return; }
   if (!rol)    { mostrarToast('El rol es obligatorio', 'error'); return; }
-  const hashClave = await sha256(clave);
+  const hashClave = await hashStr(clave);
   const btnAdd = document.querySelector('[onclick="confirmarNuevoResponsable()"]');
   if (btnAdd) { btnAdd.disabled = true; btnAdd.textContent = '⏳ Guardando…'; }
   try {

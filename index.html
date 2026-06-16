@@ -2530,9 +2530,43 @@ async function verificarConfig() {
 }
 
 function seleccionarTurno(btn) {
+  const turnoElegido = btn.dataset.turno;
+
+  // ── Comprobar si el turno elegido corresponde a la hora actual ──
+  const ahora = new Date();
+  const minutos = ahora.getHours() * 60 + ahora.getMinutes();
+  const esTardeAhora = minutos >= (13 * 60 + 31) && minutos <= (23 * 60 + 59);
+  const turnoEsperado = esTardeAhora ? 'TARDE' : 'MANANA';
+
+  if (turnoElegido !== turnoEsperado) {
+    const horaStr = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    const turnoElegidoLabel  = turnoElegido  === 'MANANA' ? 'Mañana ☀️' : 'Tarde 🌆';
+    const turnoEsperadoLabel = turnoEsperado === 'MANANA' ? 'Mañana ☀️' : 'Tarde 🌆';
+
+    document.getElementById('modal-turno-msg').innerHTML =
+      `Son las <strong>${horaStr}</strong>, el turno esperado es <strong>${turnoEsperadoLabel}</strong>.<br><br>` +
+      `¿Seguro que quieres cambiar al turno de <strong>${turnoElegidoLabel}</strong>?`;
+
+    const modal = document.getElementById('modal-confirmar-turno');
+    modal.classList.add('open');
+
+    // Asignar callback al botón de confirmar
+    const btnOk = document.getElementById('btn-confirmar-turno-ok');
+    btnOk.onclick = () => {
+      modal.classList.remove('open');
+      document.querySelectorAll('.turno-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      turnoActual = turnoElegido;
+      actualizarHeader();
+      actualizarBloqueoCuadrante();
+      if (usuarioActual) cargarCuadrante();
+    };
+    return;
+  }
+
   document.querySelectorAll('.turno-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  turnoActual = btn.dataset.turno;
+  turnoActual = turnoElegido;
   actualizarHeader();
   actualizarBloqueoCuadrante();
   if (usuarioActual) cargarCuadrante();
@@ -8220,6 +8254,28 @@ function forzarActualizacion() {
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: CONFIRMACIÓN CAMBIO DE TURNO INUSUAL
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-confirmar-turno" style="z-index:10300">
+  <div class="modal-box" style="width:360px;padding:28px 24px 22px;text-align:center;font-family:Barlow,sans-serif;">
+    <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+    <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:10px">Cambio de turno inusual</div>
+    <div style="font-size:13px;color:#556;line-height:1.7;margin-bottom:22px" id="modal-turno-msg"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="document.getElementById('modal-confirmar-turno').classList.remove('open')"
+        style="flex:1;padding:11px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer">
+        ✕ Cancelar
+      </button>
+      <button id="btn-confirmar-turno-ok"
+        style="flex:1;padding:11px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s"
+        onmouseover="this.style.background='#c63030'" onmouseout="this.style.background='#e84545'">
+        ✓ Sí, cambiar
+      </button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

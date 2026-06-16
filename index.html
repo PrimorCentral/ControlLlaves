@@ -3693,7 +3693,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -4569,6 +4569,7 @@ function eliminarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   if (!confirm(`¿Dar de baja ${v.matricula}?\n\nEl vehículo desaparecerá del cuadrante actual pero seguirá visible en los cuadrantes históricos de fechas anteriores.`)) return;
   GRUPOS[gi].vehiculos[vi].archivado = true;
+  GRUPOS[gi].vehiculos[vi].fecha_archivado = fechaActual;
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
   mostrarToast(`✓ ${v.matricula} dado de baja`, 'info');
@@ -4578,6 +4579,7 @@ function desarchivarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   if (!confirm(`¿Dar de alta ${v.matricula}?\n\nVolverá a aparecer en el cuadrante activo.`)) return;
   GRUPOS[gi].vehiculos[vi].archivado = false;
+  GRUPOS[gi].vehiculos[vi].fecha_archivado = '';
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
   mostrarToast(`✓ ${v.matricula} dado de alta`, 'success');

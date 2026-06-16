@@ -1648,41 +1648,46 @@
 
           <!-- ADBLUE: barra vertical con depósito -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <label style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:1px;text-transform:uppercase;align-self:flex-start;">AdBlue</label>
-            <div style="background:white;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 10px 8px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;"
-                 onclick="abrirSelectorAdblue(event)"
-                 onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                 onmouseout="this.style.borderColor='#bfdbfe';this.style.boxShadow='none'"
-                 title="Pulsa para seleccionar nivel">
-              <svg id="svg-adblue" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
-                <defs>
-                  <linearGradient id="grad-adblue-fill" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stop-color="#60a5fa"/>
-                    <stop offset="100%" stop-color="#1d4ed8"/>
-                  </linearGradient>
-                </defs>
-                <!-- Cuerpo barra horizontal (fondo) -->
-                <rect x="12" y="24" width="96" height="22" rx="11" fill="#e8f0fe" stroke="#bfdbfe" stroke-width="1.5"/>
-                <!-- Relleno nivel -->
-                <rect id="fill-adblue" x="12" y="24" width="0" height="22" rx="11" fill="url(#grad-adblue-fill)" style="transition:width 0.4s cubic-bezier(.34,1.2,.64,1);"/>
-                <!-- Marcas de referencia -->
-                <line x1="36" y1="20" x2="36" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
-                <line x1="60" y1="18" x2="60" y2="26" stroke="#bfdbfe" stroke-width="1.5"/>
-                <line x1="84" y1="20" x2="84" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
-                <!-- Etiquetas -->
-                <text x="9"   y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">E</text>
-                <text x="111" y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">F</text>
-                <text x="36"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">25%</text>
-                <text x="60"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">50%</text>
-                <text x="84"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">75%</text>
-                <!-- Borde encima del relleno -->
-                <rect x="12" y="24" width="96" height="22" rx="11" fill="none" stroke="#bfdbfe" stroke-width="1.5"/>
-                <!-- Label AdBlue -->
-                <text x="60" y="14" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" letter-spacing="1">ADBLUE</text>
-                <!-- Porcentaje -->
-                <text id="pct-adblue" x="60" y="38" text-anchor="middle" font-size="10" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" style="transition:opacity 0.3s;">—</text>
-              </svg>
-              <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;">
+              <label style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:1px;text-transform:uppercase;">AdBlue</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:700;color:#64748b;white-space:nowrap;" title="Marcar si el vehículo no tiene depósito de AdBlue">
+                <input type="checkbox" id="chk-sin-adblue" onchange="toggleSinAdblue(this.checked)" style="width:13px;height:13px;cursor:pointer;accent-color:#64748b;">
+                Sin AdBlue
+              </label>
+            </div>
+            <div id="wrap-adblue-gauge" style="width:100%;">
+              <div style="background:white;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 10px 8px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;box-sizing:border-box;"
+                   onclick="abrirSelectorAdblue(event)"
+                   onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                   onmouseout="this.style.borderColor='#bfdbfe';this.style.boxShadow='none'"
+                   title="Pulsa para seleccionar nivel">
+                <svg id="svg-adblue" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
+                  <defs>
+                    <linearGradient id="grad-adblue-fill" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#60a5fa"/>
+                      <stop offset="100%" stop-color="#1d4ed8"/>
+                    </linearGradient>
+                  </defs>
+                  <rect x="12" y="24" width="96" height="22" rx="11" fill="#e8f0fe" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <rect id="fill-adblue" x="12" y="24" width="0" height="22" rx="11" fill="url(#grad-adblue-fill)" style="transition:width 0.4s cubic-bezier(.34,1.2,.64,1);"/>
+                  <line x1="36" y1="20" x2="36" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <line x1="60" y1="18" x2="60" y2="26" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <line x1="84" y1="20" x2="84" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <text x="9"   y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">E</text>
+                  <text x="111" y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">F</text>
+                  <text x="36"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">25%</text>
+                  <text x="60"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">50%</text>
+                  <text x="84"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">75%</text>
+                  <rect x="12" y="24" width="96" height="22" rx="11" fill="none" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <text x="60" y="14" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" letter-spacing="1">ADBLUE</text>
+                  <text id="pct-adblue" x="60" y="38" text-anchor="middle" font-size="10" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" style="transition:opacity 0.3s;">—</text>
+                </svg>
+                <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+              </div>
+            </div>
+            <div id="wrap-sin-adblue" style="display:none;width:100%;background:#f1f5f9;border:1.5px dashed #94a3b8;border-radius:12px;padding:14px 10px;text-align:center;">
+              <div style="font-size:18px;margin-bottom:4px;">🚫</div>
+              <div style="font-size:11px;font-weight:800;color:#64748b;letter-spacing:0.5px;">Sin depósito AdBlue</div>
             </div>
             <!-- Dropdown niveles adblue -->
             <div id="dropdown-adblue" style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #bfdbfe;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.15);padding:6px 0;min-width:145px;">
@@ -5338,6 +5343,23 @@ function setGasoil(pct) {
   if (pctLabel) pctLabel.textContent = pct + '%';
 }
 
+function toggleSinAdblue(sinAdblue) {
+  const gauge = document.getElementById('wrap-adblue-gauge');
+  const badge = document.getElementById('wrap-sin-adblue');
+  const hidden = document.getElementById('repo-adblue-antes');
+  const dd = document.getElementById('dropdown-adblue');
+  if (sinAdblue) {
+    gauge.style.display = 'none';
+    badge.style.display = 'block';
+    dd.style.display = 'none';
+    hidden.value = 'N/A';
+  } else {
+    gauge.style.display = 'block';
+    badge.style.display = 'none';
+    hidden.value = '';
+  }
+}
+  
 // ── Selector de nivel ADBLUE ──────────────────────────────────────────────────
 function abrirSelectorAdblue(event) {
   event.stopPropagation();
@@ -5470,7 +5492,7 @@ async function enviarRegistroRepostaje() {
   if (!tarjeta)     { const sel = document.getElementById('repo-tarjeta'); sel.style.borderColor='#e84545'; sel.style.boxShadow='0 0 0 3px rgba(232,69,69,0.15)'; mostrarToast('Selecciona el número de tarjeta', 'error'); sel.focus(); setTimeout(()=>{sel.style.borderColor='#dde1ea';sel.style.boxShadow='none';},2500); return; }
   if (!chofer)      { mostrarToast('Indica el usuario/chofer', 'error'); return; }
   if (km === '')    { mostrarToast('Indica el kilometraje', 'error'); return; }
-  if (gasoilAntes === '' || adblueAntes === '') {
+  if (gasoilAntes === '' || (adblueAntes === '' && adblueAntes !== 'N/A')) {
     mostrarToast('Indica los depósitos antes de repostar', 'error');
     return;
   }
@@ -6844,7 +6866,7 @@ function renderTabRepostajes() {
       : '⏳';
     const gasoilCelda = `<span>${gasoilAntesTxt}</span><span style="color:#b0bac8;margin:0 3px">→</span><span style="font-weight:700">${gasoilDespuesTxt}</span>`;
     // AdBlue antes/después combinado
-    const adblueAntesTxt   = (f.adblue_antes !== '' && f.adblue_antes !== undefined) ? f.adblue_antes+'%' : '—';
+    const adblueAntesTxt   = (f.adblue_antes === 'N/A') ? 'No' : (f.adblue_antes !== '' && f.adblue_antes !== undefined) ? f.adblue_antes+'%' : '—';
     const adblueDespuesTxt = completado
       ? (f.adblue_despues !== '' && f.adblue_despues !== undefined ? f.adblue_despues+'%' : '—')
       : '⏳';
@@ -6978,7 +7000,7 @@ function _generarPDFDesdeObjeto(f) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(80, 90, 110);
-  doc.text('AdBlue: ' + (f.adblue_antes !== '' && f.adblue_antes !== undefined ? f.adblue_antes + '%' : '—'), antesX + col2W / 2, y + gaugeRowH - 3, { align: 'center' });
+  doc.text('AdBlue: ' + (f.adblue_antes === 'N/A' ? 'No' : f.adblue_antes !== '' && f.adblue_antes !== undefined ? f.adblue_antes + '%' : '—'), antesX + col2W / 2, y + gaugeRowH - 3, { align: 'center' });
 
   // Columna DESPUÉS
   const despuesX = margin + col1W + col2W;

@@ -429,6 +429,7 @@
 
     /* ─── MODALES BASE ─── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 2000; display: none; align-items: center; justify-content: center; }
+    .modal-overlay .modal-box { background: white; border-radius: 16px; padding: 28px 24px 22px; box-shadow: 0 24px 64px rgba(0,0,0,0.4); font-family: 'Barlow', sans-serif; }
     #modal-login-admin { z-index: 10500; } /* Por encima de pantalla-login (9999) y splash (10000) */
     .modal-overlay.open { display: flex; }
 
@@ -8259,7 +8260,7 @@ function forzarActualizacion() {
      MODAL: CONFIRMACIÓN CAMBIO DE TURNO INUSUAL
 ═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-confirmar-turno" style="z-index:10300">
-  <div class="modal-box" style="width:360px;padding:28px 24px 22px;text-align:center;font-family:Barlow,sans-serif;">
+  <div class="modal-box" style="width:360px;text-align:center;">
     <div style="font-size:40px;margin-bottom:12px">⚠️</div>
     <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:10px">Cambio de turno inusual</div>
     <div style="font-size:13px;color:#556;line-height:1.7;margin-bottom:22px" id="modal-turno-msg"></div>

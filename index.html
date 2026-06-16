@@ -4875,9 +4875,25 @@ function exportarPDF(tipo) {
   const [r, g, b] = cfg.color;
   const [ar, ag, ab] = [cfg.accentR, cfg.accentG, cfg.accentB];
 
-  const ahora = new Date();
+   const ahora = new Date();
   const fechaStr = ahora.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
   const horaStr  = ahora.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+
+  // ── Rango de fechas del filtro de búsqueda ──────────────────────────────
+  const idsFiltroFecha = {
+    historial:      { desde: 'hist-fecha-desde',     hasta: 'hist-fecha-hasta'     },
+    log:            { desde: 'log-fecha-desde',      hasta: 'log-fecha-hasta'      },
+    reasignaciones: { desde: 'reasig-fecha-desde',    hasta: 'reasig-fecha-hasta'   },
+    incidencias:    { desde: 'incid-fecha-desde',     hasta: 'incid-fecha-hasta'    },
+    repostajes:     { desde: 'repo-tab-fecha-desde',  hasta: 'repo-tab-fecha-hasta' },
+  };
+  const idsF     = idsFiltroFecha[tipo];
+  const desdeISO = idsF ? document.getElementById(idsF.desde).value : '';
+  const hastaISO = idsF ? document.getElementById(idsF.hasta).value : '';
+  const fmtFecha = iso => iso ? iso.split('-').reverse().join('/') : '';
+  const filtroFechaStr = (desdeISO && hastaISO)
+    ? `Del ${fmtFecha(desdeISO)} al ${fmtFecha(hastaISO)}`
+    : 'Todos los registros';
 
   let pageNum = 1;
 
@@ -4893,8 +4909,12 @@ function exportarPDF(tipo) {
     doc.setFontSize(13);
     doc.setTextColor(255, 255, 255);
     doc.text(cfg.titulo, margin + 4, 14);
-    // Fecha generación
+    // Rango de fechas filtrado, centrado en el hueco del medio
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(205, 212, 230);
+    doc.text(filtroFechaStr, pageW / 2, 14, { align: 'center' });
+    // Fecha generación
     doc.setFontSize(8);
     doc.setTextColor(180, 190, 210);
     doc.text(`Generado el ${fechaStr} a las ${horaStr}  ·  ${filas.length} registro(s)`, pageW - margin, 10, { align: 'right' });

@@ -118,6 +118,7 @@
     .btn-logout:hover { border-color: #e84545; color: #e84545; }
     /* ─── BOTONES CUADRADOS CON ICONO ─── */
     .sb-action-btns { display: flex; gap: 7px; margin-bottom: 5px; }
+    .sb-action-btns .btn-icon-sq { flex: 1; max-width: calc(50% - 4px); }
     .btn-icon-sq {
       flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 5px; padding: 14px 6px 12px;
@@ -1072,13 +1073,15 @@
       <span class="bsq-icon">↺</span>
       <span class="bsq-label">Recargar</span>
     </button>
-    <button class="btn-icon-sq btn-sq-primary" onclick="imprimirCuadrante()">
+    <button class="btn-icon-sq btn-sq-secondary" onclick="imprimirCuadrante()">
       <span class="bsq-icon">🖨️</span>
-      <span class="bsq-label">Imprimir</span>
+      <span class="bsq-label">Imprimir cuadrante</span>
     </button>
+  </div>
+  <div class="sb-action-btns">
     <button class="btn-icon-sq btn-sq-secondary" onclick="abrirModalBloqueoRapido()" title="Bloquear un vehículo">
       <span class="bsq-icon">⛔</span>
-      <span class="bsq-label">Bloquear</span>
+      <span class="bsq-label">Bloquear vehículo</span>
     </button>
   </div>
 

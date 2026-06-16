@@ -1844,35 +1844,40 @@
           <!-- ADBLUE después: barra -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
             <label style="font-size:10px;font-weight:700;color:#1d4ed8;letter-spacing:1px;text-transform:uppercase;align-self:flex-start;">AdBlue</label>
-            <div style="background:white;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 10px 8px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;"
-                 onclick="abrirSelectorDevAdblue(event)"
-                 onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
-                 onmouseout="this.style.borderColor='#bfdbfe';this.style.boxShadow='none'"
-                 title="Pulsa para seleccionar nivel">
-              <svg id="svg-dev-adblue" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
-                <defs>
-                  <linearGradient id="grad-dev-adblue-fill" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stop-color="#60a5fa"/>
-                    <stop offset="100%" stop-color="#1d4ed8"/>
-                  </linearGradient>
-                </defs>
-                <rect x="12" y="24" width="96" height="22" rx="11" fill="#e8f0fe" stroke="#bfdbfe" stroke-width="1.5"/>
-                <!-- Barra fantasma "antes" en gris clarito -->
-                <rect id="fill-antes-dev-adblue" x="12" y="24" width="0" height="22" rx="11" fill="#c8cdd6" opacity="0.55"/>
-                <rect id="fill-dev-adblue" x="12" y="24" width="0" height="22" rx="11" fill="url(#grad-dev-adblue-fill)" style="transition:width 0.4s cubic-bezier(.34,1.2,.64,1);"/>
-                <line x1="36" y1="20" x2="36" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
-                <line x1="60" y1="18" x2="60" y2="26" stroke="#bfdbfe" stroke-width="1.5"/>
-                <line x1="84" y1="20" x2="84" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
-                <text x="9"   y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">E</text>
-                <text x="111" y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">F</text>
-                <text x="36"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">25%</text>
-                <text x="60"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">50%</text>
-                <text x="84"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">75%</text>
-                <rect x="12" y="24" width="96" height="22" rx="11" fill="none" stroke="#bfdbfe" stroke-width="1.5"/>
-                <text x="60" y="14" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" letter-spacing="1">ADBLUE</text>
-                <text id="pct-dev-adblue" x="60" y="38" text-anchor="middle" font-size="10" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" style="transition:opacity 0.3s;">—</text>
-              </svg>
-              <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+            <div id="wrap-dev-adblue-gauge" style="width:100%;">
+              <div style="background:white;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 10px 8px;width:100%;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s,box-shadow .2s;box-sizing:border-box;"
+                   onclick="abrirSelectorDevAdblue(event)"
+                   onmouseover="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+                   onmouseout="this.style.borderColor='#bfdbfe';this.style.boxShadow='none'"
+                   title="Pulsa para seleccionar nivel">
+                <svg id="svg-dev-adblue" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:130px;display:block;">
+                  <defs>
+                    <linearGradient id="grad-dev-adblue-fill" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#60a5fa"/>
+                      <stop offset="100%" stop-color="#1d4ed8"/>
+                    </linearGradient>
+                  </defs>
+                  <rect x="12" y="24" width="96" height="22" rx="11" fill="#e8f0fe" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <rect id="fill-antes-dev-adblue" x="12" y="24" width="0" height="22" rx="11" fill="#c8cdd6" opacity="0.55"/>
+                  <rect id="fill-dev-adblue" x="12" y="24" width="0" height="22" rx="11" fill="url(#grad-dev-adblue-fill)" style="transition:width 0.4s cubic-bezier(.34,1.2,.64,1);"/>
+                  <line x1="36" y1="20" x2="36" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <line x1="60" y1="18" x2="60" y2="26" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <line x1="84" y1="20" x2="84" y2="28" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <text x="9"   y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">E</text>
+                  <text x="111" y="55" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="800">F</text>
+                  <text x="36"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">25%</text>
+                  <text x="60"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">50%</text>
+                  <text x="84"  y="55" text-anchor="middle" font-size="7" fill="#60a5fa" font-family="Barlow,sans-serif" font-weight="700">75%</text>
+                  <rect x="12" y="24" width="96" height="22" rx="11" fill="none" stroke="#bfdbfe" stroke-width="1.5"/>
+                  <text x="60" y="14" text-anchor="middle" font-size="8" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" letter-spacing="1">ADBLUE</text>
+                  <text id="pct-dev-adblue" x="60" y="38" text-anchor="middle" font-size="10" fill="#1d4ed8" font-family="Barlow,sans-serif" font-weight="900" style="transition:opacity 0.3s;">—</text>
+                </svg>
+                <div style="font-size:9px;color:#1d4ed8;font-weight:700;margin-top:2px;">Pulsa para marcar nivel</div>
+              </div>
+            </div>
+            <div id="wrap-dev-sin-adblue" style="display:none;width:100%;background:#f1f5f9;border:1.5px dashed #94a3b8;border-radius:12px;padding:14px 10px;text-align:center;">
+              <div style="font-size:18px;margin-bottom:4px;">🚫</div>
+              <div style="font-size:11px;font-weight:800;color:#64748b;letter-spacing:0.5px;">Sin depósito AdBlue</div>
             </div>
             <div id="dropdown-dev-adblue" style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #bfdbfe;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.15);padding:6px 0;min-width:145px;">
               <div style="padding:5px 12px 4px;font-size:9px;font-weight:800;color:#1d4ed8;letter-spacing:1px;border-bottom:1px solid #bfdbfe;margin-bottom:3px;">NIVEL ADBLUE</div>
@@ -5714,7 +5719,7 @@ function abrirDevolucionDirecta(repo) {
     antesDiv.innerHTML =
       `<span style="font-size:9px;font-weight:800;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-right:4px;">Antes:</span>` +
       `<span style="display:inline-flex;align-items:center;gap:4px;background:#f4f5f8;border:1px solid #dde1e8;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:${gColor};">⛽ ${isNaN(gAntes)?'—':gAntes+'%'}</span>` +
-      `<span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:${aColor};">🧪 AdBlue ${isNaN(aAntes)?'—':aAntes+'%'}</span>`;
+      (repo.adblue_antes === 'N/A' ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border:1px solid #94a3b8;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#64748b;">🚫 Sin AdBlue</span>` : `<span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:${aColor};">🧪 AdBlue ${isNaN(aAntes)?'—':aAntes+'%'}</span>`);
   }
   // Dibujar arco fantasma gasoil "antes"
   const arcAntes = document.getElementById('arc-antes-dev-gasoil');
@@ -5743,6 +5748,13 @@ function abrirDevolucionDirecta(repo) {
   const dpctA  = document.getElementById('pct-dev-adblue');
   if (dfillA) dfillA.setAttribute('width','0');
   if (dpctA)  dpctA.textContent = '—';
+  // Ocultar gauge AdBlue si el vehículo no tiene depósito
+  const wrapDevAdblue = document.getElementById('wrap-dev-adblue-gauge');
+  const badgeDevAdblue = document.getElementById('wrap-dev-sin-adblue');
+  const sinAdblue = repo.adblue_antes === 'N/A';
+  if (wrapDevAdblue) wrapDevAdblue.style.display = sinAdblue ? 'none' : 'block';
+  if (badgeDevAdblue) badgeDevAdblue.style.display = sinAdblue ? 'block' : 'none';
+  document.getElementById('devdir-adblue').value = sinAdblue ? 'N/A' : '';
   const btn = document.getElementById('btn-devdir-confirmar');
   if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar devolución'; }
   document.getElementById('modal-devolucion-directa').classList.add('open');

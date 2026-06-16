@@ -3100,7 +3100,9 @@ function renderTabla() {
       const devuelto = asignado && d.resp_recibe && d.resp_recibe.trim();
       // "reasignado" = operario original existe pero está marcado como reasignado
       const reasignado = d._reasignado && d._operarioAnterior;
-      const esBloqueado = !!v.bloqueado;
+      // El bloqueo solo aplica si la fecha visualizada es HOY.
+      // En cuadrantes históricos, el vehículo puede no estar bloqueado.
+      const esBloqueado = !!v.bloqueado && esFechaHoy();
       const rowClass = esBloqueado ? 'vehiculo-bloqueado' : (devuelto ? 'devuelto' : (asignado ? 'asignado' : ''));
       if (v.restringido) hayRestringidos = true;
 

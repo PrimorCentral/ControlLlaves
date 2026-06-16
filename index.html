@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.7.9">
+  <meta name="app-version" content="2.8.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4527,16 +4527,27 @@ async function añadirResponsable() {
   const clave  = document.getElementById('resp-clave').value;
   const rol    = document.getElementById('resp-rol').value.trim() || 'Responsable';
   if (!num || !nombre || !clave) { mostrarToast('Completa número, nombre y clave', 'error'); return; }
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+
   const btnAdd = document.querySelector('[onclick="añadirResponsable()"]');
   if (btnAdd) { btnAdd.disabled = true; btnAdd.textContent = '⏳ Guardando…'; }
-  const hashClave = await hashStr(clave);
+
   try {
+    const hashClave = await hashStr(clave);
+    const body = JSON.stringify({ accion:'añadirResponsable', responsable: { numUsuario: num, nombre, hashClave, rol } });
+    console.log('[añadirResponsable] URL:', APPS_SCRIPT_URL);
+    console.log('[añadirResponsable] Body:', body);
+
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ accion:'añadirResponsable', responsable: { numUsuario: num, nombre, hashClave, rol } }),
-      redirect:'follow'
+      body, redirect:'follow'
     });
-    const json = await resp.json();
+
+    console.log('[añadirResponsable] HTTP status:', resp.status);
+    const text = await resp.text();
+    console.log('[añadirResponsable] Respuesta raw:', text);
+
+    const json = JSON.parse(text);
     if (json.ok) {
       mostrarToast(`✓ ${nombre} añadido`, 'success');
       ['resp-num','resp-nombre','resp-clave','resp-rol'].forEach(id => document.getElementById(id).value = '');
@@ -4544,8 +4555,12 @@ async function añadirResponsable() {
     } else {
       mostrarToast(json.error || 'Error al añadir', 'error');
     }
-  } catch(e) { mostrarToast('Error: '+e.message, 'error'); }
-  finally { if (btnAdd) { btnAdd.disabled = false; btnAdd.textContent = '+ Añadir responsable'; } }
+  } catch(e) {
+    console.error('[añadirResponsable] Excepción:', e);
+    mostrarToast('Error: ' + e.message, 'error');
+  } finally {
+    if (btnAdd) { btnAdd.disabled = false; btnAdd.textContent = '+ Añadir responsable'; }
+  }
 }
 
 async function eliminarResponsable(idx) {

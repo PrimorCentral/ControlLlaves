@@ -995,19 +995,31 @@
 
   <!-- Pastilla turno/fecha en sidebar -->
   <div id="sb-turno-info" style="
-    background:#252540; border:1px solid #3a3a5a; border-radius:9px;
-    padding:8px 10px; margin-bottom:8px; display:flex; flex-direction:column; gap:3px;
+    background: linear-gradient(135deg, #1e1e38 0%, #252545 100%);
+    border: 1px solid #3a3a5a;
+    border-radius: 12px;
+    padding: 11px 12px 10px;
+    margin-bottom: 8px;
+    display: flex; flex-direction: column; gap: 5px;
+    position: relative; overflow: hidden;
   ">
+    <!-- Línea de acento izquierda -->
+    <div id="sb-acento" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#f97316;border-radius:3px 0 0 3px;"></div>
+
+    <!-- Turno badge -->
     <div id="sb-turno-badge" style="
-      display:inline-flex; align-items:center; gap:6px;
-      font-size:11px; font-weight:800; color:#f97316; letter-spacing:1px;
-      text-transform:uppercase;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 900; letter-spacing: 1.5px;
+      text-transform: uppercase; color: #f97316;
     ">
-      <span style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block"></span>
+      <span id="sb-turno-dot" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;animation:blink 2s infinite;"></span>
       <span id="sb-turno-texto">TARDE</span>
     </div>
-    <div id="sb-fecha-texto" style="font-size:10px;color:#ccc;font-weight:600;letter-spacing:0.3px;">—</div>
-    <div id="sb-sub-texto" style="font-size:9px;color:#8899aa;font-weight:500;">Cuadrante de llaves</div>
+
+    <!-- Fecha grande -->
+    <div id="sb-fecha-texto" style="
+      font-size: 11px; font-weight: 700; color: #e8eaf2; letter-spacing: 0.2px; line-height: 1.3;
+    ">—</div>
   </div>
 
   <div class="user-pill" id="user-pill" style="display:none">
@@ -2601,7 +2613,10 @@ function actualizarHeader() {
   const color      = esTarde ? '#f97316' : '#f59e0b';
   if (sbTexto)  sbTexto.textContent = turnoLabel;
   if (sbBadge)  sbBadge.style.color = color;
-  if (sbBadge)  sbBadge.querySelector('span').style.background = color;
+  const sbDot    = document.getElementById('sb-turno-dot');
+  const sbAcento = document.getElementById('sb-acento');
+  if (sbDot)    sbDot.style.background = color;
+  if (sbAcento) sbAcento.style.background = color;
   if (sbFecha) {
     sbFecha.textContent = fechaActual
       ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })

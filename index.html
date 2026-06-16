@@ -4534,30 +4534,25 @@ async function añadirResponsable() {
 
   try {
     const hashClave = await hashStr(clave);
-    const body = JSON.stringify({ accion:'añadirResponsable', responsable: { numUsuario: num, nombre, hashClave, rol } });
-    console.log('[añadirResponsable] URL:', APPS_SCRIPT_URL);
-    console.log('[añadirResponsable] Body:', body);
-
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', headers:{'Content-Type':'text/plain'},
-      body, redirect:'follow'
+      body: JSON.stringify({ accion:'añadirResponsable', responsable: { numUsuario: num, nombre, hashClave, rol } }),
+      redirect:'follow'
     });
-
-    console.log('[añadirResponsable] HTTP status:', resp.status);
-    const text = await resp.text();
-    console.log('[añadirResponsable] Respuesta raw:', text);
-
-    const json = JSON.parse(text);
+    const json = await resp.json();
     if (json.ok) {
       mostrarToast(`✓ ${nombre} añadido`, 'success');
       ['resp-num','resp-nombre','resp-clave','resp-rol'].forEach(id => document.getElementById(id).value = '');
-      cargarResponsables();
+      // Actualizar cache local inmediatamente sin esperar al servidor
+      responsablesCache.push({ numUsuario: num, nombre, rol });
+      renderAdminResponsables();
+      // Recargar desde servidor en segundo plano (silencioso)
+      setTimeout(() => cargarResponsables(), 2000);
     } else {
       mostrarToast(json.error || 'Error al añadir', 'error');
     }
   } catch(e) {
-    console.error('[añadirResponsable] Excepción:', e);
-    mostrarToast('Error: ' + e.message, 'error');
+    mostrarToast('Error de red: ' + e.message, 'error');
   } finally {
     if (btnAdd) { btnAdd.disabled = false; btnAdd.textContent = '+ Añadir responsable'; }
   }
@@ -4573,9 +4568,17 @@ async function eliminarResponsable(idx) {
       redirect:'follow'
     });
     const json = await resp.json();
-    if (json.ok) { mostrarToast('Responsable eliminado', 'info'); cargarResponsables(); }
-    else mostrarToast(json.error||'Error', 'error');
-  } catch(e) { mostrarToast('Error: '+e.message, 'error'); }
+    if (json.ok) {
+      mostrarToast('Responsable eliminado', 'info');
+      // Actualizar cache local inmediatamente
+      responsablesCache.splice(idx, 1);
+      renderAdminResponsables();
+      // Recargar desde servidor en segundo plano (silencioso)
+      setTimeout(() => cargarResponsables(), 2000);
+    } else {
+      mostrarToast(json.error || 'Error', 'error');
+    }
+  } catch(e) { mostrarToast('Error: ' + e.message, 'error'); }
 }
 
 // ════════════════════════════════════════════════════════════════════════════

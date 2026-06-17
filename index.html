@@ -4322,13 +4322,12 @@ function reimprimirRuta(empKey, rutaId) {
 }
 
 // Abrir el Packing List PDF alojado en GitHub
-// Google Docs viewer embebe el PDF sin descargarlo ni necesitar CORS
 const _PACKING_URL = 'https://raw.githubusercontent.com/PrimorCentral/ControlLlaves/main/PACKING%20LIST%20CHOFERES.pdf';
-const _PACKING_VIEWER = 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(_PACKING_URL);
+const _PACKING_VIEWER = 'https://drive.google.com/file/d/1F9QbExo3PyyCAXBHn1XU6X77B4j0tFXq/preview';
 
 function abrirPackingList() {
   const iframe = document.getElementById('packing-list-iframe');
-  if (iframe && !iframe.src.includes('docs.google.com')) iframe.src = _PACKING_VIEWER;
+  if (iframe && !iframe.src.includes('drive.google.com')) iframe.src = _PACKING_VIEWER;
   document.getElementById('modal-packing-list').classList.add('open');
 }
 
@@ -4337,9 +4336,15 @@ function cerrarPackingList() {
 }
 
 function imprimirPackingList() {
-  // Abre el PDF directamente en nueva pestaña y lanza print()
-  const win = window.open(_PACKING_URL, '_blank');
-  if (win) win.addEventListener('load', () => { try { win.print(); } catch(e) {} });
+  const iframe = document.getElementById('packing-list-iframe');
+  if (!iframe) return;
+  try {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  } catch(e) {
+    // fallback si CORS bloquea
+    window.open(_PACKING_VIEWER, '_blank');
+  }
 }
 
 function selOrdenEmpresa(key) {

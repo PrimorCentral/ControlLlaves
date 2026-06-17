@@ -502,6 +502,23 @@
     .btn-packing-list { width: 100%; padding: 10px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; margin-bottom: 12px; }
     .btn-packing-list:hover { background: #162c48; }
 
+    /* ─── OVERLAY CARGA ORDEN ─── */
+    #carga-orden-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9400;
+      background: rgba(10,12,30,0.72); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    #carga-orden-overlay.visible { display: flex; }
+    .carga-orden-box {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 16px;
+      padding: 30px 40px; box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      animation: carga-in 0.2s cubic-bezier(.34,1.56,.64,1);
+    }
+    .carga-orden-txt {
+      font-size: 13px; font-weight: 800; color: #cbd5e1; letter-spacing: 0.3px;
+    }
+
     /* ─── MODAL REPOSTAJE ─── */
     .modal-repo { background: white; border-radius: 16px; padding: 28px 26px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
     .repo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
@@ -1254,6 +1271,17 @@
   </div>
 </div>
 
+<!-- OVERLAY: CARGANDO ORDEN -->
+<div id="carga-orden-overlay">
+  <div class="carga-orden-box">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="animation:spin 0.9s linear infinite">
+      <circle cx="24" cy="24" r="20" stroke="#252545" stroke-width="4"/>
+      <path d="M24 4 A20 20 0 0 1 44 24" stroke="#e84545" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <div class="carga-orden-txt">Comprobando órdenes…</div>
+  </div>
+</div>
+
 <!-- MODAL: ORDEN DE TRABAJO -->
 <div class="modal-overlay" id="modal-orden">
   <div class="modal-orden">
@@ -1304,6 +1332,7 @@
 </div>
 
 <!-- MODAL: LOGIN ADMIN -->
+<div class="modal-overlay" id="modal-login-admin">
   <div class="modal-login-admin">
     <div class="lock-icon" id="admin-lock-icon">🔐</div>
     <h2>Panel de Administración</h2>
@@ -4205,6 +4234,10 @@ async function abrirModalOrden(matricula, autoOpen) {
   document.getElementById('orden-fecha').textContent     = fechaActual.split('-').reverse().join('/');
   document.getElementById('orden-turno').textContent     = turnoActual;
 
+  // Mostrar spinner de carga inmediatamente mientras se hace el fetch
+  const _cargaOrden = document.getElementById('carga-orden-overlay');
+  if (_cargaOrden) _cargaOrden.classList.add('visible');
+
   // Cargar rutas ya impresas para este vehículo/turno/fecha desde LogOrdenes
   _rutasImpresasModal.clear();
   try {
@@ -4231,6 +4264,8 @@ async function abrirModalOrden(matricula, autoOpen) {
     }
   } catch(e) { /* sin conexión — no crítico */ }
 
+  // Ocultar spinner y abrir modal
+  if (_cargaOrden) _cargaOrden.classList.remove('visible');
   selOrdenEmpresa('JD');
   document.getElementById('modal-orden').classList.add('open');
 

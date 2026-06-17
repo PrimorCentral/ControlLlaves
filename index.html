@@ -501,9 +501,8 @@
     .btn-modal-imprimir:hover { background: #c63030; }
     .btn-packing-list { width: 100%; padding: 10px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; margin-bottom: 12px; }
     .btn-packing-list:hover { background: #162c48; }
-    /* ─── MODAL PACKING LIST ─── */
-    .modal-packing { background: white; border-radius: 16px; padding: 24px 22px 20px; width: min(700px, 96vw); height: min(88vh, 900px); display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
-    .modal-packing-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-shrink: 0; }
+    .modal-packing { background: white; border-radius: 16px; padding: 24px 22px 20px; width: min(780px, 96vw); height: min(90vh, 960px); display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
+    .modal-packing-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; flex-shrink: 0; }
     .modal-packing-title { font-size: 15px; font-weight: 900; color: #1a1a2e; }
     .modal-packing-sub { font-size: 11px; color: #8899aa; margin-top: 3px; }
     .modal-packing-body { flex: 1; min-height: 0; border: 1.5px solid #dde1e8; border-radius: 10px; overflow: hidden; background: #f7f8fa; }
@@ -4323,11 +4322,13 @@ function reimprimirRuta(empKey, rutaId) {
 }
 
 // Abrir el Packing List PDF alojado en GitHub
+// Google Docs viewer embebe el PDF sin descargarlo ni necesitar CORS
 const _PACKING_URL = 'https://raw.githubusercontent.com/PrimorCentral/ControlLlaves/main/PACKING%20LIST%20CHOFERES.pdf';
+const _PACKING_VIEWER = 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(_PACKING_URL);
 
 function abrirPackingList() {
   const iframe = document.getElementById('packing-list-iframe');
-  if (iframe && !iframe.src.includes('PACKING')) iframe.src = _PACKING_URL;
+  if (iframe && !iframe.src.includes('docs.google.com')) iframe.src = _PACKING_VIEWER;
   document.getElementById('modal-packing-list').classList.add('open');
 }
 
@@ -4336,15 +4337,9 @@ function cerrarPackingList() {
 }
 
 function imprimirPackingList() {
-  const iframe = document.getElementById('packing-list-iframe');
-  if (!iframe) return;
-  try {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  } catch(e) {
-    // Fallback: abrir en nueva pestaña si CORS bloquea print()
-    window.open(_PACKING_URL, '_blank');
-  }
+  // Abre el PDF directamente en nueva pestaña y lanza print()
+  const win = window.open(_PACKING_URL, '_blank');
+  if (win) win.addEventListener('load', () => { try { win.print(); } catch(e) {} });
 }
 
 function selOrdenEmpresa(key) {
@@ -4382,13 +4377,26 @@ function actualizarContadorRutas() {
     const item = document.getElementById('ruta-item-' + r.id);
     if (chk && item) item.classList.toggle('selected', chk.checked);
   });
-  const total = document.querySelectorAll('#orden-rutas-lista input[type=checkbox]:checked').length;
+
+  const checkedIds = [...document.querySelectorAll('#orden-rutas-lista input[type=checkbox]:checked')].map(c => c.value);
+  const nuevas = checkedIds.filter(id => !_rutasImpresasModal.has(`${_ordenEmpresaKey}|${id}`));
+  const total  = checkedIds.length;
+
   const counter = document.getElementById('orden-ruta-count');
   if (total > 1) {
     counter.textContent = total + ' seleccionadas';
     counter.classList.add('visible');
   } else {
     counter.classList.remove('visible');
+  }
+
+  // Activar/desactivar botón según haya rutas nuevas (no ya impresas)
+  const btn = document.querySelector('.btn-modal-imprimir');
+  if (btn) {
+    const ok = nuevas.length > 0;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.38';
+    btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
   }
 }
 

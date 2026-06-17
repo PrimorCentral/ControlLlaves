@@ -501,6 +501,14 @@
     .btn-modal-imprimir:hover { background: #c63030; }
     .btn-packing-list { width: 100%; padding: 10px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; margin-bottom: 12px; }
     .btn-packing-list:hover { background: #162c48; }
+    /* ─── MODAL PACKING LIST ─── */
+    .modal-packing { background: white; border-radius: 16px; padding: 24px 22px 20px; width: min(700px, 96vw); height: min(88vh, 900px); display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
+    .modal-packing-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-shrink: 0; }
+    .modal-packing-title { font-size: 15px; font-weight: 900; color: #1a1a2e; }
+    .modal-packing-sub { font-size: 11px; color: #8899aa; margin-top: 3px; }
+    .modal-packing-body { flex: 1; min-height: 0; border: 1.5px solid #dde1e8; border-radius: 10px; overflow: hidden; background: #f7f8fa; }
+    .btn-packing-print { padding: 8px 16px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+    .btn-packing-print:hover { background: #162c48; }
 
     /* ─── OVERLAY CARGA ORDEN ─── */
     #carga-orden-overlay {
@@ -1327,6 +1335,25 @@
     </div>
     <div style="margin-top:10px">
       <button class="btn-packing-list" onclick="abrirPackingList()">📋 IMPRIMIR PACKING LIST</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PACKING LIST -->
+<div class="modal-overlay" id="modal-packing-list">
+  <div class="modal-packing">
+    <div class="modal-packing-header">
+      <div>
+        <div class="modal-packing-title">📋 Packing List Choferes</div>
+        <div class="modal-packing-sub">Previsualización del documento</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-packing-print" onclick="imprimirPackingList()">🖨️ Imprimir</button>
+        <button class="modal-orden-close" onclick="cerrarPackingList()">✕</button>
+      </div>
+    </div>
+    <div class="modal-packing-body">
+      <iframe id="packing-list-iframe" src="" style="width:100%;height:100%;border:none;border-radius:8px;"></iframe>
     </div>
   </div>
 </div>
@@ -4296,8 +4323,28 @@ function reimprimirRuta(empKey, rutaId) {
 }
 
 // Abrir el Packing List PDF alojado en GitHub
+const _PACKING_URL = 'https://raw.githubusercontent.com/PrimorCentral/ControlLlaves/main/PACKING%20LIST%20CHOFERES.pdf';
+
 function abrirPackingList() {
-  window.open('https://raw.githubusercontent.com/PrimorCentral/ControlLlaves/main/PACKING%20LIST%20CHOFERES.pdf', '_blank');
+  const iframe = document.getElementById('packing-list-iframe');
+  if (iframe && !iframe.src.includes('PACKING')) iframe.src = _PACKING_URL;
+  document.getElementById('modal-packing-list').classList.add('open');
+}
+
+function cerrarPackingList() {
+  document.getElementById('modal-packing-list').classList.remove('open');
+}
+
+function imprimirPackingList() {
+  const iframe = document.getElementById('packing-list-iframe');
+  if (!iframe) return;
+  try {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  } catch(e) {
+    // Fallback: abrir en nueva pestaña si CORS bloquea print()
+    window.open(_PACKING_URL, '_blank');
+  }
 }
 
 function selOrdenEmpresa(key) {

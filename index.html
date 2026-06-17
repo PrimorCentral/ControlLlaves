@@ -4321,14 +4321,24 @@ function reimprimirRuta(empKey, rutaId) {
   imprimirOrden(ordenActual.matricula, ordenActual.operario, emp, [ruta]);
 }
 
-// Abrir el Packing List PDF alojado en GitHub
-const _PACKING_URL = 'https://raw.githubusercontent.com/PrimorCentral/ControlLlaves/main/PACKING%20LIST%20CHOFERES.pdf';
-const _PACKING_VIEWER = 'https://drive.google.com/file/d/1F9QbExo3PyyCAXBHn1XU6X77B4j0tFXq/preview';
+// Packing List: usamos el HTML propio (mismo origen que index.html), igual que la Orden de Trabajo.
+// Se carga vía fetch + srcdoc para que el iframe quede 100% "same-origin" y el print()
+// se dispare directo, sin abrir pestaña/ventana nueva del navegador.
+const _PACKING_HTML_URL = 'PACKING-LIST-CHOFERES.html';
 
-function abrirPackingList() {
-  const iframe = document.getElementById('packing-list-iframe');
-  if (iframe && !iframe.src.includes('drive.google.com')) iframe.src = _PACKING_VIEWER;
+async function abrirPackingList() {
   document.getElementById('modal-packing-list').classList.add('open');
+  const iframe = document.getElementById('packing-list-iframe');
+  if (!iframe) return;
+  iframe.srcdoc = '<p style="font-family:Barlow,sans-serif;padding:24px;color:#8899aa;font-size:13px">Cargando packing list…</p>';
+  try {
+    const resp = await fetch(_PACKING_HTML_URL + '?_t=' + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const html = await resp.text();
+    iframe.srcdoc = html;
+  } catch (e) {
+    iframe.srcdoc = '<p style="font-family:Barlow,sans-serif;padding:24px;color:#e84545;font-size:13px">No se pudo cargar el Packing List (' + (e && e.message ? e.message : 'error') + ').</p>';
+  }
 }
 
 function cerrarPackingList() {
@@ -4337,14 +4347,9 @@ function cerrarPackingList() {
 
 function imprimirPackingList() {
   const iframe = document.getElementById('packing-list-iframe');
-  if (!iframe) return;
-  try {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  } catch(e) {
-    // fallback si CORS bloquea
-    window.open(_PACKING_VIEWER, '_blank');
-  }
+  if (!iframe || !iframe.contentWindow) return;
+  iframe.contentWindow.focus();
+  iframe.contentWindow.print();
 }
 
 function selOrdenEmpresa(key) {

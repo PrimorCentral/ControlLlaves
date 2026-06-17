@@ -488,11 +488,19 @@
     .orden-ruta-count { font-size: 10px; font-weight: 800; color: #e84545; background: #fff0f0; border: 1.5px solid #e84545; border-radius: 5px; padding: 1px 7px; margin-left: auto; display: none; }
     .orden-ruta-count.visible { display: inline-block; }
     .orden-sel-hint { font-size: 10px; color: #8899aa; margin-bottom: 8px; }
+    .orden-ruta-item.ya-impresa { border-color: #16a34a; background: #f0fdf4; }
+    .orden-ruta-item.ya-impresa:hover { border-color: #15803d; background: #dcfce7; }
+    .orden-ruta-item.ya-impresa label { color: #166534; }
+    .badge-impresa { font-size: 9px; font-weight: 800; color: #16a34a; background: #dcfce7; border: 1.5px solid #16a34a; border-radius: 5px; padding: 1px 6px; letter-spacing: 0.3px; white-space: nowrap; }
+    .btn-reimprimir { padding: 4px 9px; background: #16a34a; color: white; border: none; border-radius: 6px; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: background 0.15s; flex-shrink: 0; }
+    .btn-reimprimir:hover { background: #15803d; }
     .orden-actions { display: flex; gap: 8px; justify-content: flex-end; }
     .btn-modal-cancelar { padding: 11px 18px; background: #f4f5f8; color: #556; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
     .btn-modal-cancelar:hover { background: #eaecf2; }
     .btn-modal-imprimir { flex: 1; padding: 11px; background: #e84545; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; transition: background 0.15s; }
     .btn-modal-imprimir:hover { background: #c63030; }
+    .btn-packing-list { width: 100%; padding: 10px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; margin-bottom: 12px; }
+    .btn-packing-list:hover { background: #162c48; }
 
     /* ─── MODAL REPOSTAJE ─── */
     .modal-repo { background: white; border-radius: 16px; padding: 28px 26px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
@@ -1289,11 +1297,13 @@
       <button class="btn-modal-cancelar" onclick="cerrarModalOrden()">Cancelar</button>
       <button class="btn-modal-imprimir" onclick="ejecutarOrden()">🖨️ Imprimir orden</button>
     </div>
+    <div style="margin-top:10px">
+      <button class="btn-packing-list" onclick="abrirPackingList()">📋 IMPRIMIR PACKING LIST</button>
+    </div>
   </div>
 </div>
 
 <!-- MODAL: LOGIN ADMIN -->
-<div class="modal-overlay" id="modal-login-admin">
   <div class="modal-login-admin">
     <div class="lock-icon" id="admin-lock-icon">🔐</div>
     <h2>Panel de Administración</h2>
@@ -4172,7 +4182,12 @@ async function sincronizarConductoresConSheets() {
 // ════════════════════════════════════════════════════════════════════════════
 // autoOpen: true = viene de asignar operario (pregunta si imprimir)
 //           false = viene del botón "🖨️ Orden" (abre directamente)
-function abrirModalOrden(matricula, autoOpen) {
+
+// Rutas ya impresas para el vehículo actualmente abierto en el modal
+// Set de strings con formato "empresaKey|rutaId"  (se rellena al abrir el modal)
+let _rutasImpresasModal = new Set();
+
+async function abrirModalOrden(matricula, autoOpen) {
   if (!usuarioActual) {
     mostrarToast('Debes iniciar sesión para imprimir órdenes', 'error');
     return;
@@ -4189,6 +4204,32 @@ function abrirModalOrden(matricula, autoOpen) {
   document.getElementById('orden-operario').textContent  = d.operario;
   document.getElementById('orden-fecha').textContent     = fechaActual.split('-').reverse().join('/');
   document.getElementById('orden-turno').textContent     = turnoActual;
+
+  // Cargar rutas ya impresas para este vehículo/turno/fecha desde LogOrdenes
+  _rutasImpresasModal.clear();
+  try {
+    if (APPS_SCRIPT_URL) {
+      const url = `${APPS_SCRIPT_URL}?accion=cargarLog&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}&_t=${Date.now()}`;
+      const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(6000) });
+      if (resp.ok) {
+        const json = await resp.json();
+        const filas = json.filas || [];
+        filas.forEach(f => {
+          const matLog   = (f.matricula || '').trim().toUpperCase();
+          const turnoLog = (f.turno || '').trim().toUpperCase();
+          if (matLog !== matricula.trim().toUpperCase()) return;
+          if (turnoLog !== turnoActual.toUpperCase()) return;
+          // Buscar empresa y ruta correspondiente al label guardado en el log
+          Object.entries(EMPRESAS).forEach(([empKey, emp]) => {
+            if (emp.label === f.empresa || emp.label.replace(' & ',' &amp; ') === f.empresa) {
+              const ruta = emp.rutas.find(r => r.label === f.ruta);
+              if (ruta) _rutasImpresasModal.add(`${empKey}|${ruta.id}`);
+            }
+          });
+        });
+      }
+    }
+  } catch(e) { /* sin conexión — no crítico */ }
 
   selOrdenEmpresa('JD');
   document.getElementById('modal-orden').classList.add('open');
@@ -4207,17 +4248,38 @@ function cerrarModalOrden() {
   document.getElementById('modal-orden').classList.remove('open');
 }
 
+// Reimprimir una ruta específica ya registrada en el log
+function reimprimirRuta(empKey, rutaId) {
+  const emp  = EMPRESAS[empKey];
+  const ruta = emp ? emp.rutas.find(r => r.id === rutaId) : null;
+  if (!emp || !ruta) return;
+  _ordenEmpresaKey = empKey;
+  cerrarModalOrden();
+  const modalGen = document.getElementById('modal-generando-orden');
+  if (modalGen) modalGen.classList.add('visible');
+  imprimirOrden(ordenActual.matricula, ordenActual.operario, emp, [ruta]);
+}
+
+// Abrir el Packing List PDF alojado en GitHub
+function abrirPackingList() {
+  window.open('https://raw.githubusercontent.com/PrimorCentral/ControlLlaves/main/PACKING%20LIST%20CHOFERES.pdf', '_blank');
+}
+
 function selOrdenEmpresa(key) {
   _ordenEmpresaKey = key;
   ['JD','LD'].forEach(k => {
     document.getElementById('orden-emp-'+k).classList.toggle('active', k===key);
   });
   const lista = document.getElementById('orden-rutas-lista');
-  lista.innerHTML = EMPRESAS[key].rutas.map(r => `
-    <div class="orden-ruta-item" id="ruta-item-${r.id}" onclick="toggleRutaItem('${r.id}')">
-      <input type="checkbox" id="ruta-chk-${r.id}" value="${r.id}" onchange="actualizarContadorRutas()" onclick="event.stopPropagation()">
+  lista.innerHTML = EMPRESAS[key].rutas.map(r => {
+    const yaImpresa = _rutasImpresasModal.has(`${key}|${r.id}`);
+    return `
+    <div class="orden-ruta-item${yaImpresa ? ' ya-impresa' : ''}" id="ruta-item-${r.id}" onclick="toggleRutaItem('${r.id}')">
+      <input type="checkbox" id="ruta-chk-${r.id}" value="${r.id}" ${yaImpresa ? 'checked' : ''} onchange="actualizarContadorRutas()" onclick="event.stopPropagation()">
       <label for="ruta-chk-${r.id}">${r.label}</label>
-    </div>`).join('');
+      ${yaImpresa ? '<span class="badge-impresa">✓ YA IMPRESA</span><button class="btn-reimprimir" onclick="event.stopPropagation();reimprimirRuta(\''+key+'\',\''+r.id+'\')">🔁 REIMPRIMIR</button>' : ''}
+    </div>`;
+  }).join('');
   actualizarContadorRutas();
 }
 

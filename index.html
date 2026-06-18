@@ -1761,7 +1761,7 @@
       <button onclick="cerrarModalRecibirLlaves()" style="background:none;border:1.5px solid #dde1e8;border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:14px;color:#889;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='#e84545';this.style.color='white'" onmouseout="this.style.background='none';this.style.color='#889'">✕</button>
     </div>
     <div id="recibir-llaves-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0">
-      <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">Cargando…</div>
+      <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>
     </div>
     <div style="display:flex;justify-content:flex-end;padding-top:14px;flex-shrink:0;border-top:1px solid #f0f2f5;margin-top:14px">
       <button onclick="cerrarModalRecibirLlaves()" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer">Cerrar</button>
@@ -2025,7 +2025,7 @@
 
     <!-- LISTA -->
     <div id="repostajes-pendientes-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0;padding:20px 26px;">
-      <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">Cargando…</div>
+      <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>
     </div>
 
     <!-- PIE -->
@@ -4709,7 +4709,7 @@ async function cargarReasignaciones() {
   const hasta   = document.getElementById('reasig-fecha-hasta').value;
   const filtroM = document.getElementById('reasig-filtro-matricula').value.trim().toUpperCase();
   const tbody   = document.getElementById('reasig-tbody');
-  tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">⏳ Cargando datos un momento por favor…</td></tr>';
   try {
     const url = `${APPS_SCRIPT_URL}?accion=cargarReasignaciones&desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&matricula=${encodeURIComponent(filtroM)}`;
     const resp = await fetch(url, { redirect:'follow' });
@@ -4811,7 +4811,7 @@ async function cargarLog() {
   const hasta   = document.getElementById('log-fecha-hasta').value;
   const filtroU = document.getElementById('log-filtro-usuario').value.trim().toUpperCase();
   const tbody   = document.getElementById('log-tbody');
-  tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="hist-empty">⏳ Cargando datos un momento por favor…</td></tr>';
   try {
     const url = `${APPS_SCRIPT_URL}?accion=cargarLog&desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&filtroUsuario=${encodeURIComponent(filtroU)}`;
     const resp = await fetch(url, { redirect:'follow' });
@@ -5431,7 +5431,7 @@ async function cargarHistorial() {
   const turno  = document.getElementById('hist-turno').value;
   const mat    = document.getElementById('hist-matricula').value.trim().toUpperCase();
   const tbody  = document.getElementById('hist-tbody');
-  tbody.innerHTML = '<tr><td colspan="12" class="hist-empty">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="12" class="hist-empty">⏳ Cargando datos un momento por favor…</td></tr>';
   try {
     const url = `${APPS_SCRIPT_URL}?accion=historial&desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&turno=${encodeURIComponent(turno)}&matricula=${encodeURIComponent(mat)}`;
     const resp = await fetch(url, { redirect:'follow' });
@@ -6330,7 +6330,7 @@ function cerrarModalRepostajesPendientes() {
 
 async function cargarRepostajesPendientes() {
   const lista = document.getElementById('repostajes-pendientes-lista');
-  lista.innerHTML = `<div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">Cargando…</div>`;
+  lista.innerHTML = `<div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>`;
   try {
     const resp = await fetch(APPS_SCRIPT_URL + '?accion=cargarRepostajesPendientes&_t=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
     const json = await resp.json();
@@ -7538,7 +7538,7 @@ async function cargarTabRepostajes() {
   const tbody = document.getElementById('repo-tab-tbody');
   const statsEl = document.getElementById('repo-tab-stats');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="15" class="hist-empty">⏳ Cargando desde Sheets…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="15" class="hist-empty">⏳ Cargando datos un momento por favor…</td></tr>';
   if (statsEl) statsEl.innerHTML = '';
 
   const desde     = document.getElementById('repo-tab-fecha-desde').value;
@@ -8044,7 +8044,7 @@ async function eliminarRepostajeAdmin(idx) {
 async function cargarTabIncidencias() {
   const tbody = document.getElementById('incid-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">⏳ Cargando desde Sheets…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">⏳ Cargando datos un momento por favor…</td></tr>';
 
   const desde    = document.getElementById('incid-fecha-desde').value;
   const hasta    = document.getElementById('incid-fecha-hasta').value;

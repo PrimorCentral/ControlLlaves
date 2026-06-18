@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.8.8">
+  <meta name="app-version" content="2.8.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2604,14 +2604,6 @@ turnoActual = esTarde ? 'TARDE' : 'MANANA';
 document.querySelectorAll('.turno-btn').forEach(b => {
   b.classList.toggle('active', b.dataset.turno === turnoActual);
 });
-// Actualizar badge móvil nada más conocer el turno
-(function() {
-  var badge = document.getElementById('mob-badge');
-  if (!badge) return;
-  var tarde = turnoActual === 'TARDE';
-  badge.textContent = tarde ? '🌆 TARDE' : '☀️ MAÑANA';
-  badge.style.color  = tarde ? '#f97316' : '#f59e0b';
-})();
 // Aplicar bloqueo visual en botones del sidebar para la fecha de hoy
 (function aplicarBloqueoSidebar() {
   document.querySelectorAll('.turno-btn').forEach(b => {
@@ -9022,10 +9014,13 @@ function forzarActualizacion() {
   bb.id = 'mob-bottombar';
   bb.innerHTML =
     '<button onclick="window._mobToggle()"><span class="bbi">☰</span>Menú</button>' +
-    '<button onclick="if(window.usuarioActual) window.cargarCuadrante()"><span class="bbi">↺</span>Recargar</button>' +
-    '<button class="bb-pri" onclick="window.abrirModalBloqueoRapido && window.abrirModalBloqueoRapido()"><span class="bbi">⛔</span>Bloquear</button>' +
-    '<button onclick="window.imprimirCuadrante && window.imprimirCuadrante()"><span class="bbi">🖨️</span>Imprimir</button>';
+    '<button onclick="if(typeof cargarCuadrante===\'function\') cargarCuadrante()"><span class="bbi">↺</span>Recargar</button>' +
+    '<button class="bb-pri" onclick="if(typeof abrirModalBloqueoRapido===\'function\') abrirModalBloqueoRapido()"><span class="bbi">⛔</span>Bloquear</button>';
   document.body.appendChild(bb);
+
+  // Fix botón recargar topbar
+  var btnRel = tb.querySelector('.mob-rel');
+  if (btnRel) btnRel.onclick = function() { if (typeof cargarCuadrante === 'function') cargarCuadrante(); };
 
   // ── Drawer logic ──
   function abrir() {
@@ -9059,7 +9054,11 @@ function forzarActualizacion() {
     badge.textContent = tarde ? '🌆 TARDE' : '☀️ MAÑANA';
     badge.style.color  = tarde ? '#f97316' : '#f59e0b';
   }
-  document.addEventListener('DOMContentLoaded', function() { setTimeout(syncBadge, 100); });
+  // DOMContentLoaded ejecuta el bloque principal que calcula turnoActual,
+  // esperamos un tick extra para que termine
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(syncBadge, 300);
+  });
   window.addEventListener('load', function() {
     syncBadge();
     if (window.actualizarHeader) window.actualizarHeader();

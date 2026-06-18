@@ -3569,7 +3569,7 @@ function renderTabla() {
               html += `<td><button class="btn-print-row" style="background:#2a2a1a;color:#ffd54a;border-color:#5a5a2a;font-size:10px;padding:4px 8px;"
                 onclick="abrirModalRepostajeConMat('${esc(v.matricula)}')"
                 title="Registrar entrega de tarjeta GASOIL">
-                ⛽ Registrar
+                ⛽ Asignar tarjeta
               </button></td>`;
             } else {
               // Hoy, sin conductor asignado → nada que registrar todavía
@@ -3598,7 +3598,7 @@ function renderTabla() {
             html += `<td><button class="btn-print-row" style="background:#f8f9fc;color:#8899aa;border-color:#dde1ea;font-size:10px;padding:4px 8px;"
               onclick="abrirModalIncidencia('${esc(v.matricula)}')"
               title="Registrar incidencia">
-              + Incidencia
+              Añadir Incidencia
             </button></td>`;
           } else {
             // Cuadrante de otro día y sin incidencia: celda vacía

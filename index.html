@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.8.7">
+  <meta name="app-version" content="2.8.8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1056,10 +1056,20 @@
       body:has(#pantalla-login:not(.oculto)) #mob-topbar,
       body:has(#pantalla-login:not(.oculto)) #mob-bottombar { display: none !important; }
 
-      /* Panel de marca: oculto en móvil, el formulario ocupa todo */
-      .login-brand { display: none !important; }
-      .login-form-panel { flex: 1; width: 100%; padding: 20px 16px; justify-content: center; }
-      .login-form-box { padding: 24px 18px; }
+      /* Panel de marca simplificado en móvil */
+      .login-brand {
+        width: 100% !important; flex: 0 0 auto;
+        flex-direction: row !important; gap: 12px;
+        padding: 14px 20px !important;
+        justify-content: flex-start; align-items: center;
+        min-height: unset !important;
+      }
+      .login-brand-icon { width: 40px; height: 40px; font-size: 20px; margin-bottom: 0 !important; flex-shrink: 0; }
+      .login-brand-title { font-size: 14px !important; letter-spacing: 1px; margin-bottom: 0 !important; text-align: left; }
+      .login-brand-sub { text-align: left; font-size: 10px; }
+      .login-brand-badge { margin-top: 0 !important; padding: 5px 10px; }
+      .login-form-panel { flex: 1; width: 100%; padding: 16px; justify-content: center; }
+      .login-form-box { padding: 22px 16px; }
       .login-preload-bar { display: none !important; }
       #login-preload-msg { display: none !important; }
 
@@ -9041,8 +9051,17 @@ function forzarActualizacion() {
     badge.style.color  = esTarde ? '#f97316' : '#f59e0b';
   };
 
-  // Forzar update inicial tras carga
+  // Forzar update del badge tras carga completa (turnoActual ya calculado)
+  function syncBadge() {
+    var badge = document.getElementById('mob-badge');
+    if (!badge) return;
+    var tarde = (window.turnoActual || 'MANANA') === 'TARDE';
+    badge.textContent = tarde ? '🌆 TARDE' : '☀️ MAÑANA';
+    badge.style.color  = tarde ? '#f97316' : '#f59e0b';
+  }
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(syncBadge, 100); });
   window.addEventListener('load', function() {
+    syncBadge();
     if (window.actualizarHeader) window.actualizarHeader();
   });
 })();

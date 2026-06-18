@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.8.2">
+  <meta name="app-version" content="2.8.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -923,7 +923,193 @@
     .gen-dots span:nth-child(2) { animation-delay: 0.2s; }
     .gen-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-    @media print {
+    /* ═══════════════════════════════════════════════════════
+       RESPONSIVE MÓVIL  (≤ 768px)
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* ── Layout base ── */
+      body { flex-direction: column; overflow: hidden; }
+      html, body { height: 100%; height: 100dvh; }
+
+      /* ── Sidebar → oculto por defecto, drawer lateral ── */
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0;
+        width: 260px; z-index: 8000;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+        overflow-y: auto; height: 100%;
+        padding-bottom: 80px;
+      }
+      .sidebar.mob-open { transform: translateX(0); }
+
+      /* Overlay oscuro detrás del drawer */
+      #mob-sidebar-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.5); z-index: 7999;
+        backdrop-filter: blur(2px);
+      }
+      #mob-sidebar-overlay.visible { display: block; }
+
+      /* ── Topbar móvil ── */
+      #mob-topbar {
+        display: flex !important;
+        align-items: center; gap: 10px;
+        background: #1a1a2e; padding: 10px 14px;
+        flex-shrink: 0; z-index: 100;
+        border-bottom: 1px solid #252542;
+      }
+      #mob-topbar .mob-hamburger {
+        width: 38px; height: 38px; border-radius: 9px;
+        background: #2a2a4a; border: 1.5px solid #3a3a5a;
+        color: white; font-size: 18px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; transition: background .15s;
+      }
+      #mob-topbar .mob-hamburger:active { background: #e84545; }
+      #mob-topbar .mob-title {
+        flex: 1; font-size: 13px; font-weight: 900;
+        color: white; letter-spacing: 0.5px;
+      }
+      #mob-topbar .mob-turno-badge {
+        font-size: 10px; font-weight: 800; letter-spacing: 1px;
+        padding: 4px 10px; border-radius: 6px;
+        background: #2a2a4a; border: 1px solid #3a3a5a;
+      }
+      #mob-topbar .mob-reload {
+        width: 38px; height: 38px; border-radius: 9px;
+        background: #2a2a4a; border: 1.5px solid #3a3a5a;
+        color: white; font-size: 16px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; transition: background .15s;
+      }
+      #mob-topbar .mob-reload:active { background: #e84545; }
+
+      /* ── Main ── */
+      .main {
+        flex: 1; min-height: 0; display: flex;
+        flex-direction: column; overflow: hidden;
+        padding: 0 0 60px !important;
+      }
+
+      /* ── Tabla: scroll horizontal + celdas más usables ── */
+      .table-wrap {
+        margin: 8px 8px 0 !important;
+        border-radius: 10px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      table { font-size: 11px; min-width: 900px; }
+      thead tr th { padding: 9px 8px; font-size: 8px; }
+      td { padding: 7px 6px; }
+      .mat-badge { font-size: 11px; padding: 3px 6px; }
+
+      /* Inputs táctiles: más altura */
+      .cell-input, .operario-search-input {
+        font-size: 13px; padding: 7px 8px;
+        min-height: 36px;
+      }
+      .cell-input.hora { max-width: 80px; }
+      .cell-input.num  { max-width: 60px; }
+      .btn-unlock { width: 30px; height: 30px; font-size: 15px; }
+
+      /* ── Barra inferior con acciones rápidas ── */
+      #mob-bottombar {
+        display: flex !important;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: #1a1a2e; border-top: 1px solid #252542;
+        padding: 6px 10px; gap: 6px; z-index: 500;
+        padding-bottom: calc(6px + env(safe-area-inset-bottom));
+      }
+      #mob-bottombar button {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 3px; padding: 8px 4px;
+        background: #2a2a4a; border: 1.5px solid #3a3a5a;
+        border-radius: 10px; color: #ccc;
+        font-family: 'Barlow', sans-serif;
+        font-size: 8px; font-weight: 800;
+        letter-spacing: 0.5px; text-transform: uppercase;
+        cursor: pointer; transition: all .15s;
+      }
+      #mob-bottombar button .bb-icon { font-size: 18px; line-height: 1; }
+      #mob-bottombar button:active { background: #e84545; border-color: #e84545; color: white; }
+      #mob-bottombar button.bb-primary { background: #e84545; border-color: #e84545; color: white; }
+
+      /* ── Modales: ocupan más pantalla en móvil ── */
+      .modal-box {
+        width: 94vw !important; max-width: 94vw !important;
+        margin: 0 auto;
+        max-height: 88vh; overflow-y: auto;
+      }
+      #modal-nueva-version .nv-box { width: 90vw; padding: 28px 20px 22px; }
+      #modal-devol-pendientes .dp-box { width: 96vw; max-width: 96vw; }
+      .modal-admin { width: 99vw !important; max-width: 99vw !important; height: 95vh !important; max-height: 95vh !important; padding: 16px 14px !important; }
+      .modal-repo  { width: 96vw !important; padding: 20px 16px !important; }
+      .modal-orden { width: 96vw !important; padding: 20px 16px !important; }
+
+      /* ── Login en móvil: una sola columna ── */
+      #pantalla-login { flex-direction: column; }
+      .login-brand {
+        padding: 28px 20px 20px;
+        min-height: unset; flex: 0 0 auto;
+      }
+      .login-brand-title { font-size: 18px; }
+      .login-form-panel {
+        flex: 1; padding: 20px 16px;
+        justify-content: flex-start;
+      }
+      .login-form-box { padding: 24px 20px; }
+
+      /* ── Dropdown operario ── */
+      .operario-dropdown {
+        max-width: 92vw; min-width: 220px;
+      }
+
+      /* ── Banner devoluciones ── */
+      #banner-devol-pendientes { font-size: 11px; padding: 8px 12px; flex-wrap: wrap; gap: 6px; }
+      .bdp-btn { font-size: 10px; padding: 5px 10px; }
+
+      /* ── Scroll fix para modales con lista ── */
+      #recibir-llaves-lista, #repostajes-pendientes-lista,
+      .orden-rutas-lista, .admin-list, .dp-lista {
+        max-height: 45vh;
+      }
+    }
+
+    /* ── Topbar y bottombar ocultos en desktop ── */
+    #mob-topbar    { display: none; }
+    #mob-sidebar-overlay { display: none; }
+    #mob-bottombar { display: none; }
+
+    @media (max-width: 768px) {
+      /* Pantalla login en móvil: ocultar panel de marca si el teclado sube */
+      .login-brand-badge { display: none; }
+      .login-brand { padding-bottom: 12px; }
+    }
+
+    @media (max-width: 768px) {
+      /* Tabla-container ocupa todo el espacio disponible */
+      .table-container { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    }
+
+    @media (max-width: 400px) {
+      /* Pantallas muy pequeñas */
+      .sidebar { width: 240px; }
+      table { font-size: 10px; min-width: 820px; }
+      #mob-bottombar button .bb-icon { font-size: 16px; }
+      #mob-bottombar button { font-size: 7px; padding: 6px 2px; }
+    }
+
+    @media (max-width: 768px) {
+      /* — Fix: que la tabla-wrap sea un contenedor de scroll real en móvil — */
+      .table-wrap {
+        flex: 1 1 0; overflow: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    
       body { overflow: visible !important; }
       .sidebar, .main-header, .toast, #splash { display: none !important; }
       .main { padding: 0 !important; height: auto !important; overflow: visible !important; }
@@ -1129,6 +1315,33 @@
 
 
   <button class="btn-action btn-secondary" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;">🔐 Panel Admin</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MÓVIL: TOPBAR + OVERLAY DRAWER + BOTTOMBAR
+═══════════════════════════════════════════════════════ -->
+<div id="mob-sidebar-overlay" onclick="cerrarDrawerMovil()"></div>
+
+<div id="mob-topbar">
+  <button class="mob-hamburger" onclick="toggleDrawerMovil()" aria-label="Menú">☰</button>
+  <div class="mob-title">🚛 Gestión de Flota</div>
+  <span class="mob-turno-badge" id="mob-turno-badge" style="color:#f59e0b;">☀️ MAÑANA</span>
+  <button class="mob-reload" onclick="if(usuarioActual) cargarCuadrante()" title="Recargar">↺</button>
+</div>
+
+<div id="mob-bottombar">
+  <button onclick="toggleDrawerMovil()">
+    <span class="bb-icon">☰</span>Menú
+  </button>
+  <button onclick="if(usuarioActual) cargarCuadrante()">
+    <span class="bb-icon">↺</span>Recargar
+  </button>
+  <button class="bb-primary" onclick="abrirModalBloqueoRapido()">
+    <span class="bb-icon">⛔</span>Bloquear
+  </button>
+  <button onclick="imprimirCuadrante()">
+    <span class="bb-icon">🖨️</span>Imprimir
+  </button>
 </div>
 
 <!-- MAIN -->
@@ -2778,6 +2991,12 @@ function actualizarHeader() {
     sbFecha.textContent = fechaActual
       ? new Date(fechaActual + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
       : '—';
+  }
+  // Actualizar badge topbar móvil
+  const mobBadge = document.getElementById('mob-turno-badge');
+  if (mobBadge) {
+    mobBadge.textContent = esTarde ? '🌆 TARDE' : '☀️ MAÑANA';
+    mobBadge.style.color = color;
   }
 }
 
@@ -8808,5 +9027,28 @@ function forzarActualizacion() {
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     MÓVIL: JS DRAWER LATERAL
+═══════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  function abrirDrawerMovil() {
+    document.querySelector('.sidebar').classList.add('mob-open');
+    document.getElementById('mob-sidebar-overlay').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+  function cerrarDrawerMovilInterno() {
+    document.querySelector('.sidebar').classList.remove('mob-open');
+    document.getElementById('mob-sidebar-overlay').classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+  window.toggleDrawerMovil = function() {
+    var sidebar = document.querySelector('.sidebar');
+    if (sidebar.classList.contains('mob-open')) cerrarDrawerMovilInterno();
+    else abrirDrawerMovil();
+  };
+  window.cerrarDrawerMovil = function() { cerrarDrawerMovilInterno(); };
+})();
+</script>
 </body>
 </html>

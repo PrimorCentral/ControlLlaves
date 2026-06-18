@@ -1527,6 +1527,8 @@
           <option value="PENDIENTE">⏳ Pendiente devolución</option>
           <option value="COMPLETADO">✅ Completado</option>
         </select>
+        <input type="text" id="repo-tab-filtro-ref" placeholder="🧾 Nº Ref. Ticket" style="width:160px"
+          onkeydown="if(event.key==='Enter') cargarTabRepostajes()">
         <button class="btn-add-item" onclick="cargarTabRepostajes()" style="background:#3498db">🔍 Buscar</button>
         <button class="btn-add-item" onclick="exportarRepostajesCSV()">⬇ CSV</button>
         <button class="btn-add-item" onclick="exportarPDF('repostajes')" style="background:#e84545">📄 PDF</button>
@@ -7543,6 +7545,7 @@ async function cargarTabRepostajes() {
   const hasta     = document.getElementById('repo-tab-fecha-hasta').value;
   const matricula = (document.getElementById('repo-tab-filtro-matricula').value || '').trim();
   const estado    = (document.getElementById('repo-tab-filtro-estado').value || '').trim();
+  const refTicket = (document.getElementById('repo-tab-filtro-ref').value || '').trim().toUpperCase();
 
   if (!APPS_SCRIPT_URL) {
     tbody.innerHTML = '<tr><td colspan="15" class="hist-empty">⚠️ Sin URL de Apps Script configurada.</td></tr>';
@@ -7557,8 +7560,10 @@ async function cargarTabRepostajes() {
     const resp = await fetch(url, { redirect: 'follow' });
     const json = await resp.json();
     if (!json.ok) throw new Error(json.error || 'Error en Sheets');
-    // Filtrar por estado en cliente (Apps Script no filtra por estado)
-    repostajesCache = (json.filas || []).filter(f => !estado || (f.estado||'').toUpperCase() === estado);
+    // Filtrar por estado y por referencia de ticket en cliente (Apps Script no los filtra)
+    repostajesCache = (json.filas || [])
+      .filter(f => !estado || (f.estado||'').toUpperCase() === estado)
+      .filter(f => !refTicket || (f.ticket_ref||'').toString().toUpperCase().includes(refTicket));
     renderTabRepostajes();
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="15" class="hist-empty">Error al cargar: ${e.message}</td></tr>`;

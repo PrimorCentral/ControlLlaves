@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Gestión de Flota · Primor</title>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.8.6">
+  <meta name="app-version" content="2.8.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -744,6 +744,7 @@
 
     /* indicador precarga */
     .login-preload-bar {
+      display: none;
       height: 3px; background: #f0f2f5; border-radius: 0 0 18px 18px;
       overflow: hidden; margin-top: -1px;
     }
@@ -1049,24 +1050,18 @@
       /* Login: ocupa toda la pantalla, oculta topbar/bottombar */
       #pantalla-login {
         flex-direction: column;
-        z-index: 10000; /* encima de topbar (z-index:100) */
+        z-index: 10000;
       }
       /* Ocultar topbar y bottombar cuando el login está visible */
       body:has(#pantalla-login:not(.oculto)) #mob-topbar,
       body:has(#pantalla-login:not(.oculto)) #mob-bottombar { display: none !important; }
 
-      .login-brand {
-        width: 100% !important; padding: 28px 20px 18px;
-        min-height: unset; flex: 0 0 auto;
-        flex-direction: row; gap: 14px;
-        justify-content: center; align-items: center;
-      }
-      .login-brand-icon { width: 48px; height: 48px; font-size: 24px; margin-bottom: 0; flex-shrink: 0; }
-      .login-brand-title { font-size: 20px; letter-spacing: 2px; margin-bottom: 4px; text-align: left; }
-      .login-brand-sub { text-align: left; }
-      .login-brand-badge { display: none; }
-      .login-form-panel { flex: 1; padding: 20px 16px; justify-content: center; }
+      /* Panel de marca: oculto en móvil, el formulario ocupa todo */
+      .login-brand { display: none !important; }
+      .login-form-panel { flex: 1; width: 100%; padding: 20px 16px; justify-content: center; }
       .login-form-box { padding: 24px 18px; }
+      .login-preload-bar { display: none !important; }
+      #login-preload-msg { display: none !important; }
 
       /* Dropdown */
       .operario-dropdown { max-width: 92vw; }
@@ -2599,6 +2594,14 @@ turnoActual = esTarde ? 'TARDE' : 'MANANA';
 document.querySelectorAll('.turno-btn').forEach(b => {
   b.classList.toggle('active', b.dataset.turno === turnoActual);
 });
+// Actualizar badge móvil nada más conocer el turno
+(function() {
+  var badge = document.getElementById('mob-badge');
+  if (!badge) return;
+  var tarde = turnoActual === 'TARDE';
+  badge.textContent = tarde ? '🌆 TARDE' : '☀️ MAÑANA';
+  badge.style.color  = tarde ? '#f97316' : '#f59e0b';
+})();
 // Aplicar bloqueo visual en botones del sidebar para la fecha de hoy
 (function aplicarBloqueoSidebar() {
   document.querySelectorAll('.turno-btn').forEach(b => {

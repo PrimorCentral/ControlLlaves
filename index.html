@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.8.5">
+  <meta name="app-version" content="2.8.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1046,12 +1046,26 @@
         padding: 14px 12px !important;
       }
 
-      /* Login */
-      #pantalla-login { flex-direction: column; }
-      .login-brand { padding: 24px 20px 16px; min-height: unset; flex: 0 0 auto; }
-      .login-brand-title { font-size: 18px; }
+      /* Login: ocupa toda la pantalla, oculta topbar/bottombar */
+      #pantalla-login {
+        flex-direction: column;
+        z-index: 10000; /* encima de topbar (z-index:100) */
+      }
+      /* Ocultar topbar y bottombar cuando el login está visible */
+      body:has(#pantalla-login:not(.oculto)) #mob-topbar,
+      body:has(#pantalla-login:not(.oculto)) #mob-bottombar { display: none !important; }
+
+      .login-brand {
+        width: 100% !important; padding: 28px 20px 18px;
+        min-height: unset; flex: 0 0 auto;
+        flex-direction: row; gap: 14px;
+        justify-content: center; align-items: center;
+      }
+      .login-brand-icon { width: 48px; height: 48px; font-size: 24px; margin-bottom: 0; flex-shrink: 0; }
+      .login-brand-title { font-size: 20px; letter-spacing: 2px; margin-bottom: 4px; text-align: left; }
+      .login-brand-sub { text-align: left; }
       .login-brand-badge { display: none; }
-      .login-form-panel { flex: 1; padding: 16px; justify-content: flex-start; }
+      .login-form-panel { flex: 1; padding: 20px 16px; justify-content: center; }
       .login-form-box { padding: 24px 18px; }
 
       /* Dropdown */

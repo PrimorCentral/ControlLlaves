@@ -2356,6 +2356,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Guardar la fecha pendiente en una variable temporal y abrir el modal
     window._fechaPendienteModal = nuevaFecha;
+
+    // Aplicar bloqueo de turno según la fecha elegida
+    const btnM = document.getElementById('btn-selturno-manana');
+    const btnT = document.getElementById('btn-selturno-tarde');
+    const hoy2 = new Date();
+    const fechaHoy2 = `${hoy2.getFullYear()}-${String(hoy2.getMonth()+1).padStart(2,'0')}-${String(hoy2.getDate()).padStart(2,'0')}`;
+    const esHoy = nuevaFecha === fechaHoy2;
+
+    // Resetear estado
+    [btnM, btnT].forEach(b => {
+      b.disabled = false;
+      b.style.opacity = '1';
+      b.style.cursor = 'pointer';
+      b.style.filter = '';
+      const lk = b.querySelector('.selturno-lock');
+      if (lk) lk.remove();
+    });
+
+    if (esHoy) {
+      const checkM = turnoPermitidoParaFecha('MANANA', nuevaFecha);
+      const checkT = turnoPermitidoParaFecha('TARDE',  nuevaFecha);
+      [{ btn: btnM, check: checkM, turno: 'MANANA' }, { btn: btnT, check: checkT, turno: 'TARDE' }].forEach(({ btn, check }) => {
+        if (!check.permitido) {
+          btn.disabled = true;
+          btn.style.opacity = '0.45';
+          btn.style.cursor = 'not-allowed';
+          btn.style.filter = 'grayscale(60%)';
+          btn.onclick = (ev) => {
+            ev.preventDefault();
+            const turnoLabel = btn === btnM ? 'Mañana ☀️' : 'Tarde 🌆';
+            document.getElementById('modal-turno-msg').innerHTML =
+              `<strong>${turnoLabel}</strong><br><br>${check.motivo}`;
+            document.getElementById('modal-seleccionar-turno').classList.remove('open');
+            document.getElementById('modal-confirmar-turno').classList.add('open');
+          };
+          const lock = document.createElement('span');
+          lock.className = 'selturno-lock';
+          lock.style.cssText = 'font-size:11px;color:#e84545;font-weight:800;display:block;margin-top:2px;';
+          lock.textContent = '🔒 No disponible';
+          btn.appendChild(lock);
+        } else {
+          btn.onclick = () => elegirTurnoEnModal(btn === btnM ? 'MANANA' : 'TARDE');
+        }
+      });
+    }
+
     document.getElementById('modal-seleccionar-turno').classList.add('open');
   });
 
@@ -2379,13 +2425,29 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ── Turno automático según hora ──────────────────────────────────────────
-  // MAÑANA: 00:00 – 13:00   |   TARDE: 13:01 – 23:59
+  // MAÑANA: 00:00 – 13:00   |   TARDE disponible desde 11:00 (2h antes)
 const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // minutos desde medianoche
 const esTarde = horaActual >= (13 * 60 + 1) && horaActual <= (23 * 60 + 59);
 turnoActual = esTarde ? 'TARDE' : 'MANANA';
 document.querySelectorAll('.turno-btn').forEach(b => {
   b.classList.toggle('active', b.dataset.turno === turnoActual);
 });
+// Aplicar bloqueo visual en botones del sidebar para la fecha de hoy
+(function aplicarBloqueoSidebar() {
+  document.querySelectorAll('.turno-btn').forEach(b => {
+    const t = b.dataset.turno;
+    const check = turnoPermitidoParaFecha(t, fechaActual);
+    if (!check.permitido) {
+      b.style.opacity = '0.45';
+      b.style.filter = 'grayscale(60%)';
+      b.title = check.motivo ? check.motivo.replace(/<[^>]+>/g, '') : 'No disponible';
+    } else {
+      b.style.opacity = '';
+      b.style.filter = '';
+      b.title = '';
+    }
+  });
+})();
 
   actualizarHeader();
   actualizarBloqueoCuadrante();
@@ -2647,38 +2709,46 @@ async function verificarConfig() {
   }
 }
 
+// ── Utilidad: comprueba si un turno está permitido para una fecha dada ───────
+// Para fechas pasadas: siempre permitido (consulta histórica).
+// Para hoy: ventana horaria con 2h de antelación.
+//   · MAÑANA disponible: 00:00 – 13:00
+//   · TARDE  disponible: 11:00 – 23:59  (2h antes = desde las 11:00)
+// Devuelve { permitido: bool, horaDesde: string|null }
+function turnoPermitidoParaFecha(turno, fecha) {
+  const hoy = new Date();
+  const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+  if (fecha < fechaHoy) return { permitido: true }; // fecha pasada: libre
+  if (fecha > fechaHoy) return { permitido: true }; // fecha futura: libre (admin)
+  // Es hoy → aplicar ventana horaria
+  const minutos = hoy.getHours() * 60 + hoy.getMinutes();
+  if (turno === 'MANANA') {
+    // Mañana: 00:00–13:00
+    if (minutos <= 13 * 60) return { permitido: true };
+    return { permitido: false, horaDesde: null, motivo: 'El turno de mañana ya ha finalizado. Solo puedes consultar cuadrantes de días anteriores.' };
+  } else {
+    // Tarde: disponible desde las 11:00 (2h antes de las 13:00)
+    const MIN_TARDE = 11 * 60; // 11:00
+    if (minutos >= MIN_TARDE) return { permitido: true };
+    const hFalta = Math.floor((MIN_TARDE - minutos) / 60);
+    const mFalta = (MIN_TARDE - minutos) % 60;
+    const faltaStr = hFalta > 0 ? `${hFalta}h ${mFalta}min` : `${mFalta} minutos`;
+    return {
+      permitido: false,
+      motivo: `El turno de tarde estará disponible a partir de las <strong>11:00</strong>.<br>Faltan <strong>${faltaStr}</strong>.`
+    };
+  }
+}
+
 function seleccionarTurno(btn) {
   const turnoElegido = btn.dataset.turno;
+  const check = turnoPermitidoParaFecha(turnoElegido, fechaActual);
 
-  // ── Comprobar si el turno elegido corresponde a la hora actual ──
-  const ahora = new Date();
-  const minutos = ahora.getHours() * 60 + ahora.getMinutes();
-  const esTardeAhora = minutos >= (13 * 60 + 31) && minutos <= (23 * 60 + 59);
-  const turnoEsperado = esTardeAhora ? 'TARDE' : 'MANANA';
-
-  if (turnoElegido !== turnoEsperado) {
-    const horaStr = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    const turnoElegidoLabel  = turnoElegido  === 'MANANA' ? 'Mañana ☀️' : 'Tarde 🌆';
-    const turnoEsperadoLabel = turnoEsperado === 'MANANA' ? 'Mañana ☀️' : 'Tarde 🌆';
-
+  if (!check.permitido) {
+    const turnoLabel = turnoElegido === 'MANANA' ? 'Mañana ☀️' : 'Tarde 🌆';
     document.getElementById('modal-turno-msg').innerHTML =
-      `Son las <strong>${horaStr}</strong>, el turno esperado es <strong>${turnoEsperadoLabel}</strong>.<br><br>` +
-      `¿Seguro que quieres cambiar al turno de <strong>${turnoElegidoLabel}</strong>?`;
-
-    const modal = document.getElementById('modal-confirmar-turno');
-    modal.classList.add('open');
-
-    // Asignar callback al botón de confirmar
-    const btnOk = document.getElementById('btn-confirmar-turno-ok');
-    btnOk.onclick = () => {
-      modal.classList.remove('open');
-      document.querySelectorAll('.turno-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      turnoActual = turnoElegido;
-      actualizarHeader();
-      actualizarBloqueoCuadrante();
-      if (usuarioActual) cargarCuadrante();
-    };
+      `<strong>${turnoLabel}</strong><br><br>${check.motivo}`;
+    document.getElementById('modal-confirmar-turno').classList.add('open');
     return;
   }
 
@@ -8723,24 +8793,18 @@ function forzarActualizacion() {
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     MODAL: CONFIRMACIÓN CAMBIO DE TURNO INUSUAL
+     MODAL: TURNO NO DISPONIBLE AÚN
 ═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-confirmar-turno" style="z-index:10300">
-  <div class="modal-box" style="width:360px;text-align:center;">
-    <div style="font-size:40px;margin-bottom:12px">⚠️</div>
-    <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:10px">Cambio de turno inusual</div>
-    <div style="font-size:13px;color:#556;line-height:1.7;margin-bottom:22px" id="modal-turno-msg"></div>
-    <div style="display:flex;gap:10px;justify-content:center">
-      <button onclick="document.getElementById('modal-confirmar-turno').classList.remove('open')"
-        style="flex:1;padding:11px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer">
-        ✕ Cancelar
-      </button>
-      <button id="btn-confirmar-turno-ok"
-        style="flex:1;padding:11px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s"
-        onmouseover="this.style.background='#c63030'" onmouseout="this.style.background='#e84545'">
-        ✓ Sí, cambiar
-      </button>
-    </div>
+  <div class="modal-box" style="width:380px;text-align:center;padding:36px 32px 28px;">
+    <div style="font-size:52px;margin-bottom:12px">🔒</div>
+    <div style="font-size:17px;font-weight:900;color:#1a1a2e;margin-bottom:10px">Turno no disponible</div>
+    <div style="font-size:13px;color:#556;line-height:1.8;margin-bottom:26px" id="modal-turno-msg"></div>
+    <button onclick="document.getElementById('modal-confirmar-turno').classList.remove('open')"
+      style="width:100%;padding:13px;background:#1a1a2e;color:white;border:none;border-radius:10px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s"
+      onmouseover="this.style.background='#2a2a4e'" onmouseout="this.style.background='#1a1a2e'">
+      Entendido
+    </button>
   </div>
 </div>
 

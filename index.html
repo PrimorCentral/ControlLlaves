@@ -7696,27 +7696,17 @@ function abrirModalIncidencia(matricula) {
 
         ${!textoActual ? `
         <!-- TOGGLE BLOQUEAR VEHÍCULO -->
-        <div id="bloqueo-toggle-wrap" style="margin-top:16px;padding:13px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .15s,border-color .15s;"
-          onclick="(function(){
-            var cb = document.getElementById('incid-bloquear-cb');
-            cb.checked = !cb.checked;
-            var wrap = document.getElementById('bloqueo-toggle-wrap');
-            if(cb.checked){
-              wrap.style.background='#fff0f0';wrap.style.borderColor='#e84545';
-            } else {
-              wrap.style.background='#fff5f5';wrap.style.borderColor='#fecaca';
-            }
-          })()">
-          <div style="position:relative;width:40px;height:22px;flex-shrink:0;">
-            <input type="checkbox" id="incid-bloquear-cb" style="opacity:0;width:0;height:0;position:absolute;" onclick="event.stopPropagation()">
+        <label for="incid-bloquear-cb" id="bloqueo-toggle-wrap" style="margin-top:16px;padding:13px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;">
+          <input type="checkbox" id="incid-bloquear-cb" style="opacity:0;width:0;height:0;position:absolute;">
+          <div style="position:relative;width:40px;height:22px;flex-shrink:0;pointer-events:none;">
             <div id="bloqueo-track" style="position:absolute;inset:0;background:#fecaca;border-radius:11px;transition:background .2s;"></div>
             <div id="bloqueo-thumb" style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:transform .2s;"></div>
           </div>
-          <div style="flex:1;min-width:0;">
+          <div style="flex:1;min-width:0;pointer-events:none;">
             <div style="font-size:12px;font-weight:800;color:#c0392b;letter-spacing:0.3px;">⛔ Bloquear vehículo</div>
             <div style="font-size:10px;color:#e07070;margin-top:1px;font-weight:600;">No estará disponible para asignación hasta resolver la incidencia</div>
           </div>
-        </div>` : ''}
+        </label>` : ''}
 
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
           <button onclick="this.closest('div[style*=fixed]').remove()"

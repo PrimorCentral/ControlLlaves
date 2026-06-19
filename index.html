@@ -1292,14 +1292,6 @@
       <span class="bsq-label">Imprimir cuadrante</span>
     </button>
   </div>
-  <div class="sb-action-btns">
-    <button class="btn-icon-sq btn-sq-secondary" onclick="abrirModalBloqueoRapido()" title="Bloquear un vehículo">
-      <span class="bsq-icon">⛔</span>
-      <span class="bsq-label">Bloquear vehículo</span>
-    </button>
-  </div>
-
-
   <button class="btn-action btn-secondary" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;">🔐 Panel Admin</button>
 </div>
 
@@ -7702,6 +7694,30 @@ function abrirModalIncidencia(matricula) {
           : `<div style="margin-top:8px;font-size:10px;color:#aab5c0;font-weight:600;">Se registrará la incidencia y se enviará por <strong style="color:#8899aa">correo electronico</strong>.</div>`
         }
 
+        ${!textoActual ? `
+        <!-- TOGGLE BLOQUEAR VEHÍCULO -->
+        <div id="bloqueo-toggle-wrap" style="margin-top:16px;padding:13px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .15s,border-color .15s;"
+          onclick="(function(){
+            var cb = document.getElementById('incid-bloquear-cb');
+            cb.checked = !cb.checked;
+            var wrap = document.getElementById('bloqueo-toggle-wrap');
+            if(cb.checked){
+              wrap.style.background='#fff0f0';wrap.style.borderColor='#e84545';
+            } else {
+              wrap.style.background='#fff5f5';wrap.style.borderColor='#fecaca';
+            }
+          })()">
+          <div style="position:relative;width:40px;height:22px;flex-shrink:0;">
+            <input type="checkbox" id="incid-bloquear-cb" style="opacity:0;width:0;height:0;position:absolute;" onclick="event.stopPropagation()">
+            <div id="bloqueo-track" style="position:absolute;inset:0;background:#fecaca;border-radius:11px;transition:background .2s;"></div>
+            <div id="bloqueo-thumb" style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:transform .2s;"></div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:800;color:#c0392b;letter-spacing:0.3px;">⛔ Bloquear vehículo</div>
+            <div style="font-size:10px;color:#e07070;margin-top:1px;font-weight:600;">No estará disponible para asignación hasta resolver la incidencia</div>
+          </div>
+        </div>` : ''}
+
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
           <button onclick="this.closest('div[style*=fixed]').remove()"
             style="padding:10px 22px;background:#f4f5f8;color:#667;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s;"
@@ -7712,10 +7728,67 @@ function abrirModalIncidencia(matricula) {
     </div>`;
   document.body.appendChild(overlay);
 
+  // ── Animar toggle bloqueo ──────────────────────────────────────────────
+  const cbBloqueo = overlay.querySelector('#incid-bloquear-cb');
+  if (cbBloqueo) {
+    cbBloqueo.addEventListener('change', function() {
+      const track = overlay.querySelector('#bloqueo-track');
+      const thumb = overlay.querySelector('#bloqueo-thumb');
+      const wrap  = overlay.querySelector('#bloqueo-toggle-wrap');
+      if (this.checked) {
+        track.style.background = '#e84545';
+        thumb.style.transform  = 'translateX(18px)';
+        wrap.style.background   = '#fff0f0';
+        wrap.style.borderColor  = '#e84545';
+      } else {
+        track.style.background = '#fecaca';
+        thumb.style.transform  = 'translateX(0)';
+        wrap.style.background   = '#fff5f5';
+        wrap.style.borderColor  = '#fecaca';
+      }
+    });
+  }
+
   const btnGuardar = overlay.querySelector('#btn-guardar-incidencia');
   if (btnGuardar) btnGuardar.onclick = async () => {
     const texto = document.getElementById('incid-texto').value.trim();
     if (!texto) { mostrarToast('Escribe la incidencia antes de guardar', 'error'); return; }
+
+    // ── Confirmar bloqueo si está activado ──
+    const quiereBloquear = cbBloqueo && cbBloqueo.checked;
+    if (quiereBloquear) {
+      const confirmar = await new Promise(resolve => {
+        const dlg = document.createElement('div');
+        dlg.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.75);backdrop-filter:blur(3px);z-index:5500;display:flex;align-items:center;justify-content:center;';
+        dlg.innerHTML = `
+          <div style="background:white;border-radius:18px;width:400px;max-width:94vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+            <div style="background:#1a1a2e;padding:20px 24px 16px;display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;background:#e84545;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⛔</div>
+              <div>
+                <div style="font-size:15px;font-weight:900;color:#fff;">Bloquear vehículo</div>
+                <div style="font-size:10px;color:#6b7a94;margin-top:2px;">${esc(matricula)}</div>
+              </div>
+            </div>
+            <div style="padding:22px 24px 20px;">
+              <div style="font-size:13px;color:#1a1a2e;font-weight:700;line-height:1.6;margin-bottom:6px;">
+                ¿Confirmas que quieres bloquear este vehículo?
+              </div>
+              <div style="font-size:12px;color:#778899;line-height:1.7;background:#f4f6fb;border-radius:9px;padding:10px 14px;margin-top:10px;">
+                🔒 El vehículo <strong>${esc(matricula)}</strong> quedará <strong>no disponible para asignación</strong> hasta que la incidencia sea marcada como resuelta por un administrador.
+              </div>
+              <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;">
+                <button id="dlg-no" style="padding:10px 22px;background:#f4f5f8;color:#667;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='#f4f5f8'">Cancelar</button>
+                <button id="dlg-si" style="padding:10px 24px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(232,69,69,0.3);letter-spacing:0.5px;transition:background .15s;" onmouseover="this.style.background='#c63030'" onmouseout="this.style.background='#e84545'">⛔ Sí, bloquear</button>
+              </div>
+            </div>
+          </div>`;
+        document.body.appendChild(dlg);
+        dlg.querySelector('#dlg-no').onclick  = () => { document.body.removeChild(dlg); resolve(false); };
+        dlg.querySelector('#dlg-si').onclick  = () => { document.body.removeChild(dlg); resolve(true); };
+      });
+      if (!confirmar) return;
+    }
+
     const btn = overlay.querySelector('#btn-guardar-incidencia');
     btn.disabled = true; btn.textContent = '⏳ Guardando…';
 
@@ -7743,10 +7816,22 @@ function abrirModalIncidencia(matricula) {
     // Guardar en hoja Incidencias (historial, correo, etc.)
     await registrarIncidenciaEnSheets(matricula, texto);
 
+    // ── Bloquear vehículo si el toggle estaba activado ──
+    if (quiereBloquear && APPS_SCRIPT_URL) {
+      try {
+        const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
+        await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ accion: 'bloquearVehiculo', matricula, motivo: texto, bloqueado_por: respUsuario })
+        });
+      } catch(e) { console.warn('No se pudo bloquear el vehículo:', e); }
+    }
+
     document.body.removeChild(modalEnvio);
     document.body.removeChild(overlay);
     renderTabla();
-    mostrarToast('✓ Incidencia registrada', 'success');
+    mostrarToast(quiereBloquear ? '✓ Incidencia registrada · Vehículo bloqueado' : '✓ Incidencia registrada', 'success');
   };
 }
 
@@ -9020,8 +9105,7 @@ function forzarActualizacion() {
   bb.id = 'mob-bottombar';
   bb.innerHTML =
     '<button onclick="window._mobToggle()"><span class="bbi">☰</span>Menú</button>' +
-    '<button onclick="if(typeof cargarCuadrante===\'function\') cargarCuadrante()"><span class="bbi">↺</span>Recargar</button>' +
-    '<button class="bb-pri" onclick="if(typeof abrirModalBloqueoRapido===\'function\') abrirModalBloqueoRapido()"><span class="bbi">⛔</span>Bloquear</button>';
+    '<button onclick="if(typeof cargarCuadrante===\'function\') cargarCuadrante()"><span class="bbi">↺</span>Recargar</button>';
   document.body.appendChild(bb);
 
   // Fix botón recargar topbar

@@ -7803,20 +7803,8 @@ function abrirModalIncidencia(matricula) {
     if (!datos[key]) datos[key] = {};
     datos[key].incidencias = texto;
 
-    // Guardar en hoja Incidencias (historial, correo, etc.)
-    await registrarIncidenciaEnSheets(matricula, texto);
-
-    // ── Bloquear vehículo si el toggle estaba activado ──
-    if (quiereBloquear && APPS_SCRIPT_URL) {
-      try {
-        const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
-        await fetch(APPS_SCRIPT_URL, {
-          method: 'POST', redirect: 'follow',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ accion: 'bloquearVehiculo', matricula, motivo: texto, bloqueado_por: respUsuario })
-        });
-      } catch(e) { console.warn('No se pudo bloquear el vehículo:', e); }
-    }
+    // Guardar en hoja Incidencias (historial, correo y bloqueo si aplica, todo en una sola llamada)
+    await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear);
 
     document.body.removeChild(modalEnvio);
     document.body.removeChild(overlay);
@@ -7825,7 +7813,7 @@ function abrirModalIncidencia(matricula) {
   };
 }
 
-async function registrarIncidenciaEnSheets(matricula, descripcion) {
+async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
   if (!APPS_SCRIPT_URL) return;
   try {
     const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
@@ -7833,7 +7821,8 @@ async function registrarIncidenciaEnSheets(matricula, descripcion) {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
-        accion: 'registrarIncidencia',
+        accion:           'registrarIncidencia',
+        bloquearVehiculo: bloquear || false,
         incidencia: {
           timestamp:   new Date().toISOString(),
           fecha:       fechaActual,

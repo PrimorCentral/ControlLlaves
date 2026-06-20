@@ -1374,6 +1374,36 @@
 
 </div>
 
+<!-- MODAL: CONFIRMAR BORRAR REASIGNACIÓN -->
+<div class="modal-overlay" id="modal-confirmar-borrar-reasig" style="z-index:99999!important">
+  <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
+    <div style="font-size:36px;margin-bottom:10px;text-align:center">🗑️</div>
+    <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;text-align:center">¿Eliminar este registro de reasignación?</div>
+    <div style="font-size:12px;color:#8899aa;margin-bottom:14px;text-align:center">
+      <span id="borrar-reasig-matricula" style="font-weight:700;color:#1a1a2e"></span>
+      · <span id="borrar-reasig-timestamp"></span>
+    </div>
+    <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.6;margin-bottom:16px;">
+      <strong>Conductor anterior:</strong> <span id="borrar-reasig-operario"></span><br>
+      <strong>Resp. entrega:</strong> <span id="borrar-reasig-entrega"></span> · <strong>Resp. recibe:</strong> <span id="borrar-reasig-recibe"></span><br>
+      <strong>Hora reasignación:</strong> <span id="borrar-reasig-hora"></span>
+    </div>
+    <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;text-align:center">⚠️ Se eliminará de Reasignaciones y de Registros. Esta acción no se puede deshacer.</div>
+    <div style="display:flex;gap:10px;">
+      <button id="btn-borrar-reasig-cancel"
+        style="flex:1;padding:11px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s"
+        onmouseover="this.style.background='#eaecf2'" onmouseout="this.style.background='#f4f5f8'">
+        Cancelar
+      </button>
+      <button id="btn-borrar-reasig-ok"
+        style="flex:2;padding:11px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background 0.15s"
+        onmouseover="this.style.background='#c63030'" onmouseout="this.style.background='#e84545'">
+        🗑 Sí, eliminar
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: CONFIRMAR ASIGNACIÓN DE CHOFER -->
 <div class="modal-overlay" id="modal-confirmar-asignacion">
   <div style="background:white;border-radius:16px;padding:28px 28px 22px;width:420px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;">
@@ -4992,38 +5022,42 @@ function exportarReasignacionesCSV() {
   a.click();
 }
 
-async function eliminarReasignacion(idx) {
+// Índice pendiente de confirmar borrado de reasignación
+let _reasigIdxPendiente = null;
+
+function eliminarReasignacion(idx) {
   const f = reasigCache[idx];
   if (!f) return;
   if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
 
-  const confirmado = await new Promise(resolve => {
-    const ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
-    ov.innerHTML = `
-      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
-        <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
-        <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Eliminar este registro de reasignación?</div>
-        <div style="font-size:12px;color:#8899aa;margin-bottom:14px;">
-          <span style="font-weight:700;color:#1a1a2e">${f.matricula||'—'}</span> · ${f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : ''}
-        </div>
-        <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.6;margin-bottom:16px;">
-          <strong>Conductor anterior:</strong> ${f.operario||'—'}<br>
-          <strong>Resp. entrega:</strong> ${f.resp_entrega||'—'} · <strong>Resp. recibe:</strong> ${f.resp_recibe||'—'}<br>
-          <strong>Hora reasignación:</strong> ${fmtHora(f.hora_reasignacion)||'—'}
-        </div>
-        <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;">
-          <button id="btn-relog-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
-          <button id="btn-relog-ok" style="padding:10px 22px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🗑 Sí, eliminar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(ov);
-    ov.querySelector('#btn-relog-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };
-    ov.querySelector('#btn-relog-ok').onclick     = () => { document.body.removeChild(ov); resolve(true); };
-  });
+  // Rellenar datos en el modal estático
+  _reasigIdxPendiente = idx;
+  document.getElementById('borrar-reasig-matricula').textContent  = f.matricula || '—';
+  document.getElementById('borrar-reasig-timestamp').textContent  = f.timestamp ? new Date(f.timestamp).toLocaleString('es-ES') : '';
+  document.getElementById('borrar-reasig-operario').textContent   = f.operario || '—';
+  document.getElementById('borrar-reasig-entrega').textContent    = f.resp_entrega || '—';
+  document.getElementById('borrar-reasig-recibe').textContent     = f.resp_recibe || '—';
+  document.getElementById('borrar-reasig-hora').textContent       = fmtHora(f.hora_reasignacion) || '—';
 
-  if (!confirmado) return;
+  // Abrir modal
+  document.getElementById('modal-confirmar-borrar-reasig').classList.add('open');
+}
+
+// Botón Cancelar del modal estático
+document.getElementById('btn-borrar-reasig-cancel').addEventListener('click', () => {
+  document.getElementById('modal-confirmar-borrar-reasig').classList.remove('open');
+  _reasigIdxPendiente = null;
+});
+
+// Botón Confirmar del modal estático
+document.getElementById('btn-borrar-reasig-ok').addEventListener('click', async () => {
+  const idx = _reasigIdxPendiente;
+  if (idx === null) return;
+  const f = reasigCache[idx];
+  if (!f) return;
+
+  document.getElementById('modal-confirmar-borrar-reasig').classList.remove('open');
+  _reasigIdxPendiente = null;
 
   try {
     // 1) Borrar de hoja Reasignaciones
@@ -5035,18 +5069,23 @@ async function eliminarReasignacion(idx) {
     const json = await resp.json();
     if (!json.ok) throw new Error(json.error || 'Error en Sheets (Reasignaciones)');
 
-    // 2) Borrar también de hoja Registros (fila del operario anterior en ese vehículo/turno/fecha)
+    // 2) Borrar SOLO la fila con reasignado=SI de la hoja Registros
+    //    (sin tocar la fila del nuevo operario)
     if (f.matricula && f.fecha && f.turno) {
       try {
         await fetch(APPS_SCRIPT_URL, {
           method: 'POST', redirect: 'follow',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
-            accion: 'eliminarFila',
-            fila: { fecha: f.fecha, turno: f.turno, matricula: f.matricula }
+            accion: 'eliminarFilaReasignada',
+            fila: {
+              fecha:     f.fecha,
+              turno:     f.turno,
+              matricula: f.matricula
+            }
           })
         });
-        // Limpiar también la memoria local si coincide con el cuadrante abierto
+        // Limpiar memoria local si coincide con cuadrante abierto
         const key = `${f.matricula}|${f.turno}|${f.fecha}`;
         if (typeof datos !== 'undefined' && datos[key]) {
           datos[key] = { operario:'', resp_entrega:'', resp_recibe:'', hora_entrega:'', hora_devolucion:'', num_tarjeta:'', itv:'', incidencias:'' };
@@ -5059,12 +5098,12 @@ async function eliminarReasignacion(idx) {
     reasigCache.splice(idx, 1);
     renderReasignaciones();
     mostrarToast('✓ Registro de reasignación eliminado', 'success');
-    // Refrescar cuadrante para quitar el badge en tiempo real
+    // Refrescar cuadrante para quitar el badge
     if (usuarioActual) cargarCuadrante();
   } catch(e) {
     mostrarToast('Error al eliminar: ' + e.message, 'error');
   }
-}
+});
 
 let logCache = [];
 
@@ -6076,7 +6115,7 @@ async function eliminarHistorial(idx) {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           accion: 'eliminarFila',
-          fila: { fecha: f.fecha, turno: f.turno, matricula: f.matricula }
+          fila: { fecha: f.fecha, turno: f.turno, matricula: f.matricula, operario: f.operario, timestamp: f.timestamp }
         })
       });
       const json = await resp.json();

@@ -4999,7 +4999,7 @@ async function eliminarReasignacion(idx) {
 
   const confirmado = await new Promise(resolve => {
     const ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
     ov.innerHTML = `
       <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.22s cubic-bezier(.34,1.56,.64,1)">
         <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
@@ -5010,7 +5010,7 @@ async function eliminarReasignacion(idx) {
         <div style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:9px;padding:10px 14px;font-size:12px;color:#444;line-height:1.6;margin-bottom:16px;">
           <strong>Conductor anterior:</strong> ${f.operario||'—'}<br>
           <strong>Resp. entrega:</strong> ${f.resp_entrega||'—'} · <strong>Resp. recibe:</strong> ${f.resp_recibe||'—'}<br>
-          <strong>Hora reasignación:</strong> ${f.hora_reasignacion||'—'}
+          <strong>Hora reasignación:</strong> ${fmtHora(f.hora_reasignacion)||'—'}
         </div>
         <div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>
         <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -5026,13 +5026,36 @@ async function eliminarReasignacion(idx) {
   if (!confirmado) return;
 
   try {
+    // 1) Borrar de hoja Reasignaciones
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ accion: 'eliminarReasignacion', timestamp: f.timestamp })
     });
     const json = await resp.json();
-    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets (Reasignaciones)');
+
+    // 2) Borrar también de hoja Registros (fila del operario anterior en ese vehículo/turno/fecha)
+    if (f.matricula && f.fecha && f.turno) {
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            accion: 'eliminarFila',
+            fila: { fecha: f.fecha, turno: f.turno, matricula: f.matricula }
+          })
+        });
+        // Limpiar también la memoria local si coincide con el cuadrante abierto
+        const key = `${f.matricula}|${f.turno}|${f.fecha}`;
+        if (typeof datos !== 'undefined' && datos[key]) {
+          datos[key] = { operario:'', resp_entrega:'', resp_recibe:'', hora_entrega:'', hora_devolucion:'', num_tarjeta:'', itv:'', incidencias:'' };
+        }
+      } catch(e2) {
+        console.warn('No se pudo borrar de Registros:', e2);
+      }
+    }
+
     reasigCache.splice(idx, 1);
     renderReasignaciones();
     mostrarToast('✓ Registro de reasignación eliminado', 'success');

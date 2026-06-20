@@ -3159,10 +3159,19 @@ function mostrarAvisoYaAsignado(mat, nombre, otraMat) {
     <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:380px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;text-align:center;">
       <div style="font-size:48px;margin-bottom:12px;">🚫</div>
       <div style="font-size:17px;font-weight:900;color:#c62020;margin-bottom:8px;">CONDUCTOR YA ASIGNADO</div>
-      <div style="font-size:13px;font-weight:700;color:#1a1a2e;background:#ffe4e4;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:14px;">${esc(nombre)}</div>
-      <div style="font-size:13px;color:#556;line-height:1.6;margin-bottom:22px;">
-        Este conductor ya está asignado al vehículo <strong style="color:#c62020">${esc(otraMat)}</strong>.<br><br>
-        Si necesita cambiarlo de vehículo, primero haz una <strong>reasignación</strong> en ${esc(otraMat)} y luego asígnalo de nuevo en ${esc(mat)}.
+      <div style="font-size:13px;font-weight:700;color:#1a1a2e;background:#ffe4e4;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:10px;">${esc(nombre)}</div>
+      <div style="font-size:13px;color:#556;line-height:1.5;margin-bottom:6px;">
+        Este conductor ya está asignado al vehículo:
+      </div>
+      <div style="font-size:14px;font-weight:800;color:#c62020;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:7px 14px;white-space:nowrap;display:inline-block;margin-bottom:18px;">${esc(otraMat)}</div>
+      <div style="text-align:left;background:#f4f5f8;border-radius:10px;padding:14px 16px;margin-bottom:22px;">
+        <div style="font-size:11px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;margin-bottom:8px;">Para asignarlo a ${esc(mat)}, elige una opción:</div>
+        <div style="font-size:12.5px;color:#445;line-height:1.5;margin-bottom:8px;">
+          <strong style="color:#1a1a2e;">1.</strong> Si el conductor sigue con ${esc(otraMat)}, hazle una <strong>reasignación</strong> en ese vehículo (esto lo libera y queda en el historial) y después asígnalo aquí.
+        </div>
+        <div style="font-size:12.5px;color:#445;line-height:1.5;">
+          <strong style="color:#1a1a2e;">2.</strong> Si ya ha devuelto ${esc(otraMat)}, confirma la <strong>devolución de llaves</strong> en esa matrícula y después asígnalo aquí.
+        </div>
       </div>
       <button id="btn-ya-asignado-cerrar" style="width:100%;padding:12px;background:#1a1a2e;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Entendido</button>
     </div>`;

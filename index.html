@@ -3133,10 +3133,61 @@ function cerrarBuscadorOperario() {
   _cerrarDd(true);
 }
 
+// ── Comprueba si `nombre` ya está asignado a otro vehículo activo (excluyendo `matExcluida`) ──
+// Devuelve la matrícula del vehículo donde ya está asignado, o null si está libre.
+function _matriculaYaAsignada(nombre, matExcluida) {
+  const nombreNorm = nombre.trim().toUpperCase();
+  let encontrada = null;
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+    if (encontrada) return;
+    if (v.matricula === matExcluida) return;
+    const d = getDato(v.matricula);
+    if (!d.operario || !d.operario.trim()) return;
+    // Si ya está devuelto (resp_recibe relleno) el vehículo se considera libre de nuevo
+    if (d.resp_recibe && d.resp_recibe.trim()) return;
+    if (d.operario.trim().toUpperCase() === nombreNorm) {
+      encontrada = v.matricula;
+    }
+  }));
+  return encontrada;
+}
+
+function mostrarAvisoYaAsignado(mat, nombre, otraMat) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:380px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">🚫</div>
+      <div style="font-size:17px;font-weight:900;color:#c62020;margin-bottom:8px;">CONDUCTOR YA ASIGNADO</div>
+      <div style="font-size:13px;font-weight:700;color:#1a1a2e;background:#ffe4e4;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:14px;">${esc(nombre)}</div>
+      <div style="font-size:13px;color:#556;line-height:1.6;margin-bottom:22px;">
+        Este conductor ya está asignado al vehículo <strong style="color:#c62020">${esc(otraMat)}</strong>.<br><br>
+        Si necesita cambiarlo de vehículo, primero haz una <strong>reasignación</strong> en ${esc(otraMat)} y luego asígnalo de nuevo en ${esc(mat)}.
+      </div>
+      <button id="btn-ya-asignado-cerrar" style="width:100%;padding:12px;background:#1a1a2e;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Entendido</button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const cerrar = () => {
+    if (document.body.contains(overlay)) document.body.removeChild(overlay);
+    const inp = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
+    if (inp) inp.value = getDato(mat).operario || '';
+  };
+  overlay.querySelector('#btn-ya-asignado-cerrar').onclick = cerrar;
+  overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
+}
+
 function _procesarSeleccionOperario(mat, nombre) {
   if (!nombre || !nombre.trim()) {
     setDato(mat, 'operario', '');
     actualizarStats(); renderTabla(); programarGuardado();
+    return;
+  }
+
+  // ── Bloquear si el operario ya está asignado a OTRO vehículo activo ────────
+  const otraMat = _matriculaYaAsignada(nombre, mat);
+  if (otraMat) {
+    mostrarAvisoYaAsignado(mat, nombre, otraMat);
     return;
   }
 

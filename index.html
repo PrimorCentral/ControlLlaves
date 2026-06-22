@@ -9253,7 +9253,7 @@ async function guardarCambioClave() {
   }
 
   // Verificar clave actual contra la almacenada del usuario logueado
-  if (!window.usuarioActual) {
+  if (!usuarioActual) {
     errEl.textContent = 'No hay sesión activa';
     errEl.classList.add('visible'); return;
   }
@@ -9264,7 +9264,7 @@ async function guardarCambioClave() {
 
   try {
     var hashActual = await hashStr(actual);
-    if (hashActual !== window.usuarioActual.hash) {
+    if (hashActual !== usuarioActual.hash) {
       errEl.textContent = 'La clave actual no es correcta';
       errEl.classList.add('visible');
       btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave'; return;
@@ -9279,7 +9279,7 @@ async function guardarCambioClave() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         accion: 'cambiarClave',
-        numUsuario: window.usuarioActual.num,
+        numUsuario: usuarioActual.numUsuario || usuarioActual.num,
         hashNueva: hashNueva
       })
     });
@@ -9287,7 +9287,7 @@ async function guardarCambioClave() {
 
     if (data.ok) {
       // Actualizar el hash en memoria para que no haga falta re-login
-      window.usuarioActual.hash = hashNueva;
+      usuarioActual.hash = hashNueva;
       okEl.classList.add('visible');
       btnOk.textContent = '✓ Guardado';
       setTimeout(function(){ cerrarModalCambioClave(); }, 1400);

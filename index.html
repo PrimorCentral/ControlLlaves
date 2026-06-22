@@ -197,6 +197,28 @@
     .btn-sq-primary { background: #e84545; color: white; border-color: #e84545; }
     .btn-sq-primary:hover { background: #c63030; border-color: #c63030; }
     /* Cuenta atrás sesión */
+    /* ─── RELOJ SIDEBAR ─── */
+    .sb-clock {
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+      border: 1px solid rgba(232,69,69,0.4);
+      border-radius: 12px;
+      padding: 14px 12px 12px;
+      margin-top: 8px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .sb-clock-time {
+      font-size: 38px; font-weight: 900; color: #ffffff;
+      letter-spacing: 3px; font-variant-numeric: tabular-nums;
+      line-height: 1; text-shadow: 0 0 20px rgba(232,69,69,0.4);
+    }
+    .sb-clock-time .sb-clock-secs {
+      font-size: 24px; font-weight: 700; color: #e84545; opacity: 0.9;
+    }
+    .sb-clock-label {
+      font-size: 8px; font-weight: 800; letter-spacing: 2px;
+      color: #666; text-transform: uppercase; margin-top: 5px;
+    }
     .session-countdown { font-size: 9px; font-weight: 800; color: #ccc; letter-spacing: 0.5px; margin-top: 1px; transition: color 0.3s; }
     .session-countdown.warning { color: #f39c12; }
     .session-countdown.danger  { color: #e84545; animation: pulse-red 1s infinite; }
@@ -1359,6 +1381,13 @@
     </button>
   </div>
   <button class="btn-action btn-secondary" onclick="abrirModalIncidenciasPendientes()" style="border-color:#7a4a0a;color:#f5a623;">⚠️ Incidencias pendientes</button>
+
+  <!-- RELOJ EN TIEMPO REAL -->
+  <div class="sb-clock">
+    <div class="sb-clock-time" id="sb-clock-time">00:00<span class="sb-clock-secs">:00</span></div>
+    <div class="sb-clock-label">Hora actual</div>
+  </div>
+
   <button class="btn-action btn-secondary" id="btn-panel-admin" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;display:none;">🔐 Panel Admin</button>
 </div>
 
@@ -2614,6 +2643,21 @@ let _repostajesFechaMat = {}; // { matricula: { num_tarjeta, hora_devolucion, id
     }
   }, { passive: true });
 });
+
+// ─── RELOJ TIEMPO REAL ───
+(function() {
+  function actualizarReloj() {
+    const el = document.getElementById('sb-clock-time');
+    if (!el) return;
+    const ahora = new Date();
+    const hh = String(ahora.getHours()).padStart(2,'0');
+    const mm = String(ahora.getMinutes()).padStart(2,'0');
+    const ss = String(ahora.getSeconds()).padStart(2,'0');
+    el.innerHTML = `${hh}:${mm}<span class="sb-clock-secs">:${ss}</span>`;
+  }
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
   const hoy = new Date();

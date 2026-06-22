@@ -1274,10 +1274,11 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">🚛</div>
-    <div>
+    <div style="flex:1">
       <div class="logo-text">GESTIÓN<br>DE FLOTA</div>
       <div class="logo-sub">Cuadrante diario</div>
     </div>
+    <button id="btn-panel-admin" onclick="abrirLoginAdmin()" title="Panel Admin" style="display:none;background:transparent;border:none;font-size:18px;cursor:pointer;opacity:0.4;transition:opacity 0.2s;padding:2px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">🔐</button>
   </div>
 
   <!-- Pastilla turno/fecha en sidebar -->
@@ -1383,11 +1384,9 @@
   <button class="btn-action btn-secondary" onclick="abrirModalIncidenciasPendientes()" style="border-color:#7a4a0a;color:#f5a623;">⚠️ Incidencias pendientes</button>
 
   <!-- RELOJ EN TIEMPO REAL -->
-  <div class="sb-clock">
+  <div class="sb-clock" style="margin-top:auto;">
     <div class="sb-clock-time" id="sb-clock-time">00:00<span class="sb-clock-secs">:00</span></div>
   </div>
-
-  <button class="btn-action btn-secondary" id="btn-panel-admin" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;display:none;">🔐 Panel Admin</button>
 </div>
 
 <!-- MAIN -->

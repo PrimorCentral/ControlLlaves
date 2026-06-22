@@ -1919,11 +1919,9 @@
               <div style="font-size:12px;font-weight:800;color:#1a1a2e;">Administrador</div>
               <div style="font-size:10px;color:#8899aa;margin-top:1px;">Acceso al panel de administración</div>
             </div>
-            <label style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;">
-              <input type="checkbox" id="modal-resp-admin" style="opacity:0;width:0;height:0;">
-              <span onclick="this.previousElementSibling.checked=!this.previousElementSibling.checked;this.style.background=this.previousElementSibling.checked?'#e84545':'#ccd1db'" style="position:absolute;cursor:pointer;inset:0;background:#ccd1db;border-radius:22px;transition:background .2s;">
-                <span style="position:absolute;content:'';height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:transform .2s;display:block;" id="modal-resp-admin-knob"></span>
-              </span>
+            <label style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;cursor:pointer;" onclick="toggleAdminSwitch()">
+              <div id="modal-resp-admin-track" style="position:absolute;inset:0;background:#ccd1db;border-radius:22px;transition:background .2s;"></div>
+              <div id="modal-resp-admin-knob" style="position:absolute;height:16px;width:16px;left:3px;top:3px;background:white;border-radius:50%;transition:transform .2s;"></div>
             </label>
           </div>
         </div>
@@ -5397,18 +5395,18 @@ function renderAdminResponsables() {
     </div>`).join('');
 }
 
+var _adminChecked = false;
+function toggleAdminSwitch() {
+  _adminChecked = !_adminChecked;
+  document.getElementById('modal-resp-admin-track').style.background = _adminChecked ? '#e84545' : '#ccd1db';
+  document.getElementById('modal-resp-admin-knob').style.transform    = _adminChecked ? 'translateX(18px)' : 'translateX(0)';
+}
 function abrirModalNuevoResponsable() {
   ['modal-resp-num','modal-resp-nombre','modal-resp-clave','modal-resp-rol'].forEach(id => document.getElementById(id).value = '');
-  const chk = document.getElementById('modal-resp-admin');
-  if (chk) { chk.checked = false; chk.nextElementSibling.style.background = '#ccd1db'; document.getElementById('modal-resp-admin-knob').style.transform = 'translateX(0)'; }
+  _adminChecked = false;
+  document.getElementById('modal-resp-admin-track').style.background = '#ccd1db';
+  document.getElementById('modal-resp-admin-knob').style.transform    = 'translateX(0)';
   document.getElementById('modal-nuevo-responsable').style.display = 'flex';
-  // Sincronizar movimiento del knob con el checkbox
-  if (chk && !chk._adminListenerAdded) {
-    chk.addEventListener('change', function() {
-      document.getElementById('modal-resp-admin-knob').style.transform = this.checked ? 'translateX(18px)' : 'translateX(0)';
-    });
-    chk._adminListenerAdded = true;
-  }
   setTimeout(() => document.getElementById('modal-resp-num').focus(), 100);
 }
 function cerrarModalNuevoResponsable() {
@@ -5419,7 +5417,7 @@ async function confirmarNuevoResponsable() {
   const nombre = document.getElementById('modal-resp-nombre').value.trim().toUpperCase();
   const clave  = document.getElementById('modal-resp-clave').value.trim();
   const rol    = document.getElementById('modal-resp-rol').value.trim();
-  const admin  = document.getElementById('modal-resp-admin')?.checked ? 'SI' : '';
+  const admin  = _adminChecked ? 'SI' : '';
   if (!num)    { mostrarToast('El Nº de usuario es obligatorio', 'error'); return; }
   if (!nombre) { mostrarToast('El nombre es obligatorio', 'error'); return; }
   if (!clave)  { mostrarToast('La clave es obligatoria', 'error'); return; }

@@ -1737,9 +1737,9 @@
         <table class="hist-table">
           <thead><tr>
             <th>Fecha/Hora</th><th>Turno</th>
-            <th>Matrícula</th><th>Responsable</th><th style="min-width:260px">Descripción</th><th></th>
+            <th>Matrícula</th><th>Responsable</th><th style="min-width:260px">Descripción</th><th>Estado</th><th></th>
           </tr></thead>
-          <tbody id="incid-tbody"><tr><td colspan="6" class="hist-empty">Usa el filtro para buscar incidencias.</td></tr></tbody>
+          <tbody id="incid-tbody"><tr><td colspan="7" class="hist-empty">Usa el filtro para buscar incidencias.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -6012,7 +6012,8 @@ function exportarPDF(tipo) {
       { k:'turno',       l:'Turno',       w:16, fmt: v => v==='MANANA'?'Mañana':v },
       { k:'matricula',   l:'Matrícula',   w:22 },
       { k:'responsable', l:'Responsable', w:38 },
-      { k:'descripcion', l:'Descripción', w:80 },
+      { k:'descripcion', l:'Descripción', w:68 },
+      { k:'estado',      l:'Estado',      w:20, fmt: v => v==='COMPLETADO'?'✓ Resuelto':'⏳ Pendiente' },
     ],
     repostajes:     [
       { k:'fecha',          l:'Fecha',      w:20 },
@@ -8009,7 +8010,8 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
           turno:       turnoActual,
           matricula:   matricula,
           descripcion: descripcion,
-          responsable: respUsuario
+          responsable: respUsuario,
+          estado:      'PENDIENTE'
         }
       })
     });
@@ -8566,7 +8568,7 @@ function renderTabIncidencias() {
   const tbody = document.getElementById('incid-tbody');
   if (!tbody) return;
   if (!incidenciasCache.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">Sin incidencias en el rango seleccionado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="hist-empty">Sin incidencias en el rango seleccionado.</td></tr>';
     return;
   }
   tbody.innerHTML = incidenciasCache.map((f, idx) => {
@@ -8574,13 +8576,19 @@ function renderTabIncidencias() {
     let hora = '—';
     try { hora = new Date(f.timestamp).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e){}
     const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
-    return `<tr>
+    const completado = (f.estado||'').toUpperCase() === 'COMPLETADO';
+    const estadoBadge = completado
+      ? `<span style="font-size:9px;font-weight:800;color:#1a6635;background:#eafaf1;border:1px solid #a9dfbf;border-radius:5px;padding:2px 8px;white-space:nowrap">✅ Resuelto</span>`
+      : `<span style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 8px;white-space:nowrap">⏳ Pendiente</span>`;
+    return `<tr style="background:${completado?'#f9fffe':''}">
       <td style="white-space:nowrap;font-size:11px">${hora}</td>
       <td><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;background:${f.turno==='MANANA'?'#fffbeb':'#fff5f0'};color:${f.turno==='MANANA'?'#92600a':'#9a3412'}">${turnoLabel}</span></td>
       <td><strong>${f.matricula||'—'}</strong></td>
       <td style="font-size:11px">${f.responsable||'—'}</td>
       <td style="font-size:12px;line-height:1.5;max-width:320px;word-break:break-word">${esc(f.descripcion||'—')}</td>
+      <td style="text-align:center;white-space:nowrap">${estadoBadge}</td>
       <td style="text-align:center;white-space:nowrap">
+        ${!completado ? `<button class="btn-item-action" onclick="resolverIncidencia(${idx})" title="Marcar como resuelta" style="font-size:11px;padding:3px 8px;color:#1a6635;border-color:#a9dfbf;background:#eafaf1;margin-right:3px">✓ Resolver</button>` : ''}
         <button class="btn-item-action danger" onclick="eliminarIncidencia(${idx})" title="Eliminar incidencia" style="font-size:13px;padding:3px 8px">🗑</button>
       </td>
     </tr>`;
@@ -8589,8 +8597,8 @@ function renderTabIncidencias() {
 
 function exportarIncidenciasCSV() {
   if (!incidenciasCache.length) { mostrarToast('Sin datos para exportar', 'info'); return; }
-  const campos = ['timestamp','turno','matricula','responsable','descripcion'];
-  const cabeceras = ['Fecha/Hora','Turno','Matrícula','Responsable','Descripción'];
+  const campos = ['timestamp','turno','matricula','responsable','descripcion','estado'];
+  const cabeceras = ['Fecha/Hora','Turno','Matrícula','Responsable','Descripción','Estado'];
   const csv = [cabeceras.join(';'), ...incidenciasCache.map(f =>
     campos.map(c => `"${(f[c]||'').replace(/"/g,'""')}"`).join(';')
   )].join('\n');
@@ -8598,6 +8606,75 @@ function exportarIncidenciasCSV() {
   a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
   a.download = `incidencias_${fechaActual}.csv`;
   a.click();
+}
+
+async function resolverIncidencia(idx) {
+  const inc = incidenciasCache[idx];
+  if (!inc || !APPS_SCRIPT_URL) return;
+
+  // Modal de confirmación
+  const confirmado = await new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.7);backdrop-filter:blur(3px);z-index:5000;display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `
+      <div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:94vw;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);text-align:center;">
+        <div style="font-size:44px;margin-bottom:12px;">✅</div>
+        <div style="font-size:17px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">¿Marcar como resuelta?</div>
+        <div style="background:#f4f6fb;border:1.5px solid #e3e8f5;border-radius:10px;padding:12px 16px;margin-bottom:18px;text-align:left;">
+          <div style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Incidencia</div>
+          <div style="font-size:12px;font-weight:700;color:#e84545;margin-bottom:4px;">🚛 ${esc(inc.matricula||'—')}</div>
+          <div style="font-size:12px;color:#334;line-height:1.5;word-break:break-word;">${esc((inc.descripcion||'').substring(0,120))}${inc.descripcion && inc.descripcion.length>120?'…':''}</div>
+        </div>
+        <div style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">
+          Se marcará como <strong style="color:#1a6635">Resuelto</strong> en el sistema.<br>
+          Si el vehículo estaba bloqueado por esta incidencia, <strong>deberás desbloquearlo manualmente</strong> desde el panel de vehículos.
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button id="inc-resolver-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="inc-resolver-ok" style="padding:10px 26px;background:#2ecc71;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(46,204,113,0.3);transition:background .15s;" onmouseover="this.style.background='#27ae60'" onmouseout="this.style.background='#2ecc71'">✓ Sí, marcar como resuelta</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#inc-resolver-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };
+    ov.querySelector('#inc-resolver-ok').onclick     = () => { document.body.removeChild(ov); resolve(true); };
+  });
+
+  if (!confirmado) return;
+
+  // Modal de progreso
+  const ovP = document.createElement('div');
+  ovP.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:5100;display:flex;align-items:center;justify-content:center;';
+  ovP.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:32px 36px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;min-width:260px">
+      <div style="width:40px;height:40px;border:3px solid #f0f0f0;border-top-color:#2ecc71;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
+      <div style="font-size:14px;font-weight:800;color:#1a1a2e;">Marcando como resuelta…</div>
+      <div style="font-size:11px;color:#8899aa;margin-top:5px">${esc(inc.matricula||'')}</div>
+    </div>`;
+  document.body.appendChild(ovP);
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        accion: 'resolverIncidencia',
+        timestamp: inc.timestamp,
+        matricula: inc.matricula,
+        resueltoPor: usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—',
+      })
+    });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+
+    // Actualizar caché local
+    incidenciasCache[idx].estado = 'COMPLETADO';
+    renderTabIncidencias();
+    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta`, 'success');
+  } catch(e) {
+    mostrarToast('Error al resolver la incidencia: ' + e.message, 'error');
+  } finally {
+    document.body.removeChild(ovP);
+  }
 }
 
 async function eliminarIncidencia(idx) {

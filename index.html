@@ -118,6 +118,34 @@
     .btn-logout:hover { border-color: #e84545; color: #e84545; }
 
     /* ─── MODAL CAMBIO DE CLAVE ─── */
+    #modal-cambio-clave { display:none; position:fixed; inset:0; z-index:20000; background:rgba(10,10,30,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
+    #modal-cambio-clave.visible { display:flex; }
+    #modal-cambio-clave .cc-box { background:white; border-radius:18px; padding:32px 28px 26px; width:360px; font-family:'Barlow',sans-serif; box-shadow:0 32px 80px rgba(0,0,0,0.45); animation:nv-in 0.28s cubic-bezier(.34,1.56,.64,1); }
+    #modal-cambio-clave .cc-icon { font-size:40px; text-align:center; margin-bottom:8px; }
+    #modal-cambio-clave .cc-title { font-size:17px; font-weight:900; color:#1a1a2e; text-align:center; margin-bottom:4px; }
+    #modal-cambio-clave .cc-sub { font-size:12px; color:#8899aa; text-align:center; margin-bottom:22px; }
+    #modal-cambio-clave .cc-field { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+    #modal-cambio-clave .cc-field label { font-size:10px; font-weight:800; color:#556; letter-spacing:1px; text-transform:uppercase; }
+    #modal-cambio-clave .cc-field input { width:100%; padding:10px 12px; border:1.5px solid #dde1e8; border-radius:9px; font-family:'Barlow',sans-serif; font-size:14px; font-weight:600; color:#1a1a2e; outline:none; transition:border-color .15s,box-shadow .15s; background:#f8f9fc; }
+    #modal-cambio-clave .cc-field input:focus { border-color:#e84545; box-shadow:0 0 0 3px rgba(232,69,69,0.1); background:white; }
+    #modal-cambio-clave .cc-error { font-size:11px; color:#e84545; font-weight:700; min-height:16px; margin-bottom:14px; text-align:center; display:none; }
+    #modal-cambio-clave .cc-error.visible { display:block; }
+    #modal-cambio-clave .cc-ok { font-size:11px; color:#2ecc71; font-weight:700; min-height:16px; margin-bottom:14px; text-align:center; display:none; }
+    #modal-cambio-clave .cc-ok.visible { display:block; }
+    #modal-cambio-clave .cc-btns { display:flex; gap:10px; }
+    #modal-cambio-clave .cc-btn-cancel { flex:1; padding:11px; background:#f4f5f8; color:#556; border:none; border-radius:9px; font-family:'Barlow',sans-serif; font-size:13px; font-weight:700; cursor:pointer; }
+    #modal-cambio-clave .cc-btn-cancel:hover { background:#e8eaf0; }
+    #modal-cambio-clave .cc-btn-ok { flex:2; padding:11px; background:#e84545; color:white; border:none; border-radius:9px; font-family:'Barlow',sans-serif; font-size:13px; font-weight:800; cursor:pointer; letter-spacing:0.5px; transition:background .15s; }
+    #modal-cambio-clave .cc-btn-ok:hover { background:#c63030; }
+    #modal-cambio-clave .cc-btn-ok:disabled { background:#ccc; cursor:not-allowed; }
+    #modal-cambio-clave .cc-loading { display:none; position:absolute; inset:0; border-radius:18px; background:rgba(255,255,255,0.92); align-items:center; justify-content:center; flex-direction:column; gap:14px; z-index:1; }
+    #modal-cambio-clave .cc-loading.visible { display:flex; }
+    #modal-cambio-clave .cc-loading-spinner { width:36px; height:36px; border:4px solid #f0f0f0; border-top-color:#e84545; border-radius:50%; animation:cc-spin 0.7s linear infinite; }
+    @keyframes cc-spin { to { transform: rotate(360deg); } }
+    #modal-cambio-clave .cc-loading-text { font-size:13px; font-weight:700; color:#1a1a2e; letter-spacing:0.3px; }
+    #modal-cambio-clave .cc-box { position:relative; }
+
+    /* ─── MODAL CAMBIO DE CLAVE ─── */
     #modal-cambio-clave {
       display: none; position: fixed; inset: 0; z-index: 20000;
       background: rgba(10,10,30,0.75); backdrop-filter: blur(4px);
@@ -2721,6 +2749,7 @@ async function loginResponsable() {
 
     if (loginResp.ok && loginResp.responsable) {
       usuarioActual = loginResp.responsable;
+      usuarioActual.hash = hashClave;
       usuarioActual.hash = hashClave;
       usuarioActual.num  = numU;
 
@@ -9189,6 +9218,7 @@ function forzarActualizacion() {
     <div class="cc-icon">🔑</div>
     <div class="cc-title">Cambiar clave de acceso</div>
     <div class="cc-sub">Introduce tu clave actual y la nueva clave</div>
+    <div class="cc-loading" id="cc-loading"><div class="cc-loading-spinner"></div><div class="cc-loading-text" id="cc-loading-text">Comprobando…</div></div>
     <div class="cc-field">
       <label>Clave actual</label>
       <input type="password" id="cc-actual" placeholder="••••••" maxlength="20"
@@ -9303,6 +9333,136 @@ async function guardarCambioClave() {
   }
 }
 // Cerrar al pulsar fuera del recuadro
+document.getElementById('modal-cambio-clave').addEventListener('click', function(e){
+  if (e.target === this) cerrarModalCambioClave();
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL: CAMBIO DE CLAVE DE ACCESO
+═══════════════════════════════════════════════════════ -->
+<div id="modal-cambio-clave">
+  <div class="cc-box">
+    <div class="cc-icon">🔑</div>
+    <div class="cc-title">Cambiar clave de acceso</div>
+    <div class="cc-sub">Introduce tu clave actual y la nueva clave</div>
+    <div class="cc-field">
+      <label>Clave actual</label>
+      <input type="password" id="cc-actual" placeholder="••••••" maxlength="20"
+        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+    </div>
+    <div class="cc-field">
+      <label>Nueva clave</label>
+      <input type="password" id="cc-nueva" placeholder="••••••" maxlength="20"
+        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+    </div>
+    <div class="cc-field">
+      <label>Confirmar nueva clave</label>
+      <input type="password" id="cc-confirmar" placeholder="••••••" maxlength="20"
+        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
+        onkeydown="if(event.key==='Enter') guardarCambioClave()">
+    </div>
+    <div class="cc-error" id="cc-error"></div>
+    <div class="cc-ok" id="cc-ok">✓ Clave cambiada correctamente</div>
+    <div class="cc-btns">
+      <button class="cc-btn-cancel" onclick="cerrarModalCambioClave()">Cancelar</button>
+      <button class="cc-btn-ok" id="cc-btn-ok" onclick="guardarCambioClave()">🔑 Guardar clave</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirModalCambioClave() {
+  document.getElementById('cc-actual').value = '';
+  document.getElementById('cc-nueva').value = '';
+  document.getElementById('cc-confirmar').value = '';
+  document.getElementById('cc-error').classList.remove('visible');
+  document.getElementById('cc-ok').classList.remove('visible');
+  document.getElementById('cc-btn-ok').disabled = false;
+  document.getElementById('cc-btn-ok').textContent = '🔑 Guardar clave';
+  var loadEl = document.getElementById('cc-loading');
+  loadEl.classList.remove('visible');
+  loadEl.querySelector('.cc-loading-spinner').style.borderTopColor = '#e84545';
+  document.getElementById('modal-cambio-clave').classList.add('visible');
+  setTimeout(function(){ document.getElementById('cc-actual').focus(); }, 120);
+}
+function cerrarModalCambioClave() {
+  document.getElementById('modal-cambio-clave').classList.remove('visible');
+}
+async function guardarCambioClave() {
+  var actual    = document.getElementById('cc-actual').value.trim();
+  var nueva     = document.getElementById('cc-nueva').value.trim();
+  var confirmar = document.getElementById('cc-confirmar').value.trim();
+  var errEl = document.getElementById('cc-error');
+  var okEl  = document.getElementById('cc-ok');
+  errEl.classList.remove('visible');
+  okEl.classList.remove('visible');
+
+  if (!actual || !nueva || !confirmar) {
+    errEl.textContent = 'Rellena todos los campos';
+    errEl.classList.add('visible'); return;
+  }
+  if (nueva.length < 4) {
+    errEl.textContent = 'La nueva clave debe tener al menos 4 caracteres';
+    errEl.classList.add('visible'); return;
+  }
+  if (nueva !== confirmar) {
+    errEl.textContent = 'La nueva clave y la confirmación no coinciden';
+    errEl.classList.add('visible'); return;
+  }
+  if (!usuarioActual) {
+    errEl.textContent = 'No hay sesión activa';
+    errEl.classList.add('visible'); return;
+  }
+
+  var btnOk = document.getElementById('cc-btn-ok');
+  var loadEl = document.getElementById('cc-loading');
+  var loadTxt = document.getElementById('cc-loading-text');
+  btnOk.disabled = true;
+  loadTxt.textContent = 'Comprobando clave…';
+  loadEl.classList.add('visible');
+
+  try {
+    var hashActual = await hashStr(actual);
+    if (hashActual !== usuarioActual.hash) {
+      loadEl.classList.remove('visible');
+      errEl.textContent = 'La clave actual no es correcta';
+      errEl.classList.add('visible');
+      btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave'; return;
+    }
+
+    loadTxt.textContent = 'Guardando nueva clave…';
+    var hashNueva = await hashStr(nueva);
+
+    var resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accion: 'cambiarClave',
+        numUsuario: usuarioActual.numUsuario,
+        hashNueva: hashNueva
+      })
+    });
+    var data = await resp.json();
+
+    if (data.ok) {
+      usuarioActual.hash = hashNueva;
+      loadTxt.textContent = '✓ ¡Clave cambiada!';
+      loadEl.querySelector('.cc-loading-spinner').style.borderTopColor = '#2ecc71';
+      setTimeout(function(){ loadEl.classList.remove('visible'); cerrarModalCambioClave(); }, 1400);
+    } else {
+      loadEl.classList.remove('visible');
+      errEl.textContent = data.error || 'Error al guardar la clave';
+      errEl.classList.add('visible');
+      btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave';
+    }
+  } catch(e) {
+    loadEl.classList.remove('visible');
+    errEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
+    errEl.classList.add('visible');
+    btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave';
+  }
+}
 document.getElementById('modal-cambio-clave').addEventListener('click', function(e){
   if (e.target === this) cerrarModalCambioClave();
 });

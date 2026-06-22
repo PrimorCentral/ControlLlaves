@@ -1358,7 +1358,7 @@
       <span class="bsq-label">Imprimir cuadrante</span>
     </button>
   </div>
-  <button class="btn-action btn-secondary" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;">🔐 Panel Admin</button>
+  <button class="btn-action btn-secondary" id="btn-panel-admin" onclick="abrirLoginAdmin()" style="margin-top:auto;border-color:#334;color:#8899aa;display:none;">🔐 Panel Admin</button>
 </div>
 
 <!-- MAIN -->
@@ -1428,9 +1428,7 @@
         </div>
       </div>
 
-      <div class="login-admin-link">
-        <button onclick="abrirLoginAdmin()">🔐 Acceder como administrador</button>
-      </div>
+
     </div>
     <div class="login-preload-bar" style="width:calc(100% - 0px);max-width:360px">
       <div class="login-preload-fill" id="login-preload-fill"></div>
@@ -1915,6 +1913,18 @@
             <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Rol <span style="color:#e84545">*</span></label>
             <input type="text" id="modal-resp-rol" placeholder="Ej: Responsable Turno"
               style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f8f9fc;border:1.5px solid #dde1e8;border-radius:8px;padding:10px 14px;">
+            <div>
+              <div style="font-size:12px;font-weight:800;color:#1a1a2e;">Administrador</div>
+              <div style="font-size:10px;color:#8899aa;margin-top:1px;">Acceso al panel de administración</div>
+            </div>
+            <label style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;">
+              <input type="checkbox" id="modal-resp-admin" style="opacity:0;width:0;height:0;">
+              <span onclick="this.previousElementSibling.checked=!this.previousElementSibling.checked;this.style.background=this.previousElementSibling.checked?'#e84545':'#ccd1db'" style="position:absolute;cursor:pointer;inset:0;background:#ccd1db;border-radius:22px;transition:background .2s;">
+                <span style="position:absolute;content:'';height:16px;width:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:transform .2s;display:block;" id="modal-resp-admin-knob"></span>
+              </span>
+            </label>
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
@@ -2750,13 +2760,16 @@ async function loginResponsable() {
     if (loginResp.ok && loginResp.responsable) {
       usuarioActual = loginResp.responsable;
       usuarioActual.hash = hashClave;
-      usuarioActual.hash = hashClave;
       usuarioActual.num  = numU;
 
       // Actualizar sidebar
       document.getElementById('user-pill').style.display = 'flex';
       document.getElementById('user-pill-name').textContent = loginResp.responsable.nombre;
       document.getElementById('user-pill-sub').textContent  = loginResp.responsable.rol || 'Responsable';
+
+      // Mostrar botón admin solo si el usuario tiene permiso
+      const btnAdmin = document.getElementById('btn-panel-admin');
+      if (btnAdmin) btnAdmin.style.display = String(loginResp.responsable.admin||'').trim().toUpperCase() === 'SI' ? 'block' : 'none';
 
       // Ocultar pantalla login con transición
       mostrarPantallaLogin(false);
@@ -2896,6 +2909,8 @@ function _cerrarSesionInterno() {
   document.getElementById('login-preload-fill').style.width = '0%';
   document.getElementById('login-preload-msg').textContent = '';
   document.getElementById('user-pill').style.display = 'none';
+  const btnAdmin = document.getElementById('btn-panel-admin');
+  if (btnAdmin) btnAdmin.style.display = 'none';
   mostrarPantallaLogin(true);
   renderTabla();
 }
@@ -5384,7 +5399,16 @@ function renderAdminResponsables() {
 
 function abrirModalNuevoResponsable() {
   ['modal-resp-num','modal-resp-nombre','modal-resp-clave','modal-resp-rol'].forEach(id => document.getElementById(id).value = '');
+  const chk = document.getElementById('modal-resp-admin');
+  if (chk) { chk.checked = false; chk.nextElementSibling.style.background = '#ccd1db'; document.getElementById('modal-resp-admin-knob').style.transform = 'translateX(0)'; }
   document.getElementById('modal-nuevo-responsable').style.display = 'flex';
+  // Sincronizar movimiento del knob con el checkbox
+  if (chk && !chk._adminListenerAdded) {
+    chk.addEventListener('change', function() {
+      document.getElementById('modal-resp-admin-knob').style.transform = this.checked ? 'translateX(18px)' : 'translateX(0)';
+    });
+    chk._adminListenerAdded = true;
+  }
   setTimeout(() => document.getElementById('modal-resp-num').focus(), 100);
 }
 function cerrarModalNuevoResponsable() {
@@ -5395,6 +5419,7 @@ async function confirmarNuevoResponsable() {
   const nombre = document.getElementById('modal-resp-nombre').value.trim().toUpperCase();
   const clave  = document.getElementById('modal-resp-clave').value.trim();
   const rol    = document.getElementById('modal-resp-rol').value.trim();
+  const admin  = document.getElementById('modal-resp-admin')?.checked ? 'SI' : '';
   if (!num)    { mostrarToast('El Nº de usuario es obligatorio', 'error'); return; }
   if (!nombre) { mostrarToast('El nombre es obligatorio', 'error'); return; }
   if (!clave)  { mostrarToast('La clave es obligatoria', 'error'); return; }
@@ -5403,7 +5428,7 @@ async function confirmarNuevoResponsable() {
   const btnAdd = document.querySelector('[onclick="confirmarNuevoResponsable()"]');
   if (btnAdd) { btnAdd.disabled = true; btnAdd.textContent = '⏳ Guardando…'; }
   try {
-    const res  = await fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ accion:'añadirResponsable', responsable: { numUsuario: num, nombre, hashClave, rol } }) });
+    const res  = await fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ accion:'añadirResponsable', responsable: { numUsuario: num, nombre, hashClave, rol, admin } }) });
     const json = await res.json();
     if (json.ok) {
       cerrarModalNuevoResponsable();

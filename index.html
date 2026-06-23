@@ -2003,8 +2003,15 @@
           </div>
           <div>
             <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Rol <span style="color:#e84545">*</span></label>
-            <input type="text" id="modal-resp-rol" placeholder="Ej: Responsable Turno"
-              style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;">
+            <select id="modal-resp-rol"
+              style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;color:#1a1a2e;background:white;cursor:pointer;">
+              <option value="">— Selecciona un rol —</option>
+              <option value="GAITE">GAITE</option>
+              <option value="CARTAMA">CARTAMA</option>
+              <option value="LIBIAO">LIBIAO</option>
+              <option value="PTA">PTA</option>
+              <option value="ILLESCAS">ILLESCAS</option>
+            </select>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;background:#f8f9fc;border:1.5px solid #dde1e8;border-radius:8px;padding:10px 14px;">
             <div>
@@ -5509,6 +5516,7 @@ async function cargarResponsables() {
     const resp = await fetch(`${APPS_SCRIPT_URL}?accion=cargarResponsables`, { redirect:'follow' });
     const json = await resp.json();
     responsablesCache = json.responsables || [];
+
     renderAdminResponsables();
   } catch(e) {
     if (lista) lista.innerHTML = '<div style="padding:12px;color:#e84545;font-size:12px">⚠️ Error al cargar: ' + e.message + '</div>';
@@ -5523,7 +5531,10 @@ function renderAdminResponsables() {
   const statsEl = document.getElementById('resp-stats');
   if (statsEl) {
     const total   = responsablesCache.length;
-    const admins  = responsablesCache.filter(r => String(r.admin||'').trim().toUpperCase() === 'SI').length;
+    const admins  = responsablesCache.filter(r => {
+      const val = r.admin ?? r.Admin ?? r.ADMIN ?? '';
+      return String(val).trim().toUpperCase() === 'SI';
+    }).length;
     const naves   = new Set(responsablesCache.map(r => (r.nave || r.rol || '').toUpperCase()).filter(Boolean));
     const roles   = new Set(responsablesCache.map(r => r.rol||'').filter(Boolean));
     statsEl.innerHTML = `
@@ -5597,7 +5608,7 @@ function renderAdminResponsables() {
       const partes = (r.nombre||'').trim().split(' ');
       const iniciales = ((partes[0]?.[0]||'') + (partes[1]?.[0]||'')).toUpperCase();
       const col = COLORES[((r.nombre||'').charCodeAt(0)||0) % COLORES.length];
-      const esAdmin = String(r.admin||'').trim().toUpperCase() === 'SI';
+      const esAdmin = String(r.admin ?? r.Admin ?? r.ADMIN ?? '').trim().toUpperCase() === 'SI';
       return `<div class="admin-item" style="padding:10px 14px;align-items:center;gap:12px;">
         <div style="width:38px;height:38px;border-radius:10px;background:${col};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:white;flex-shrink:0;">${iniciales||'?'}</div>
         <div style="display:flex;flex-direction:column;flex:1;min-width:0;gap:3px;">

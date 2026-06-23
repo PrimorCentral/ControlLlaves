@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.9.3">
+  <meta name="app-version" content="2.9.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1681,7 +1681,7 @@
       <button class="admin-tab" id="tab-btn-incidencias" onclick="cambiarTab('incidencias')">⚠️ Incidencias</button>
       <button class="admin-tab" id="tab-btn-repostajes" onclick="cambiarTab('repostajes')">⛽ Repostajes</button>
       <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')">👥 Responsables</button>
-      <button class="admin-tab" id="tab-btn-config" onclick="cambiarTab('config')">⚙️ Config</button>
+      <button class="admin-tab" id="tab-btn-config" onclick="abrirLoginConfig()">⚙️ Config</button>
       <button class="admin-tab" id="tab-btn-activos" onclick="cambiarTab('activos')">👷🏻 Usuarios Activos</button>
     </div>
 
@@ -2055,7 +2055,25 @@
 
     <!-- TAB: CONFIG -->
     <div class="admin-tab-panel" id="tab-panel-config">
-      <div class="admin-section">
+
+      <!-- PANTALLA DE BLOQUEO CONFIG -->
+      <div id="config-lock-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;text-align:center;">
+        <div style="font-size:56px;margin-bottom:16px;">⛔</div>
+        <div style="font-size:17px;font-weight:900;color:#1a1a2e;margin-bottom:8px;letter-spacing:0.5px;">ACCESO RESTRINGIDO</div>
+        <div style="font-size:12px;color:#e84545;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">Solo personal técnico autorizado</div>
+        <div style="background:#fff0f0;border:1.5px solid #fecaca;border-left:4px solid #e84545;border-radius:10px;padding:14px 20px;max-width:440px;margin-bottom:28px;text-align:left;">
+          <div style="font-size:11px;font-weight:900;color:#b91c1c;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">⚠️ Zona de peligro</div>
+          <div style="font-size:12px;color:#7f1d1d;line-height:1.7;font-weight:600;">
+            Esta sección contiene la configuración crítica del sistema. Un cambio incorrecto puede dejar la aplicación <strong>inoperativa para todos los usuarios</strong>.<br><br>
+            El acceso está reservado exclusivamente a los <strong>programadores y administradores técnicos</strong> del sistema.
+          </div>
+        </div>
+        <button onclick="abrirLoginConfig()" style="padding:11px 32px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:1px;">🔐 Introducir contraseña</button>
+      </div>
+
+      <!-- CONTENIDO REAL DE CONFIG (oculto hasta verificar) -->
+      <div id="config-content" style="display:none;flex-direction:column;gap:14px;">
+        <div class="admin-section">
         <div class="admin-section-title">Google Apps Script</div>
         <div class="admin-add-form" style="flex-direction:column;gap:10px">
           <div style="display:flex;flex-direction:column;gap:4px">
@@ -2083,6 +2101,25 @@
           <button class="btn-add-item" id="btn-cambiar-pass" onclick="cambiarPasswordAdmin()" style="background:#e84545">🚛 Cambiar y guardar en Sheets</button>
         </div>
       </div>
+      <div class="admin-section" style="margin-top:14px">
+        <div class="admin-section-title">Contraseña de acceso a Config</div>
+        <div style="background:#f0f4ff;border:1px solid #c5d0ff;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:11px;color:#3b5bdb;font-weight:600;display:flex;align-items:flex-start;gap:8px">
+          <span style="font-size:15px;flex-shrink:0">🔐</span>
+          <span>Esta contraseña es <strong>independiente</strong> de la de administrador. Se solicita cada vez que alguien intenta abrir esta pestaña.</span>
+        </div>
+        <div id="config-pass-sync-status" style="font-size:11px;color:#8899aa;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          <span id="config-pass-sync-icon">⏳</span>
+          <span id="config-pass-sync-text">Comprobando estado en Sheets…</span>
+        </div>
+        <div class="admin-add-form" style="flex-direction:column;gap:10px">
+          <input type="password" id="config-pass-nueva" placeholder="Nueva contraseña de Config (mínimo 4 caracteres)"
+            autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+          <input type="password" id="config-pass-confirm" placeholder="Repetir contraseña"
+            autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+          <button class="btn-add-item" id="btn-cambiar-config-pass" onclick="cambiarPasswordConfig()" style="background:#3b5bdb">🔐 Cambiar contraseña de Config</button>
+        </div>
+      </div>
+      </div><!-- fin config-content -->
     </div>
   </div>
 </div>
@@ -10109,6 +10146,30 @@ document.getElementById('modal-cambio-clave').addEventListener('click', function
 </script>
 
 <!-- ═══════════════════════════════════════════════════════
+     MODAL: LOGIN CONFIG
+═══════════════════════════════════════════════════════ -->
+<div id="modal-login-config" class="modal-overlay" style="z-index:25000;display:none;">
+  <div style="background:white;border-radius:16px;padding:32px 28px 26px;width:380px;font-family:Barlow,sans-serif;box-shadow:0 32px 80px rgba(0,0,0,0.45);text-align:center;">
+    <div style="font-size:48px;margin-bottom:10px;">⛔</div>
+    <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">ZONA DE PELIGRO</div>
+    <div style="font-size:10px;font-weight:800;color:#e84545;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">Solo acceso a programadores</div>
+    <div style="background:#fff0f0;border:1px solid #fecaca;border-left:3px solid #e84545;border-radius:8px;padding:10px 14px;margin-bottom:20px;text-align:left;font-size:11px;color:#7f1d1d;font-weight:600;line-height:1.6;">
+      Un cambio incorrecto en esta sección puede dejar el sistema <strong>inoperativo para todos los usuarios</strong>. Continúa solo si sabes lo que estás haciendo.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:6px;text-align:left;">
+      <label style="font-size:10px;font-weight:800;color:#556;letter-spacing:1px;text-transform:uppercase;">Contraseña de Config</label>
+      <input type="password" id="inp-config-password" placeholder="• • • • •" maxlength="30"
+        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:15px;text-align:center;letter-spacing:4px;outline:none;"
+        onkeydown="if(event.key==='Enter') verificarPasswordConfig()">
+    </div>
+    <div id="config-login-error" style="font-size:11px;color:#e84545;font-weight:700;min-height:18px;margin-bottom:12px;display:none;"></div>
+    <button onclick="verificarPasswordConfig()" style="width:100%;padding:11px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:8px;">Acceder</button>
+    <button onclick="cerrarLoginConfig()" style="width:100%;padding:10px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
      MODAL: CAMBIO DE CLAVE DE ACCESO
 ═══════════════════════════════════════════════════════ -->
 <div id="modal-cambio-clave">
@@ -10236,6 +10297,174 @@ async function guardarCambioClave() {
 document.getElementById('modal-cambio-clave').addEventListener('click', function(e){
   if (e.target === this) cerrarModalCambioClave();
 });
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     CONFIG LOGIN JS
+═══════════════════════════════════════════════════════ -->
+<script>
+// ── Estado: si la sesión de Config está desbloqueada en esta sesión ──
+let _configDesbloqueado = false;
+let _configHashRemoto   = null; // hash cargado desde Sheets
+
+// Carga el configHash desde Sheets (se llama al abrir el panel admin)
+async function cargarConfigHashRemoto() {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    const resp = await fetch(`${APPS_SCRIPT_URL}?accion=cargarConfigHash`, { redirect: 'follow' });
+    const json = await resp.json();
+    if (json.ok) _configHashRemoto = json.configHash || null;
+    // Actualizar estado del sync en la sección de Config
+    actualizarEstadoConfigPassSync(!!_configHashRemoto);
+  } catch(e) {}
+}
+
+function abrirLoginConfig() {
+  // Si no hay contraseña de Config configurada, acceso directo
+  if (!_configHashRemoto) {
+    _configDesbloqueado = true;
+    mostrarContenidoConfig();
+    cambiarTabConfig();
+    return;
+  }
+  // Si ya estaba desbloqueado en esta sesión, acceso directo
+  if (_configDesbloqueado) {
+    mostrarContenidoConfig();
+    cambiarTabConfig();
+    return;
+  }
+  // Mostrar modal
+  const modal = document.getElementById('modal-login-config');
+  const inp   = document.getElementById('inp-config-password');
+  const err   = document.getElementById('config-login-error');
+  if (err) { err.style.display = 'none'; err.textContent = ''; }
+  if (inp) inp.value = '';
+  modal.style.display = 'flex';
+  setTimeout(() => { if (inp) inp.focus(); }, 120);
+}
+
+function cerrarLoginConfig() {
+  document.getElementById('modal-login-config').style.display = 'none';
+  document.getElementById('inp-config-password').value = '';
+  const err = document.getElementById('config-login-error');
+  if (err) { err.style.display = 'none'; err.textContent = ''; }
+}
+
+async function verificarPasswordConfig() {
+  const inp = document.getElementById('inp-config-password');
+  const err = document.getElementById('config-login-error');
+  const pass = inp ? inp.value.trim() : '';
+  if (!pass) {
+    err.textContent = 'Introduce la contraseña';
+    err.style.display = 'block'; return;
+  }
+  const hash = await hashStr(pass);
+  if (hash !== _configHashRemoto) {
+    err.textContent = 'Contraseña incorrecta';
+    err.style.display = 'block';
+    inp.value = '';
+    inp.focus(); return;
+  }
+  // Correcto
+  _configDesbloqueado = true;
+  cerrarLoginConfig();
+  mostrarContenidoConfig();
+  cambiarTabConfig();
+  cargarEstadoPassAdmin(); // refresca estado pass admin dentro del tab
+  cargarConfigPassSyncStatus();
+}
+
+function mostrarContenidoConfig() {
+  const lockScreen = document.getElementById('config-lock-screen');
+  const content    = document.getElementById('config-content');
+  if (lockScreen) lockScreen.style.display = 'none';
+  if (content)    content.style.display    = 'flex';
+}
+
+function cambiarTabConfig() {
+  // Activar visualmente la pestaña config sin pasar por abrirLoginConfig de nuevo
+  ['vehiculos','conductores','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
+    document.getElementById('tab-btn-'+t).classList.toggle('active', t==='config');
+    document.getElementById('tab-panel-'+t).classList.toggle('active', t==='config');
+  });
+  cargarEstadoPassAdmin();
+  cargarConfigPassSyncStatus();
+}
+
+// Al cerrar el panel admin, resetear el desbloqueo de Config
+const _origCerrarAdmin = window.cerrarAdmin;
+window.cerrarAdmin = function() {
+  _configDesbloqueado = false;
+  // Restaurar pantalla de bloqueo
+  const lockScreen = document.getElementById('config-lock-screen');
+  const content    = document.getElementById('config-content');
+  if (lockScreen) lockScreen.style.display = 'flex';
+  if (content)    content.style.display    = 'none';
+  if (typeof _origCerrarAdmin === 'function') _origCerrarAdmin();
+};
+
+// ── Cambiar contraseña de Config ──
+async function cambiarPasswordConfig() {
+  const nueva   = document.getElementById('config-pass-nueva').value;
+  const confirm = document.getElementById('config-pass-confirm').value;
+  if (!nueva)            { mostrarToast('Introduce la nueva contraseña', 'error'); return; }
+  if (nueva !== confirm) { mostrarToast('Las contraseñas no coinciden', 'error'); return; }
+  if (nueva.length < 4)  { mostrarToast('Mínimo 4 caracteres', 'error'); return; }
+
+  const hash = await hashStr(nueva);
+  const btn  = document.getElementById('btn-cambiar-config-pass');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'guardarConfigHash', configHash: hash })
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      _configHashRemoto = hash;
+      document.getElementById('config-pass-nueva').value = '';
+      document.getElementById('config-pass-confirm').value = '';
+      mostrarToast('✓ Contraseña de Config guardada en Sheets', 'success');
+      actualizarEstadoConfigPassSync(true);
+    } else {
+      mostrarToast('Error al guardar: ' + (json.error || ''), 'error');
+    }
+  } catch(e) {
+    mostrarToast('Error de conexión', 'error');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '🔐 Cambiar contraseña de Config'; }
+}
+
+async function cargarConfigPassSyncStatus() {
+  actualizarEstadoConfigPassSync(!!_configHashRemoto);
+  // Si todavía no lo hemos cargado, lo cargamos ahora
+  if (_configHashRemoto === null) await cargarConfigHashRemoto();
+  actualizarEstadoConfigPassSync(!!_configHashRemoto);
+}
+
+function actualizarEstadoConfigPassSync(ok) {
+  const icon = document.getElementById('config-pass-sync-icon');
+  const text = document.getElementById('config-pass-sync-text');
+  if (!icon || !text) return;
+  if (ok) {
+    icon.textContent = '✅';
+    text.textContent = 'Contraseña de Config activa en Google Sheets ✓';
+    text.style.color = '#2ecc71';
+  } else {
+    icon.textContent = '⚠️';
+    text.textContent = 'Sin contraseña configurada — cualquiera con acceso admin puede entrar';
+    text.style.color = '#e84545';
+  }
+}
+
+// Cargar el hash de Config al abrir el panel admin
+const _origAbrirAdmin = window.abrirAdmin;
+window.abrirAdmin = function() {
+  if (typeof _origAbrirAdmin === 'function') _origAbrirAdmin();
+  cargarConfigHashRemoto();
+};
 </script>
 
 <!-- ═══════════════════════════════════════════════════════

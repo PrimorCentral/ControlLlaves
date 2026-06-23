@@ -8282,7 +8282,7 @@ async function cargarUsuariosActivos() {
           <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 0 4px ${dotShadow};flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:800;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nombre || '—'}</div>
-            <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px">${u.rol || 'Responsable'} · Nº ${u.numUsuario || '—'}${u.version && u.version !== '—' ? ` &nbsp;<span style="display:inline-block;background:#eef2ff;color:#3b5bdb;border:1px solid #c5d0ff;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:800;letter-spacing:0.5px;">v${u.version}</span>` : ''}</div>
+            <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px">${u.rol || 'Responsable'} · Nº ${u.numUsuario || '—'}${u.version && u.version !== '—' ? ` &nbsp;<span style="display:inline-block;background:#eef2ff;color:#3b5bdb;border:1px solid #c5d0ff;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:800;letter-spacing:0.5px;">${u.version}</span>` : ''}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:11px;font-weight:800;color:${dotColor}">${etiqueta}</div>

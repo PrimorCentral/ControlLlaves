@@ -1871,12 +1871,25 @@
 
    <!-- TAB: RESPONSABLES -->
     <div class="admin-tab-panel" id="tab-panel-responsables" style="flex-direction:column;gap:10px">
+      <div id="resp-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0;"></div>
       <div class="admin-section">
-        <div class="admin-section-title">Responsables autorizados</div>
-        <div class="admin-list" id="admin-lista-responsables"></div>
-        <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-          <button class="btn-add-item" onclick="abrirModalNuevoResponsable()" style="background:#2ecc71">+ Añadir responsable</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">
+          <div class="admin-section-title" style="margin-bottom:0">👥 Responsables autorizados</div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button onclick="cargarResponsables()" style="background:#f0f4ff;color:#3b5bdb;border:1.5px solid #c5d0ff;border-radius:8px;padding:8px 14px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">↺ Recargar</button>
+            <button class="btn-add-item" onclick="abrirModalNuevoResponsable()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">+ Añadir responsable</button>
+          </div>
         </div>
+        <div style="margin-bottom:12px;">
+          <div style="position:relative;">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;">🔍</span>
+            <input type="text" id="resp-filtro" placeholder="Buscar por nombre, Nº usuario o rol…"
+              oninput="renderAdminResponsables()" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 32px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;outline:none;transition:border-color .15s,box-shadow .15s;"
+              onfocus="this.style.borderColor='#3b5bdb';this.style.boxShadow='0 0 0 3px rgba(59,91,219,0.1)'"
+              onblur="this.style.borderColor='#dde1e8';this.style.boxShadow='none'">
+          </div>
+        </div>
+        <div class="admin-list" id="admin-lista-responsables" style="max-height:420px"></div>
       </div>
     </div>
 
@@ -5504,19 +5517,119 @@ async function cargarResponsables() {
 
 function renderAdminResponsables() {
   const lista = document.getElementById('admin-lista-responsables');
+  const filtro = (document.getElementById('resp-filtro')?.value || '').trim().toUpperCase();
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const statsEl = document.getElementById('resp-stats');
+  if (statsEl) {
+    const total   = responsablesCache.length;
+    const admins  = responsablesCache.filter(r => String(r.admin||'').trim().toUpperCase() === 'SI').length;
+    const naves   = new Set(responsablesCache.map(r => (r.nave || r.rol || '').toUpperCase()).filter(Boolean));
+    const roles   = new Set(responsablesCache.map(r => r.rol||'').filter(Boolean));
+    statsEl.innerHTML = `
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">👥</div>
+        <div class="admin-stat-num">${total}</div>
+        <div class="admin-stat-label">Responsables</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">🔐</div>
+        <div class="admin-stat-num" style="color:#e84545">${admins}</div>
+        <div class="admin-stat-label">Administradores</div>
+        <div class="admin-stat-sub">Acceso total</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">🏷️</div>
+        <div class="admin-stat-num">${roles.size}</div>
+        <div class="admin-stat-label">Roles distintos</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">🔍</div>
+        <div class="admin-stat-num" id="resp-stat-visible">${total}</div>
+        <div class="admin-stat-label">Resultados</div>
+        <div class="admin-stat-sub">con filtro activo</div>
+      </div>`;
+  }
+
   if (!responsablesCache.length) {
-    lista.innerHTML = '<div style="padding:12px;color:#8899aa;font-size:12px">Sin responsables registrados.</div>';
+    lista.innerHTML = `<div style="padding:32px 16px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:10px">👥</div>
+      <div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:4px">Sin responsables registrados</div>
+      <div style="font-size:11px;color:#8899aa">Añade el primer responsable con el botón de arriba</div>
+    </div>`;
     return;
   }
-  lista.innerHTML = responsablesCache.map((r, i) => `
-    <div class="admin-item">
-      <div class="admin-item-mat">${r.numUsuario||'—'}</div>
-      <div class="admin-item-tipo" style="flex:2">${r.nombre||'—'}</div>
-      <div class="admin-item-nota">${r.rol||'—'}</div>
-      <div class="admin-item-actions">
-        <button class="btn-item-action danger" onclick="eliminarResponsable(${i})">✕</button>
+
+  // ── Filtrado ───────────────────────────────────────────────────────────────
+  const visible = responsablesCache.filter(r =>
+    !filtro ||
+    (r.nombre||'').toUpperCase().includes(filtro) ||
+    String(r.numUsuario||'').includes(filtro) ||
+    (r.rol||'').toUpperCase().includes(filtro)
+  );
+
+  const visEl = document.getElementById('resp-stat-visible');
+  if (visEl) visEl.textContent = visible.length;
+
+  if (!visible.length) {
+    lista.innerHTML = `<div style="padding:32px 16px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:10px">🔍</div>
+      <div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:4px">Sin resultados</div>
+      <div style="font-size:11px;color:#8899aa">No hay responsables que coincidan con la búsqueda</div>
+    </div>`;
+    return;
+  }
+
+  // ── Agrupar por rol ────────────────────────────────────────────────────────
+  const porRol = {};
+  visible.forEach(r => {
+    const rol = r.rol || 'Sin rol';
+    if (!porRol[rol]) porRol[rol] = [];
+    porRol[rol].push(r);
+  });
+
+  // Colores por inicial
+  const COLORES = ['#e84545','#3b5bdb','#16a34a','#d97706','#7c3aed','#0369a1','#b45309','#065f46'];
+
+  lista.innerHTML = Object.entries(porRol).sort(([a],[b]) => a.localeCompare(b)).map(([rol, items]) => {
+    const filas = items.map(r => {
+      const idx = responsablesCache.indexOf(r);
+      const partes = (r.nombre||'').trim().split(' ');
+      const iniciales = ((partes[0]?.[0]||'') + (partes[1]?.[0]||'')).toUpperCase();
+      const col = COLORES[((r.nombre||'').charCodeAt(0)||0) % COLORES.length];
+      const esAdmin = String(r.admin||'').trim().toUpperCase() === 'SI';
+      return `<div class="admin-item" style="padding:10px 14px;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:${col};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:white;flex-shrink:0;">${iniciales||'?'}</div>
+        <div style="display:flex;flex-direction:column;flex:1;min-width:0;gap:3px;">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:900;color:#1a1a2e;">${esc(r.nombre||'—')}</span>
+            ${esAdmin ? `<span style="font-size:8px;font-weight:900;color:#fff;background:#e84545;border-radius:4px;padding:2px 7px;letter-spacing:1px;">ADMIN</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:10px;font-weight:800;color:#3b5bdb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 8px;">Nº ${esc(String(r.numUsuario||'—'))}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          <button class="btn-item-action btn-bloquear" onclick="eliminarResponsable(${idx})" style="font-size:11px;padding:6px 12px;">🗑 Eliminar</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Icono y color por rol
+    const rolUpper = rol.toUpperCase();
+    let rolColor = '#6b7a94', rolBg = '#f4f6fb', rolBorder = '#e2e8f0';
+    if (rolUpper.includes('ADMIN'))      { rolColor='#b91c1c'; rolBg='#fff5f5'; rolBorder='#fecaca'; }
+    else if (rolUpper.includes('RESP'))  { rolColor='#1d4ed8'; rolBg='#eff6ff'; rolBorder='#bfdbfe'; }
+    else if (rolUpper.includes('COORD')) { rolColor='#7c3aed'; rolBg='#f5f3ff'; rolBorder='#ddd6fe'; }
+
+    return `<div style="margin-bottom:6px;">
+      <div style="font-size:9px;font-weight:900;letter-spacing:2px;color:${rolColor};text-transform:uppercase;padding:8px 6px 5px;display:flex;align-items:center;gap:8px;border-top:2px solid ${rolBorder};background:${rolBg};border-radius:8px 8px 0 0;margin-bottom:2px;">
+        <span style="background:${rolColor};color:white;border-radius:4px;padding:2px 8px;font-size:8px;">${esc(rol.toUpperCase())}</span>
+        <span style="font-size:9px;font-weight:700;color:#6b7a94;background:white;border-radius:4px;padding:1px 7px;border:1px solid ${rolBorder};">${items.length} responsable${items.length!==1?'s':''}</span>
       </div>
-    </div>`).join('');
+      ${filas}
+    </div>`;
+  }).join('');
 }
 
 var _adminChecked = false;

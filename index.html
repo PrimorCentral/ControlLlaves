@@ -1698,18 +1698,29 @@
       </div>
     </div>
 
+
     <!-- TAB: CONDUCTORES -->
     <div class="admin-tab-panel" id="tab-panel-conductores" style="flex-direction:column;gap:10px">
+      <div id="cond-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0;"></div>
       <div class="admin-section">
-        <div class="admin-section-title">Lista de conductores</div>
-        <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
-          <input type="text" id="cond-filtro" placeholder="Buscar por nombre, DNI o Nº usuario…"
-            oninput="renderAdminConductores()" style="flex:1;min-width:200px;padding:7px 10px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;outline:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">
+          <div class="admin-section-title" style="margin-bottom:0">🧑‍✈️ Lista de conductores</div>
+          <button onclick="exportarConductoresPDF()" style="background:#e84545;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;">📄 Exportar PDF</button>
+          <button class="btn-add-item" onclick="abrirModalNuevoConductor()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;">+ Añadir conductor</button>
         </div>
-        <div class="admin-list" id="admin-lista-conductores" style="max-height:340px"></div>
-        <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-          <button class="btn-add-item" onclick="abrirModalNuevoConductor()" style="background:#2ecc71">+ Añadir conductor</button>
+        <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div style="flex:1;min-width:200px;position:relative;">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;">🔍</span>
+            <input type="text" id="cond-filtro" placeholder="Buscar por nombre, DNI, Nº usuario o sociedad…"
+              oninput="renderAdminConductores()" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 32px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;outline:none;transition:border-color .15s,box-shadow .15s;"
+              onfocus="this.style.borderColor='#3b5bdb';this.style.boxShadow='0 0 0 3px rgba(59,91,219,0.1)'"
+              onblur="this.style.borderColor='#dde1e8';this.style.boxShadow='none'">
+          </div>
+          <select id="cond-filtro-nave" onchange="renderAdminConductores()" style="padding:9px 12px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;outline:none;background:white;">
+            <option value="">Todas las naves</option>
+          </select>
         </div>
+        <div class="admin-list" id="admin-lista-conductores" style="max-height:420px"></div>
       </div>
     </div>
 
@@ -5977,32 +5988,286 @@ function añadirVehiculo() { abrirModalNuevoVehiculo(); }
 function renderAdminConductores() {
   const lista   = document.getElementById('admin-lista-conductores');
   const filtro  = (document.getElementById('cond-filtro')?.value || '').trim().toUpperCase();
-  const visible = filtro
-    ? CONDUCTORES.filter(c =>
-        c.nombre.toUpperCase().includes(filtro) ||
-        c.dni.toUpperCase().includes(filtro) ||
-        String(c.numUsuario).includes(filtro) ||
-        (c.sociedad||'').toUpperCase().includes(filtro))
-    : CONDUCTORES;
+  const filtroNave = (document.getElementById('cond-filtro-nave')?.value || '').trim().toUpperCase();
+
+  // Poblar select de naves
+  const naveSelect = document.getElementById('cond-filtro-nave');
+  if (naveSelect) {
+    const naves = [...new Set(CONDUCTORES.map(c => (c.nave||'').toUpperCase()).filter(Boolean))].sort();
+    const valActual = naveSelect.value;
+    naveSelect.innerHTML = '<option value="">Todas las naves</option>' + naves.map(n => `<option value="${n}" ${n===valActual?'selected':''}>${n}</option>`).join('');
+  }
+
+  // Stats
+  const statsEl = document.getElementById('cond-stats');
+  if (statsEl) {
+    const total = CONDUCTORES.length;
+    const naves = new Set(CONDUCTORES.map(c => c.nave||'').filter(Boolean));
+    const sociedades = new Set(CONDUCTORES.map(c => c.sociedad||'').filter(Boolean));
+    statsEl.innerHTML = `
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">👷</div>
+        <div class="admin-stat-num">${total}</div>
+        <div class="admin-stat-label">Conductores</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">🏭</div>
+        <div class="admin-stat-num">${naves.size}</div>
+        <div class="admin-stat-label">Naves</div>
+        <div class="admin-stat-sub">${[...naves].join(', ') || '—'}</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">🏢</div>
+        <div class="admin-stat-num">${sociedades.size}</div>
+        <div class="admin-stat-label">Sociedades</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">🔍</div>
+        <div class="admin-stat-num" id="cond-stat-visible">${total}</div>
+        <div class="admin-stat-label">Resultados</div>
+        <div class="admin-stat-sub">con filtro activo</div>
+      </div>`;
+  }
+
+  // Filtrado
+  let visible = CONDUCTORES.filter(c => {
+    const matchFiltro = !filtro ||
+      c.nombre.toUpperCase().includes(filtro) ||
+      (c.dni||'').toUpperCase().includes(filtro) ||
+      String(c.numUsuario).includes(filtro) ||
+      (c.sociedad||'').toUpperCase().includes(filtro) ||
+      (c.nave||'').toUpperCase().includes(filtro);
+    const matchNave = !filtroNave || (c.nave||'').toUpperCase() === filtroNave;
+    return matchFiltro && matchNave;
+  });
+
+  const visEl = document.getElementById('cond-stat-visible');
+  if (visEl) visEl.textContent = visible.length;
 
   if (!visible.length) {
-    lista.innerHTML = '<div style="padding:16px;color:#8899aa;font-size:12px;text-align:center">Sin conductores</div>';
+    lista.innerHTML = `<div style="padding:32px 16px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:10px">🔍</div>
+      <div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:4px">Sin resultados</div>
+      <div style="font-size:11px;color:#8899aa">No hay conductores que coincidan con el filtro</div>
+    </div>`;
     return;
   }
-  lista.innerHTML = visible.map((c, i) => {
-    const idx = CONDUCTORES.indexOf(c);
-    return `<div class="admin-item" style="flex-wrap:wrap;gap:6px">
-      <div style="display:flex;flex-direction:column;flex:1;min-width:180px">
-        <span style="font-size:12px;font-weight:800;color:#1a1a2e">${esc(c.nombre)}</span>
-        <span style="font-size:10px;color:#8899aa">${esc(c.sociedad||'—')} · ${esc(c.nave||'—')}</span>
+
+  // Agrupar por nave
+  const porNave = {};
+  visible.forEach(c => {
+    const nave = c.nave || '— Sin nave';
+    if (!porNave[nave]) porNave[nave] = [];
+    porNave[nave].push(c);
+  });
+
+  lista.innerHTML = Object.entries(porNave).sort(([a],[b]) => a.localeCompare(b)).map(([nave, conductores]) => {
+    const filas = conductores.map(c => {
+      const idx = CONDUCTORES.indexOf(c);
+      // Iniciales avatar
+      const partes = c.nombre.trim().split(' ');
+      const iniciales = (partes[0]?.[0]||'') + (partes[1]?.[0]||'');
+      // Color determinístico por inicial
+      const colores = ['#e84545','#3b5bdb','#16a34a','#d97706','#7c3aed','#0369a1','#b91c1c','#065f46'];
+      const col = colores[(c.nombre.charCodeAt(0)||0) % colores.length];
+      return `<div class="admin-item cond-item" style="padding:10px 14px;align-items:center;">
+        <div style="width:38px;height:38px;border-radius:10px;background:${col};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:white;flex-shrink:0;letter-spacing:0.5px;">${iniciales.toUpperCase()}</div>
+        <div style="display:flex;flex-direction:column;flex:1;min-width:0;gap:2px;">
+          <div style="font-size:13px;font-weight:900;color:#1a1a2e;line-height:1.2;">${esc(c.nombre)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:9px;font-weight:800;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:4px;padding:1px 7px;">${esc(c.sociedad||'—')}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+            <span style="font-size:10px;font-weight:700;color:#1a1a2e;background:#f0f2f5;border:1px solid #e2e8f0;border-radius:5px;padding:2px 9px;letter-spacing:0.5px;">🪪 ${esc(c.dni||'—')}</span>
+            <span style="font-size:10px;font-weight:800;color:#3b5bdb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:2px 9px;">Nº ${esc(String(c.numUsuario))}</span>
+          </div>
+          <button class="btn-item-action btn-bloquear" onclick="eliminarConductorAdmin(${idx})" title="Eliminar conductor" style="font-size:11px;padding:6px 12px;">🗑 Eliminar</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:6px;">
+      <div style="font-size:9px;font-weight:900;letter-spacing:2.5px;color:#6b7a94;text-transform:uppercase;padding:8px 4px 5px;display:flex;align-items:center;gap:7px;border-top:2px solid #f0f3f8;">
+        📍 ${esc(nave)}
+        <span style="font-size:9px;font-weight:700;background:#f0f2f5;color:#6b7a94;border-radius:4px;padding:1px 7px;border:1px solid #e2e8f0;">${conductores.length} conductores</span>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-shrink:0">
-        <span style="font-size:10px;color:#556;background:#f0f2f5;border-radius:5px;padding:2px 7px">${esc(c.dni)}</span>
-        <span style="font-size:10px;color:#556;background:#f0f2f5;border-radius:5px;padding:2px 7px">Nº ${esc(String(c.numUsuario))}</span>
-        <button class="btn-item-action danger" onclick="eliminarConductorAdmin(${idx})" title="Eliminar conductor">✕</button>
-      </div>
+      ${filas}
     </div>`;
   }).join('');
+}
+
+function exportarConductoresPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297;
+  const ML = 14, MR = 14, MT = 14;
+  const CW = PW - ML - MR;
+  let y = MT;
+
+  // Paleta
+  const ROJO    = [232, 69, 69];
+  const OSCURO  = [26, 26, 46];
+  const GRIS    = [248, 249, 252];
+  const GRISL   = [232, 234, 240];
+  const TEXTO   = [80, 90, 110];
+  const BLANCO  = [255, 255, 255];
+
+  // ── Cabecera del documento ──────────────────────────────────────────────
+  doc.setFillColor(...ROJO);
+  doc.rect(0, 0, PW, 28, 'F');
+  doc.setFillColor(...OSCURO);
+  doc.rect(0, 28, PW, 4, 'F');
+
+  doc.setTextColor(...BLANCO);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('🚛 GESTIÓN DE FLOTA · PRIMOR', ML, 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('LISTADO DE CONDUCTORES POR NAVE', ML, 19);
+
+  const hoy = new Date();
+  const fechaStr = hoy.toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });
+  const horaStr  = hoy.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+  doc.setFontSize(8);
+  doc.text(`Generado: ${fechaStr} a las ${horaStr}`, PW - MR, 19, { align: 'right' });
+
+  y = 38;
+
+  // ── Resumen estadístico ─────────────────────────────────────────────────
+  const totalCond = CONDUCTORES.length;
+  const naves = [...new Set(CONDUCTORES.map(c => c.nave||'Sin nave').filter(Boolean))].sort();
+  const sociedades = [...new Set(CONDUCTORES.map(c => c.sociedad||'').filter(Boolean))];
+
+  const statW = (CW - 6) / 3;
+  const stats = [
+    { label: 'TOTAL CONDUCTORES', val: String(totalCond) },
+    { label: 'NAVES',             val: String(naves.length) },
+    { label: 'SOCIEDADES',        val: String(sociedades.length) },
+  ];
+  stats.forEach((s, i) => {
+    const sx = ML + i * (statW + 3);
+    doc.setFillColor(...GRIS);
+    doc.roundedRect(sx, y, statW, 14, 2, 2, 'F');
+    doc.setDrawColor(...GRISL);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(sx, y, statW, 14, 2, 2, 'S');
+    doc.setTextColor(...ROJO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(s.val, sx + statW/2, y + 7, { align: 'center' });
+    doc.setTextColor(...TEXTO);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text(s.label, sx + statW/2, y + 12, { align: 'center' });
+  });
+  y += 20;
+
+  // ── Por nave ────────────────────────────────────────────────────────────
+  const porNave = {};
+  CONDUCTORES.forEach(c => {
+    const nave = c.nave || 'Sin nave';
+    if (!porNave[nave]) porNave[nave] = [];
+    porNave[nave].push(c);
+  });
+
+  const ROW_H = 9;
+  const THEAD_H = 7;
+
+  Object.entries(porNave).sort(([a],[b]) => a.localeCompare(b)).forEach(([nave, conductores]) => {
+    // Salto de página si no cabe el encabezado de nave + al menos 2 filas
+    if (y + THEAD_H + ROW_H * 2 + 14 > PH - 14) {
+      doc.addPage();
+      y = MT;
+    }
+
+    // Cabecera de nave
+    doc.setFillColor(...OSCURO);
+    doc.rect(ML, y, CW, 8, 'F');
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`📍 ${nave.toUpperCase()}`, ML + 4, y + 5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`${conductores.length} conductor${conductores.length !== 1 ? 'es' : ''}`, PW - MR - 2, y + 5.5, { align: 'right' });
+    y += 10;
+
+    // Cabecera de tabla
+    const cols = [
+      { label: 'CONDUCTOR',  x: ML,      w: 72 },
+      { label: 'DNI / NIE',  x: ML+73,   w: 32 },
+      { label: 'Nº USUARIO', x: ML+106,  w: 28 },
+      { label: 'SOCIEDAD',   x: ML+135,  w: CW - 135 + ML },
+    ];
+    doc.setFillColor(...GRISL);
+    doc.rect(ML, y, CW, THEAD_H, 'F');
+    doc.setTextColor(...OSCURO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    cols.forEach(col => doc.text(col.label, col.x + 2, y + 4.8));
+    y += THEAD_H;
+
+    // Filas
+    conductores.forEach((c, ri) => {
+      if (y + ROW_H > PH - 14) {
+        doc.addPage();
+        y = MT;
+        // Re-cabecera de tabla en nueva página
+        doc.setFillColor(...GRISL);
+        doc.rect(ML, y, CW, THEAD_H, 'F');
+        doc.setTextColor(...OSCURO);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        cols.forEach(col => doc.text(col.label, col.x + 2, y + 4.8));
+        y += THEAD_H;
+      }
+
+      // Fila alternada
+      if (ri % 2 === 0) {
+        doc.setFillColor(252, 252, 254);
+        doc.rect(ML, y, CW, ROW_H, 'F');
+      }
+      doc.setDrawColor(...GRISL);
+      doc.setLineWidth(0.2);
+      doc.line(ML, y + ROW_H, ML + CW, y + ROW_H);
+
+      doc.setTextColor(...OSCURO);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(c.nombre || '—', cols[0].x + 2, y + 6, { maxWidth: cols[0].w - 3 });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...TEXTO);
+      doc.text(c.dni || '—',             cols[1].x + 2, y + 6);
+      doc.text(`Nº ${c.numUsuario||'—'}`,cols[2].x + 2, y + 6);
+      doc.text(c.sociedad || '—',        cols[3].x + 2, y + 6, { maxWidth: cols[3].w - 3 });
+
+      y += ROW_H;
+    });
+
+    y += 8; // espacio entre naves
+  });
+
+  // ── Pie de página en todas las páginas ─────────────────────────────────
+  const totalPags = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPags; p++) {
+    doc.setPage(p);
+    doc.setFillColor(...OSCURO);
+    doc.rect(0, PH - 10, PW, 10, 'F');
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('Gestión de Flota · Primor — Documento generado automáticamente', ML, PH - 4);
+    doc.text(`Página ${p} de ${totalPags}`, PW - MR, PH - 4, { align: 'right' });
+  }
+
+  const nombre = `conductores_${hoy.toISOString().slice(0,10)}.pdf`;
+  doc.save(nombre);
+  mostrarToast('📄 PDF generado correctamente', 'success');
 }
 
 function abrirModalNuevoConductor() {

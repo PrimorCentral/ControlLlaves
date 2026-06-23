@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.9.4">
+  <meta name="app-version" content="2.9.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -8191,11 +8191,13 @@ async function enviarHeartbeat() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
   if (document.hidden) return;
   try {
+    const _appVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content') || '—';
     const params = new URLSearchParams({
       accion:      'registrarPresencia',
       numUsuario:  usuarioActual.numUsuario || '',
       nombre:      usuarioActual.nombre     || '',
       rol:         usuarioActual.rol        || 'Responsable',
+      version:     _appVersion,
     });
     await fetch(`${APPS_SCRIPT_URL}?${params}`, { redirect: 'follow' });
   } catch(e) {
@@ -8280,7 +8282,7 @@ async function cargarUsuariosActivos() {
           <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 0 4px ${dotShadow};flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:800;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nombre || '—'}</div>
-            <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px">${u.rol || 'Responsable'} · Nº ${u.numUsuario || '—'}</div>
+            <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px">${u.rol || 'Responsable'} · Nº ${u.numUsuario || '—'}${u.version && u.version !== '—' ? ` &nbsp;<span style="display:inline-block;background:#eef2ff;color:#3b5bdb;border:1px solid #c5d0ff;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:800;letter-spacing:0.5px;">v${u.version}</span>` : ''}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:11px;font-weight:800;color:${dotColor}">${etiqueta}</div>

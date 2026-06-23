@@ -654,24 +654,59 @@
     .admin-tab.active { color: #e84545; border-bottom-color: #e84545; background: #fff0f0; }
     .admin-tab-panel { display: none; flex: 1; min-height: 0; overflow-y: auto; }
     .admin-tab-panel.active { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 14px; padding-top: 14px; overflow-y: auto; }
-    .admin-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-shrink: 0; }
-    .admin-stat-card { background: white; border: 1px solid #dde1e8; border-radius: 10px; padding: 12px 14px; }
+    .admin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex-shrink: 0; }
+    .admin-stat-card { background: white; border: 1px solid #dde1e8; border-radius: 12px; padding: 14px 18px; display:flex; flex-direction:column; gap:4px; }
+    .admin-stat-icon { font-size: 20px; line-height:1; margin-bottom:2px; }
+    .admin-stat-label { font-size: 10px; font-weight: 800; color: #8899aa; letter-spacing: 0.8px; text-transform: uppercase; }
+    .admin-stat-sub { font-size: 10px; color: #b0bac8; font-weight: 600; margin-top: 1px; }
     .admin-stat-num { font-size: 26px; font-weight: 900; color: #1a1a2e; }
     .admin-stat-num.red { color: #e84545; }
     .admin-section { background: #f7f8fa; border-radius: 10px; padding: 16px; border: 1px solid #dde1e8; }
     .admin-section-title { font-size: 10px; font-weight: 800; letter-spacing: 2px; color: #8899aa; text-transform: uppercase; margin-bottom: 12px; }
     .admin-list { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
-    .admin-item { display: flex; align-items: center; gap: 8px; background: white; border: 1px solid #dde1e8; border-radius: 8px; padding: 8px 10px; }
-    .admin-item-mat { font-size: 12px; font-weight: 800; color: #1a1a2e; background: #f0f2f5; border-radius: 5px; padding: 2px 8px; flex-shrink: 0; }
-    .admin-item-mat.restringido { background: #ffe0e0; color: #c62020; }
-    .admin-item-tipo { font-size: 11px; color: #8899aa; flex: 1; }
-    .admin-item-nota { font-size: 11px; color: #aab5c0; }
-    .admin-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
-    .btn-item-action { padding: 4px 9px; border-radius: 6px; border: 1px solid #dde1e8; background: white; color: #556; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
-    .btn-item-action:hover { background: #f4f5f8; }
-    .btn-item-action.danger:hover { background: #fff0f0; border-color: #e84545; color: #e84545; }
-    .btn-item-action.restrict { color: #e84545; border-color: #f5c6c6; }
-    .btn-item-action.restrict.active { background: #ffe0e0; }
+    .admin-item { display: flex; align-items: center; gap: 10px; background: white; border: 1.5px solid #e8eaf0; border-radius: 12px; padding: 10px 14px; margin-bottom: 6px; transition: box-shadow 0.15s, border-color 0.15s; }
+    .admin-item:hover { box-shadow: 0 2px 12px rgba(26,26,46,0.08); border-color: #c5d0e8; }
+    .admin-item-left { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; min-width: 130px; }
+    .admin-item-mat { font-size: 13px; font-weight: 900; color: #1a1a2e; background: #f0f2f5; border-radius: 7px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dde1ea; letter-spacing: 0.3px; }
+    .admin-item-mat.restringido { background: #fff0f0; color: #c62020; border-color: #fecaca; }
+    .admin-item-propiedad { font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top:1px; }
+    .admin-item-propiedad.propia { color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; }
+    .admin-item-propiedad.alquiler { color: #7c3aed; background: #f5f3ff; border: 1px solid #ddd6fe; }
+    .admin-item-tipo { font-size: 10px; font-weight: 700; color: #6b7a94; background: #f4f6fb; border-radius: 5px; padding: 2px 7px; border: 1px solid #e8eaf0; white-space: nowrap; flex-shrink: 0; }
+    .admin-item-center { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .admin-item-nota-txt { font-size: 10px; color: #a0aab8; font-weight: 600; }
+    .admin-item-actions { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+    .btn-item-action { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; border-radius: 7px; border: 1.5px solid #dde1e8; background: white; color: #556; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800; cursor: pointer; transition: all 0.15s; letter-spacing: 0.3px; white-space: nowrap; }
+    .btn-item-action:hover { background: #f4f5f8; border-color: #c5cedf; }
+    .btn-item-action.btn-itv { background: #f0f4ff; color: #3b5bdb; border-color: #c5d0ff; }
+    .btn-item-action.btn-itv:hover { background: #e0e8ff; }
+    .btn-item-action.btn-libre { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    .btn-item-action.btn-libre:hover { background: #dcfce7; }
+    .btn-item-action.btn-restringido { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .btn-item-action.btn-restringido:hover { background: #ffedd5; }
+    .btn-item-action.btn-bloquear { background: #fff0f0; color: #dc2626; border-color: #fecaca; }
+    .btn-item-action.btn-bloquear:hover { background: #fee2e2; }
+    .btn-item-action.btn-desbloquear { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    .btn-item-action.btn-desbloquear:hover { background: #dcfce7; }
+    .btn-item-action.btn-baja { background: #f8f9fc; color: #94a3b8; border-color: #e2e8f0; }
+    .btn-item-action.btn-baja:hover { background: #fff0f0; border-color: #fecaca; color: #dc2626; }
+    .btn-item-action.btn-alta { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    /* ITV Control Panel */
+    .itv-control-panel { background: #f8f9fc; border: 1.5px solid #e8eaf0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; }
+    .itv-control-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .itv-control-title { font-size: 12px; font-weight: 900; color: #1a1a2e; letter-spacing: 0.5px; }
+    .itv-control-list { display: flex; flex-direction: column; gap: 6px; }
+    .itv-alert-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; border: 1.5px solid; }
+    .itv-alert-item.caducada { background: #fff5f5; border-color: #fecaca; }
+    .itv-alert-item.proxima30 { background: #fffbeb; border-color: #fde68a; }
+    .itv-alert-item.proxima60 { background: #f0f9ff; border-color: #bae6fd; }
+    .itv-alert-mat { font-size: 12px; font-weight: 800; color: #1a1a2e; min-width: 130px; }
+    .itv-alert-tipo { font-size: 10px; color: #8899aa; font-weight: 600; flex: 1; }
+    .itv-alert-badge { font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 5px; white-space: nowrap; }
+    .itv-alert-badge.caducada { background: #fee2e2; color: #b91c1c; }
+    .itv-alert-badge.proxima30 { background: #fef3c7; color: #92400e; }
+    .itv-alert-badge.proxima60 { background: #e0f2fe; color: #0369a1; }
+    .itv-empty-ok { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f0fdf4; border-radius: 8px; border: 1.5px solid #bbf7d0; font-size: 12px; font-weight: 700; color: #16a34a; }
     .admin-add-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .admin-add-form input, .admin-add-form select { flex: 1; min-width: 120px; padding: 8px 10px; border: 1.5px solid #dde1e8; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; color: #1a1a2e; outline: none; transition: border-color 0.2s; }
     .admin-add-form input:focus, .admin-add-form select:focus { border-color: #e84545; }
@@ -1654,12 +1689,12 @@
     <div class="admin-tab-panel active" id="tab-panel-vehiculos">
       <div class="admin-stats" id="admin-stats"></div>
       <div class="admin-section">
-        <div class="admin-section-title">Flota de vehículos</div>
-        <div class="admin-list" id="admin-lista-vehiculos"></div>
-        <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-          <button class="btn-add-item" onclick="abrirModalNuevoVehiculo()" style="background:#2ecc71">+ Añadir vehículo</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="admin-section-title" style="margin-bottom:0">🚛 Flota de vehículos</div>
+          <button class="btn-add-item" onclick="abrirModalNuevoVehiculo()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">+ Añadir vehículo</button>
         </div>
-        <div class="nota-restriccion">⚠️ Los vehículos <strong>Restringido</strong> solo podrán asignarse a personas autorizadas.</div>
+        <div class="admin-list" id="admin-lista-vehiculos"></div>
+        <div class="nota-restriccion" style="margin-top:12px;">⚠️ Los vehículos <strong>Restringido</strong> solo podrán asignarse a personas autorizadas. Los vehículos en <strong>Alquiler</strong> son los que tienen proveedor distinto a PROPIEDAD (PINVECO, DFM, etc.).</div>
       </div>
     </div>
 
@@ -5591,8 +5626,63 @@ function renderAdminVehiculos() {
   const lista = document.getElementById('admin-lista-vehiculos');
   let html = '';
   const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  // ── ITV Control Panel ──────────────────────────────────────────────────────
+  const itvAlertas = [];
   GRUPOS.forEach((grupo, gi) => {
-    html += `<div style="font-size:9px;font-weight:800;letter-spacing:2px;color:#8899aa;text-transform:uppercase;padding:8px 4px 4px;border-top:${gi>0?'1px solid #eee':'none'}">${grupo.nombre}</div>`;
+    grupo.vehiculos.forEach((v, vi) => {
+      if (v.archivado) return;
+      if (v.itv_fin) {
+        const fin = new Date(v.itv_fin + 'T00:00:00');
+        const dias = Math.ceil((fin - hoy) / 86400000);
+        if (dias <= 60) itvAlertas.push({ v, gi, vi, dias });
+      } else {
+        itvAlertas.push({ v, gi, vi, dias: Infinity, sinFecha: true });
+      }
+    });
+  });
+  itvAlertas.sort((a, b) => a.dias - b.dias);
+
+  let itvPanelHtml = '';
+  if (itvAlertas.length === 0) {
+    itvPanelHtml = `<div class="itv-empty-ok">✅ Todas las ITV están en vigor — sin vencimientos en los próximos 60 días.</div>`;
+  } else {
+    itvAlertas.forEach(({ v, gi, vi, dias, sinFecha }) => {
+      let cls, badge;
+      if (sinFecha) { cls='proxima60'; badge=`<span class="itv-alert-badge proxima60">⚠️ Sin fecha registrada</span>`; }
+      else if (dias <= 0)  { cls='caducada';  badge=`<span class="itv-alert-badge caducada">⛔ CADUCADA · ${fmtFechaITV(v.itv_fin)}</span>`; }
+      else if (dias <= 30) { cls='proxima30'; badge=`<span class="itv-alert-badge proxima30">⚠️ Vence en ${dias}d · ${fmtFechaITV(v.itv_fin)}</span>`; }
+      else                 { cls='proxima60'; badge=`<span class="itv-alert-badge proxima60">🔵 Vence en ${dias}d · ${fmtFechaITV(v.itv_fin)}</span>`; }
+      itvPanelHtml += `<div class="itv-alert-item ${cls}">
+        <div class="itv-alert-mat">${esc(v.matricula)}</div>
+        <div class="itv-alert-tipo">${esc(v.tipo)}${v.nota?' · '+esc(v.nota):''}</div>
+        ${badge}
+        <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" style="font-size:10px;padding:4px 9px;">📋 Actualizar ITV</button>
+      </div>`;
+    });
+  }
+  html += `<div class="itv-control-panel">
+    <div class="itv-control-header">
+      <span style="font-size:20px">🔧</span>
+      <div>
+        <div class="itv-control-title">Control de ITV · Próximos vencimientos</div>
+        <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px;">Vehículos con ITV caducada o que vence en los próximos 60 días</div>
+      </div>
+    </div>
+    <div class="itv-control-list">${itvPanelHtml}</div>
+  </div>`;
+
+  // ── Lista de vehículos por grupo ───────────────────────────────────────────
+  GRUPOS.forEach((grupo, gi) => {
+    const activos = grupo.vehiculos.filter(v => !v.archivado);
+    const bajas   = grupo.vehiculos.filter(v => v.archivado);
+    if (!grupo.vehiculos.length) return;
+
+    html += `<div style="font-size:9px;font-weight:900;letter-spacing:2.5px;color:#8899aa;text-transform:uppercase;padding:10px 4px 5px;border-top:${gi>0?'2px solid #f0f3f8':'none'};display:flex;align-items:center;gap:8px;">
+      📍 ${grupo.nombre}
+      <span style="font-size:9px;font-weight:700;background:#f0f2f5;color:#6b7a94;border-radius:4px;padding:1px 7px;border:1px solid #e2e8f0;">${activos.length} activos${bajas.length?' · '+bajas.length+' de baja':''}</span>
+    </div>`;
+
     grupo.vehiculos.forEach((v, vi) => {
       // ITV badge
       let itvBadge = '';
@@ -5600,29 +5690,49 @@ function renderAdminVehiculos() {
         const fin = new Date(v.itv_fin + 'T00:00:00');
         const diffDias = Math.ceil((fin - hoy) / 86400000);
         let itvColor, itvBg, itvLabel;
-        if (diffDias <= 0)       { itvColor = '#e84545'; itvBg = '#fff0f0'; itvLabel = `⛔ ITV CADUCADA (${fmtFechaITV(v.itv_fin)})`; }
-        else if (diffDias <= 30) { itvColor = '#f39c12'; itvBg = '#fff8ec'; itvLabel = `⚠️ ITV vence en ${diffDias}d (${fmtFechaITV(v.itv_fin)})`; }
-        else                     { itvColor = '#2ecc71'; itvBg = '#eafaf1'; itvLabel = `✅ En vigor (${fmtFechaITV(v.itv_fin)})`; }
-        itvBadge = `<span style="font-size:9px;font-weight:700;color:${itvColor};background:${itvBg};border:1px solid ${itvColor}33;border-radius:5px;padding:2px 7px;margin-left:6px;">${itvLabel}</span>`;
+        if (diffDias <= 0)       { itvColor = '#b91c1c'; itvBg = '#fee2e2'; itvLabel = `⛔ ITV CADUCADA · ${fmtFechaITV(v.itv_fin)}`; }
+        else if (diffDias <= 30) { itvColor = '#d97706'; itvBg = '#fef3c7'; itvLabel = `⚠️ Vence en ${diffDias}d · ${fmtFechaITV(v.itv_fin)}`; }
+        else if (diffDias <= 60) { itvColor = '#0369a1'; itvBg = '#e0f2fe'; itvLabel = `🔵 Vence en ${diffDias}d · ${fmtFechaITV(v.itv_fin)}`; }
+        else                     { itvColor = '#16a34a'; itvBg = '#f0fdf4'; itvLabel = `✅ En vigor · ${fmtFechaITV(v.itv_fin)}`; }
+        itvBadge = `<span style="font-size:9px;font-weight:800;color:${itvColor};background:${itvBg};border:1px solid ${itvColor}33;border-radius:5px;padding:2px 9px;">${itvLabel}</span>`;
       } else {
-        itvBadge = `<span style="font-size:9px;font-weight:700;color:#aaa;background:#f5f5f5;border:1px solid #ddd;border-radius:5px;padding:2px 7px;margin-left:6px;">Sin ITV</span>`;
+        itvBadge = `<span style="font-size:9px;font-weight:800;color:#94a3b8;background:#f8f9fc;border:1px solid #e2e8f0;border-radius:5px;padding:2px 9px;">📋 Sin fecha ITV</span>`;
       }
-      html += `<div class="admin-item" ${v.archivado ? 'style="opacity:0.55;background:#f8f8f8;"' : (v.bloqueado ? 'style="background:#fff5f5;border-color:#fecaca;"' : '')}>
-        <div class="admin-item-mat ${v.restringido?'restringido':''}">${esc(v.matricula)}${v.archivado ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#e84545;border-radius:4px;padding:1px 6px;vertical-align:middle;">BAJA</span>' : ''}${v.bloqueado ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#e84545;border-radius:4px;padding:1px 6px;vertical-align:middle;">⛔ BLOQUEADO</span>' : ''}</div>
+
+      // Propiedad badge
+      const nota = (v.nota||'').trim().toUpperCase();
+      const esPropia = nota === 'PROPIEDAD';
+      const propBadge = esPropia
+        ? `<span class="admin-item-propiedad propia">🏢 Propiedad</span>`
+        : `<span class="admin-item-propiedad alquiler">🔑 Alquiler · ${esc(v.nota||'—')}</span>`;
+
+      // Estado del vehículo
+      let itemStyle = '';
+      if (v.archivado) itemStyle = 'opacity:0.55;background:#f8f8f8;';
+      else if (v.bloqueado) itemStyle = 'background:#fff5f5;border-color:#fecaca;';
+
+      html += `<div class="admin-item" style="${itemStyle}">
+        <div class="admin-item-left">
+          <div class="admin-item-mat ${v.restringido?'restringido':''}">${esc(v.matricula)}${v.archivado ? ' <span style="font-size:8px;font-weight:800;color:#fff;background:#94a3b8;border-radius:4px;padding:1px 6px;vertical-align:middle;">BAJA</span>' : ''}${v.bloqueado ? ' <span style="font-size:8px;font-weight:800;color:#fff;background:#dc2626;border-radius:4px;padding:1px 6px;vertical-align:middle;">⛔ BLOQ.</span>' : ''}</div>
+          ${propBadge}
+        </div>
         <div class="admin-item-tipo">${esc(v.tipo)}</div>
-        <div class="admin-item-nota">${esc(v.nota||'')}${itvBadge}${v.bloqueado ? `<div style="font-size:10px;color:#b91c1c;margin-top:3px;font-weight:600;">Motivo: ${esc(v.motivo_bloqueo||'—')} · Por: ${esc(v.bloqueado_por||'—')}</div>` : ''}</div>
+        <div class="admin-item-center">
+          ${itvBadge}
+          ${v.bloqueado ? `<span style="font-size:9px;color:#b91c1c;font-weight:700;background:#fee2e2;border-radius:4px;padding:2px 8px;border:1px solid #fecaca;">Motivo: ${esc(v.motivo_bloqueo||'—')} · ${esc(v.bloqueado_por||'—')}</span>` : ''}
+        </div>
         <div class="admin-item-actions">
-          <button class="btn-item-action" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV" style="background:#f0f4ff;color:#3b5bdb;border-color:#c5d0ff">📋 ITV</button>
-          ${!v.archivado ? `<button class="btn-item-action restrict ${v.restringido?'active':''}" onclick="toggleRestringido(${gi},${vi})">
+          <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV">📋 ITV</button>
+          ${!v.archivado ? `<button class="btn-item-action ${v.restringido?'btn-restringido':'btn-libre'}" onclick="toggleRestringido(${gi},${vi})">
             ${v.restringido?'🔒 Restringido':'🔓 Libre'}
           </button>` : ''}
           ${!v.archivado ? (v.bloqueado
-            ? `<button class="btn-item-action" onclick="desbloquearVehiculoAdmin(${gi},${vi})" style="background:#eafaf1;color:#27ae60;border-color:#a9dfbf">✓ Desbloquear</button>`
-            : `<button class="btn-item-action" onclick="abrirModalBloqueo(${gi},${vi})" style="background:#fff0f0;color:#e84545;border-color:#fecaca">⛔ Bloquear</button>`
+            ? `<button class="btn-item-action btn-desbloquear" onclick="desbloquearVehiculoAdmin(${gi},${vi})">✅ Desbloquear</button>`
+            : `<button class="btn-item-action btn-bloquear" onclick="abrirModalBloqueo(${gi},${vi})">⛔ Bloquear</button>`
           ) : ''}
           ${v.archivado
-            ? `<button class="btn-item-action" onclick="desarchivarVehiculo(${gi},${vi})" style="background:#eafaf1;color:#27ae60;border-color:#a9dfbf">↩ Alta</button>`
-            : `<button class="btn-item-action danger" onclick="eliminarVehiculo(${gi},${vi})" title="Dar de baja el vehículo">✕ Baja</button>`
+            ? `<button class="btn-item-action btn-alta" onclick="desarchivarVehiculo(${gi},${vi})">↩ Dar de alta</button>`
+            : `<button class="btn-item-action btn-baja" onclick="eliminarVehiculo(${gi},${vi})" title="Dar de baja el vehículo">✕ Dar de baja</button>`
           }
         </div>
       </div>`;
@@ -5632,15 +5742,45 @@ function renderAdminVehiculos() {
 }
 
 function renderAdminStats() {
-  let total=0, restringidos=0, furgonetas=0, camiones=0;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let total=0, restringidos=0, alquiler=0, bloqueados=0, itvAlerta=0;
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    total++; if(v.restringido) restringidos++;
-    if(v.tipo==='FURGONETA') furgonetas++; else camiones++;
+    if (v.archivado) return;
+    total++;
+    if (v.restringido) restringidos++;
+    if (v.bloqueado) bloqueados++;
+    const nota = (v.nota||'').trim().toUpperCase();
+    if (nota !== 'PROPIEDAD') alquiler++;
+    if (v.itv_fin) {
+      const fin = new Date(v.itv_fin + 'T00:00:00');
+      const dias = Math.ceil((fin - hoy) / 86400000);
+      if (dias <= 60) itvAlerta++;
+    }
   }));
   document.getElementById('admin-stats').innerHTML = `
-    <div class="admin-stat-card"><div class="admin-stat-num">${total}</div><div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.5px;margin-top:2px">Vehículos</div></div>
-    <div class="admin-stat-card"><div class="admin-stat-num">${furgonetas}</div><div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.5px;margin-top:2px">Furgonetas</div></div>
-    <div class="admin-stat-card"><div class="admin-stat-num red">${restringidos}</div><div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.5px;margin-top:2px">Restringidos</div></div>`;
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon">🚛</div>
+      <div class="admin-stat-num">${total}</div>
+      <div class="admin-stat-label">Vehículos activos</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon">🔑</div>
+      <div class="admin-stat-num">${alquiler}</div>
+      <div class="admin-stat-label">En alquiler</div>
+      <div class="admin-stat-sub">PINVECO, DFM, etc.</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon">🔒</div>
+      <div class="admin-stat-num red">${restringidos}</div>
+      <div class="admin-stat-label">Restringidos</div>
+      <div class="admin-stat-sub">Solo pers. autorizado</div>
+    </div>
+    <div class="admin-stat-card" style="${itvAlerta>0?'border-color:#fde68a;background:#fffbeb':''}">
+      <div class="admin-stat-icon">🔧</div>
+      <div class="admin-stat-num" style="${itvAlerta>0?'color:#d97706':''}">${itvAlerta}</div>
+      <div class="admin-stat-label">ITV próximas</div>
+      <div class="admin-stat-sub">Vencen en ≤60 días</div>
+    </div>`;
 }
 
 function toggleRestringido(gi, vi) {

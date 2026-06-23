@@ -2952,7 +2952,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (esHoy) {
       const checkM = turnoPermitidoParaFecha('MANANA', nuevaFecha);
       const checkT = turnoPermitidoParaFecha('TARDE',  nuevaFecha);
-      [{ btn: btnM, check: checkM, turno: 'MANANA' }, { btn: btnT, check: checkT, turno: 'TARDE' }].forEach(({ btn, check }) => {
+      [{ btn: btnM, check: checkM, turno: 'MANANA' }, { btn: btnT, check: checkT, turno: 'TARDE' }].forEach(({ btn, check, turno }) => {
+        if (turno === 'MANANA') { btn.onclick = () => elegirTurnoEnModal('MANANA'); return; } // Mañana nunca bloqueado
         if (!check.permitido) {
           btn.disabled = true;
           btn.style.opacity = '0.45';
@@ -3000,7 +3001,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ── Turno automático según hora ──────────────────────────────────────────
-  // MAÑANA: 00:00 – 15:00   |   TARDE disponible desde 11:00 (2h antes)
+  // MAÑANA: siempre disponible   |   TARDE disponible desde 11:00 (2h antes)
 const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // minutos desde medianoche
 const esTarde = horaActual >= (13 * 60 + 1) && horaActual <= (23 * 60 + 59);
 turnoActual = esTarde ? 'TARDE' : 'MANANA';
@@ -3011,6 +3012,13 @@ document.querySelectorAll('.turno-btn').forEach(b => {
 (function aplicarBloqueoSidebar() {
   document.querySelectorAll('.turno-btn').forEach(b => {
     const t = b.dataset.turno;
+    // El turno de mañana nunca se bloquea visualmente
+    if (t === 'MANANA') {
+      b.style.opacity = '';
+      b.style.filter = '';
+      b.title = '';
+      return;
+    }
     const check = turnoPermitidoParaFecha(t, fechaActual);
     if (!check.permitido) {
       b.style.opacity = '0.45';
@@ -3296,8 +3304,8 @@ async function verificarConfig() {
 
 // ── Utilidad: comprueba si un turno está permitido para una fecha dada ───────
 // Para fechas pasadas: siempre permitido (consulta histórica).
-// Para hoy: ventana horaria con 2h de antelación.
-//   · MAÑANA disponible: 00:00 – 15:00
+// Para hoy: MAÑANA siempre disponible; TARDE solo desde las 11:00.
+//   · MAÑANA disponible: siempre
 //   · TARDE  disponible: 11:00 – 23:59  (2h antes = desde las 11:00)
 // Devuelve { permitido: bool, horaDesde: string|null }
 function turnoPermitidoParaFecha(turno, fecha) {
@@ -3308,9 +3316,8 @@ function turnoPermitidoParaFecha(turno, fecha) {
   // Es hoy → aplicar ventana horaria
   const minutos = hoy.getHours() * 60 + hoy.getMinutes();
   if (turno === 'MANANA') {
-    // Mañana: 00:00–15:00
-    if (minutos <= 15 * 60) return { permitido: true };
-    return { permitido: false, horaDesde: null, motivo: 'El turno de mañana ya ha finalizado. Solo puedes consultar cuadrantes de días anteriores.' };
+    // Mañana: siempre disponible
+    return { permitido: true };
   } else {
     // Tarde: disponible desde las 11:00 (2h antes de las 13:00)
     const MIN_TARDE = 11 * 60; // 11:00

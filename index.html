@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.9.5">
+  <meta name="app-version" content="2.9.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2119,6 +2119,11 @@
             <div class="config-menu-title">Diagnóstico</div>
             <div class="config-menu-desc">Estado de las hojas: filas y columnas de cada una, en tiempo real.</div>
           </div>
+          <div class="config-menu-card" onclick="abrirConfigSeccion('logacciones')">
+            <div class="config-menu-icon">📋</div>
+            <div class="config-menu-title">Log de Acciones</div>
+            <div class="config-menu-desc">Historial de todo lo que han hecho los usuarios: login, cuadrante, incidencias, vehículos, repostajes…</div>
+          </div>
         </div>
 
         <!-- SECCIÓN: CONEXIÓN -->
@@ -2221,6 +2226,51 @@
             </div>
             <div id="diagnostico-resultado" style="display:flex;flex-direction:column;gap:6px">
               <div style="text-align:center;padding:24px 0;color:#b0bac8;font-size:12px;font-weight:600">Pulsa "Verificar" para comprobar el estado de las hojas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: LOG DE ACCIONES -->
+        <div class="config-section-panel" id="config-section-logacciones">
+          <button class="config-back-btn" onclick="volverConfigMenu()">← Volver al menú</button>
+          <div class="admin-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+              <div>
+                <div class="admin-section-title" style="margin-bottom:2px">📋 Log de Acciones</div>
+                <div style="font-size:11px;color:#8899aa;font-weight:600">Registro de todas las acciones realizadas por los usuarios</div>
+              </div>
+              <button class="btn-add-item" onclick="cargarLogAcciones()" style="background:#3b5bdb;flex-shrink:0">🔍 Buscar</button>
+            </div>
+            <!-- Filtros -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:end;">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="font-size:10px;font-weight:700;color:#778;letter-spacing:1px;text-transform:uppercase">Desde</label>
+                <input type="date" id="logac-desde" style="padding:8px;border:1.5px solid #dde1ea;border-radius:7px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="font-size:10px;font-weight:700;color:#778;letter-spacing:1px;text-transform:uppercase">Hasta</label>
+                <input type="date" id="logac-hasta" style="padding:8px;border:1.5px solid #dde1ea;border-radius:7px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="font-size:10px;font-weight:700;color:#778;letter-spacing:1px;text-transform:uppercase">Usuario</label>
+                <input type="text" id="logac-usuario" placeholder="Nombre o nº…" style="padding:8px;border:1.5px solid #dde1ea;border-radius:7px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;" onkeydown="if(event.key==='Enter') cargarLogAcciones()">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="font-size:10px;font-weight:700;color:#778;letter-spacing:1px;text-transform:uppercase">Categoría</label>
+                <select id="logac-categoria" style="padding:8px;border:1.5px solid #dde1ea;border-radius:7px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;background:white;">
+                  <option value="">Todas</option>
+                  <option value="SESION">🔑 Sesión</option>
+                  <option value="CUADRANTE">📅 Cuadrante</option>
+                  <option value="INCIDENCIA">⚠️ Incidencias</option>
+                  <option value="VEHICULO">🚛 Vehículos</option>
+                  <option value="REPOSTAJE">⛽ Repostajes</option>
+                  <option value="ADMIN">👤 Admin</option>
+                </select>
+              </div>
+            </div>
+            <!-- Resultado -->
+            <div id="logac-resultado" style="display:flex;flex-direction:column;gap:0">
+              <div style="text-align:center;padding:24px 0;color:#b0bac8;font-size:12px;font-weight:600">Pulsa «Buscar» para ver el log de acciones</div>
             </div>
           </div>
         </div>
@@ -3062,6 +3112,7 @@ async function loginResponsable() {
       // Cargar todo (flota, conductores, cuadrante, etc.) ahora que el usuario ha entrado
       await cargarCuadrante();
       mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
+      registrarAccion('SESION', 'Login', `Acceso correcto · Usuario ${loginResp.responsable.numUsuario}`);
       setTimeout(comprobarDevolPendientes, 1500); // esperar a que el cuadrante se pinte
       iniciarSync();
       iniciarTemporizadorSesion();
@@ -3176,6 +3227,7 @@ function cerrarSesionManual() {
   ov.querySelector('#btn-logout-ok').onclick = () => {
     document.body.removeChild(ov);
     detenerTemporizadorSesion();
+    registrarAccion('SESION', 'Logout', 'Cierre de sesión manual');
     _cerrarSesionInterno();
   };
 }
@@ -4168,6 +4220,7 @@ function pedirReasignacion(matricula) {
       // 1) Registrar en hoja Reasignaciones (separada del Log de Órdenes)
       if (operarioAnterior) {
         await registrarReasignacion(matricula, operarioAnterior, horaReasig);
+        registrarAccion('CUADRANTE', 'Reasignar vehículo', `${matricula} · turno ${turnoActual} · conductor anterior: ${operarioAnterior}`);
       }
 
       // 2) Guardar snapshot histórico en Registros (fila congelada, marcada como reasignada)
@@ -5821,6 +5874,7 @@ async function confirmarNuevoResponsable() {
     const json = await res.json();
     if (json.ok) {
       cerrarModalNuevoResponsable();
+      registrarAccion('ADMIN', 'Añadir responsable', `${nombre} · Nº${num} · rol: ${rol}${admin==='SI'?' · ADMIN':''}`);
       mostrarToast(`✓ ${nombre} añadido`, 'success');
       // Actualizar cache local inmediatamente
       responsablesCache.push({ numUsuario: num, nombre, rol });
@@ -5885,6 +5939,7 @@ async function eliminarResponsable(idx) {
     });
     const json = await resp.json();
     if (json.ok) {
+      registrarAccion('ADMIN', 'Eliminar responsable', `${r.nombre} · Nº${r.numUsuario}`);
       mostrarToast('Responsable eliminado', 'info');
       // Actualizar cache local inmediatamente
       responsablesCache.splice(idx, 1);
@@ -6104,6 +6159,7 @@ function abrirModalBloqueo(gi, vi) {
         GRUPOS[gi].vehiculos[vi].bloqueado_por  = bloqueado_por;
         document.body.removeChild(overlay);
         renderAdminVehiculos(); renderAdminStats(); renderTabla();
+        registrarAccion('VEHICULO', 'Bloquear vehículo', `${v.matricula} · ${motivo.substring(0,80)}`);
         mostrarToast(`⛔ ${v.matricula} bloqueado`, 'error');
       } else {
         mostrarToast('Error al bloquear: ' + (json.error||''), 'error');
@@ -6126,6 +6182,7 @@ async function desbloquearVehiculoAdmin(gi, vi) {
       GRUPOS[gi].vehiculos[vi].motivo_bloqueo = '';
       GRUPOS[gi].vehiculos[vi].bloqueado_por  = '';
       renderAdminVehiculos(); renderAdminStats(); renderTabla();
+      registrarAccion('VEHICULO', 'Desbloquear vehículo', v.matricula);
       mostrarToast(`✓ ${v.matricula} desbloqueado`, 'success');
     } else {
       mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');
@@ -6206,6 +6263,7 @@ function eliminarVehiculo(gi, vi) {
   GRUPOS[gi].vehiculos[vi].fecha_archivado = fechaActual;
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
+  registrarAccion('VEHICULO', 'Dar de baja (archivar) vehículo', v.matricula);
   mostrarToast(`✓ ${v.matricula} dado de baja`, 'info');
 }
 
@@ -6216,6 +6274,7 @@ function desarchivarVehiculo(gi, vi) {
   GRUPOS[gi].vehiculos[vi].fecha_archivado = '';
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
+  registrarAccion('VEHICULO', 'Dar de alta (restaurar) vehículo', v.matricula);
   mostrarToast(`✓ ${v.matricula} dado de alta`, 'success');
 }
 
@@ -6554,6 +6613,7 @@ function confirmarNuevoConductor() {
   cerrarModalNuevoConductor();
   renderAdminConductores();
   sincronizarConductoresConSheets();
+  registrarAccion('ADMIN', 'Añadir conductor', `${nombre} · DNI ${dni} · Nº${num}`);
   mostrarToast(`✓ ${nombre} añadido`, 'success');
 }
 function añadirConductorAdmin() { abrirModalNuevoConductor(); }
@@ -6580,6 +6640,7 @@ function eliminarConductorAdmin(idx) {
     CONDUCTORES.splice(idx, 1);
     renderAdminConductores();
     sincronizarConductoresConSheets();
+    registrarAccion('ADMIN', 'Eliminar conductor', `${c.nombre} · DNI ${c.dni}`);
     mostrarToast('Conductor eliminado', 'info');
   };
 }
@@ -7010,6 +7071,7 @@ async function eliminarHistorial(idx) {
 
       historialCache.splice(idx, 1);
       renderHistorial();
+      registrarAccion('CUADRANTE', 'Eliminar fila del cuadrante', `${f.matricula} · ${f.fecha} · turno ${f.turno} · conductor: ${f.operario||'—'}`);
       mostrarToast('✓ Registro eliminado', 'success');
     } catch(e) {
       mostrarToast('Error al eliminar: ' + e.message, 'error');
@@ -7468,6 +7530,7 @@ async function enviarRegistroRepostaje() {
       if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
       renderTabla();
       document.body.removeChild(modalProgreso);
+      registrarAccion('REPOSTAJE', 'Registrar repostaje (entrega tarjeta)', `${matricula} · tarjeta ${tarjeta} · km ${km}`);
       mostrarToast(`⛽ Tarjeta GASOIL entregada para ${matricula} — ${hora}`, 'success');
     } else {
       document.body.removeChild(modalProgreso);
@@ -7949,6 +8012,7 @@ async function confirmarDevolucionDirecta() {
       if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
       renderTabla();
       document.body.removeChild(modalProgreso);
+      registrarAccion('REPOSTAJE', 'Completar repostaje (devolución tarjeta)', `${repo.matricula} · tarjeta ${repo.num_tarjeta||'—'}`);
       mostrarToast(`✓ Tarjeta GASOIL de ${repo.matricula} devuelta — ${hora}`, 'success');
 
       // Preguntar si se quiere imprimir el informe de repostaje
@@ -8073,6 +8137,7 @@ async function confirmarDevolucionRepostaje(id, matricula) {
       if (msgEl) msgEl.innerHTML = 'Actualizando cuadrante…';
       renderTabla();
       document.body.removeChild(modalProgreso);
+      registrarAccion('REPOSTAJE', 'Completar repostaje (devolución tarjeta)', `${matricula}`);
       mostrarToast(`✓ Tarjeta GASOIL de ${matricula} devuelta — ${hora}`, 'success');
     } else {
       document.body.removeChild(modalProgreso);
@@ -8384,6 +8449,7 @@ async function cambiarPasswordAdmin() {
   if (guardadoEnSheets) {
     mostrarToast('✓ Contraseña guardada en Google Sheets', 'success');
     actualizarEstadoPassSync(true);
+    registrarAccion('ADMIN', 'Cambiar contraseña de administrador', 'Contraseña actualizada en Sheets');
   } else {
     mostrarToast('⚠️ Guardado solo en local (sin conexión a Sheets)', 'error');
     actualizarEstadoPassSync(false, 'Solo en caché local — reconecta para sincronizar');
@@ -8828,6 +8894,11 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
         }
       })
     });
+    if (bloquear) {
+      registrarAccion('INCIDENCIA', 'Registrar incidencia + Bloquear vehículo', `${matricula} · ${descripcion.substring(0,80)}`);
+    } else {
+      registrarAccion('INCIDENCIA', 'Registrar incidencia', `${matricula} · ${descripcion.substring(0,80)}`);
+    }
   } catch(e) { console.warn('No se pudo guardar incidencia en Sheets:', e); }
 }
 
@@ -9339,6 +9410,7 @@ async function eliminarRepostajeAdmin(idx) {
       await sincronizarRepostajesPendientes();
       await sincronizarRepostajesFecha();
       renderTabla();
+      registrarAccion('REPOSTAJE', 'Eliminar repostaje', `${rep.matricula} · tarjeta ${rep.num_tarjeta||'—'} · ${rep.fecha||'—'}`);
       mostrarToast('✓ Repostaje eliminado', 'success');
     } catch(e) {
       mostrarToast('Error al eliminar: ' + e.message, 'error');
@@ -9484,6 +9556,7 @@ async function resolverIncidencia(idx) {
     // Actualizar caché local
     incidenciasCache[idx].estado = 'COMPLETADO';
     renderTabIncidencias();
+    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}`);
     mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta`, 'success');
   } catch(e) {
     mostrarToast('Error al resolver la incidencia: ' + e.message, 'error');
@@ -10235,6 +10308,7 @@ async function guardarCambioClave() {
       usuarioActual.hash = hashNueva;
       okEl.classList.add('visible');
       btnOk.textContent = '✓ Guardado';
+      registrarAccion('ADMIN', 'Cambiar contraseña propia', `Usuario ${usuarioActual.nombre||usuarioActual.numUsuario}`);
       setTimeout(function(){ cerrarModalCambioClave(); }, 1400);
     } else {
       errEl.textContent = data.error || 'Error al guardar la clave';
@@ -10386,6 +10460,7 @@ async function guardarCambioClave() {
 
     if (data.ok) {
       usuarioActual.hash = hashNueva;
+      registrarAccion('ADMIN', 'Cambiar contraseña propia', `Usuario ${usuarioActual.nombre||usuarioActual.numUsuario}`);
       loadTxt.textContent = '✓ ¡Clave cambiada!';
       loadEl.querySelector('.cc-loading-spinner').style.borderTopColor = '#2ecc71';
       setTimeout(function(){ loadEl.classList.remove('visible'); cerrarModalCambioClave(); }, 1400);
@@ -10533,6 +10608,7 @@ async function cambiarPasswordConfig() {
       _configHashRemoto = hash;
       document.getElementById('config-pass-nueva').value = '';
       document.getElementById('config-pass-confirm').value = '';
+      registrarAccion('ADMIN', 'Cambiar contraseña de Config', 'Contraseña de Config actualizada en Sheets');
       mostrarToast('✓ Contraseña de Config guardada en Sheets', 'success');
       actualizarEstadoConfigPassSync(true);
     } else {
@@ -10588,6 +10664,15 @@ function abrirConfigSeccion(id) {
     cargarConfigPassSyncStatus();
   }
   if (id === 'destinatarios') cargarDestinatariosUI();
+  if (id === 'logacciones') {
+    // Prefill con hoy
+    const hoy = new Date().toISOString().substring(0,10);
+    const dEl = document.getElementById('logac-desde');
+    const hEl = document.getElementById('logac-hasta');
+    if (dEl && !dEl.value) dEl.value = hoy;
+    if (hEl && !hEl.value) hEl.value = hoy;
+    cargarLogAcciones();
+  }
 }
 
 function volverConfigMenu() {
@@ -10672,6 +10757,9 @@ async function persistirDestinatarios() {
     });
     const json = await resp.json();
     if (json.ok) {
+      const nInc = (destinatariosCache.incidencias||[]).length;
+      const nBloq = (destinatariosCache.bloqueos||[]).length;
+      registrarAccion('ADMIN', 'Cambiar destinatarios de correo', `Incidencias: ${nInc} · Bloqueos: ${nBloq}`);
       mostrarToast('✓ Destinatarios guardados en Sheets', 'success');
       actualizarEstadoDestSync('ok');
     } else {
@@ -10755,6 +10843,137 @@ function renderDiagnosticoResultado(hojas, timestamp) {
   cont.innerHTML = `
     <div style="font-size:10px;color:#b0bac8;font-weight:600;margin-bottom:4px">Última verificación: ${hora}</div>
     ${filas}`;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOG DE ACCIONES
+// ════════════════════════════════════════════════════════════════════════════
+
+// Disparo silencioso: registra una acción en la hoja LogAcciones del backend
+function registrarAccion(categoria, accion, detalle) {
+  if (!APPS_SCRIPT_URL || !usuarioActual) return;
+  const ahora  = new Date();
+  const fecha  = ahora.toISOString().substring(0, 10);
+  const hora   = String(ahora.getHours()).padStart(2,'0') + ':' + String(ahora.getMinutes()).padStart(2,'0') + ':' + String(ahora.getSeconds()).padStart(2,'0');
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', redirect: 'follow',
+    body: JSON.stringify({
+      accion:      'registrarAccion',
+      entrada: {
+        timestamp:    ahora.toISOString(),
+        fecha,
+        hora,
+        numUsuario:   usuarioActual.num || usuarioActual.numUsuario || '',
+        nombre:       usuarioActual.nombre || '',
+        categoria,          // SESION | CUADRANTE | INCIDENCIA | VEHICULO | REPOSTAJE | ADMIN
+        accion:       accion,
+        detalle:      detalle || ''
+      }
+    })
+  }).catch(() => {}); // silencioso
+}
+
+// Mapa de colores por categoría
+const _LOGAC_COLOR = {
+  SESION:     { bg:'#f0f4ff', border:'#c5d0ff', text:'#3b5bdb', icon:'🔑' },
+  CUADRANTE:  { bg:'#f0fdf4', border:'#bbf7d0', text:'#15803d', icon:'📅' },
+  INCIDENCIA: { bg:'#fff8f0', border:'#fed7aa', text:'#c2410c', icon:'⚠️' },
+  VEHICULO:   { bg:'#fdf4ff', border:'#e9d5ff', text:'#7e22ce', icon:'🚛' },
+  REPOSTAJE:  { bg:'#fffbeb', border:'#fde68a', text:'#b45309', icon:'⛽' },
+  ADMIN:      { bg:'#f0f9ff', border:'#bae6fd', text:'#0369a1', icon:'👤' },
+};
+
+async function cargarLogAcciones() {
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+  const cont  = document.getElementById('logac-resultado');
+  const desde = document.getElementById('logac-desde').value;
+  const hasta = document.getElementById('logac-hasta').value;
+  const usu   = (document.getElementById('logac-usuario').value || '').trim();
+  const cat   = document.getElementById('logac-categoria').value;
+  const btn   = cont.previousElementSibling?.querySelector?.('[onclick="cargarLogAcciones()"]');
+
+  if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#8899aa;font-size:12px;font-weight:600">⏳ Cargando…</div>`;
+
+  try {
+    let url = `${APPS_SCRIPT_URL}?accion=cargarLogAcciones&_t=${Date.now()}`;
+    if (desde) url += `&desde=${encodeURIComponent(desde)}`;
+    if (hasta) url += `&hasta=${encodeURIComponent(hasta)}`;
+    if (usu)   url += `&filtroUsuario=${encodeURIComponent(usu)}`;
+    if (cat)   url += `&categoria=${encodeURIComponent(cat)}`;
+
+    const json = await fetch(url, { redirect: 'follow' }).then(r => r.json());
+
+    if (!json.ok) {
+      if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#e84545;font-size:12px;font-weight:700">Error: ${esc(json.error||'Sin respuesta')}</div>`;
+      return;
+    }
+
+    const filas = json.filas || [];
+    if (filas.length === 0) {
+      if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#b0bac8;font-size:12px;font-weight:600">Sin resultados para los filtros indicados</div>`;
+      return;
+    }
+
+    const rows = filas.map((f, idx) => {
+      const c = _LOGAC_COLOR[f.categoria] || { bg:'#f4f5f8', border:'#dde1e8', text:'#556', icon:'•' };
+      const ts = f.timestamp ? new Date(f.timestamp) : null;
+      const fechaHora = ts
+        ? ts.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' ' +
+          ts.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+        : (f.fecha ? f.fecha.split('-').reverse().join('-') + ' ' + (f.hora||'') : '—');
+
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid #f0f2f5;background:white;" onmouseover="this.style.background='#fafbfc'" onmouseout="this.style.background='white'">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:${c.bg};border:1px solid ${c.border};border-radius:7px;font-size:14px;flex-shrink:0;margin-top:1px">${c.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:800;color:#1a1a2e">${esc(f.accion)}</span>
+            <span style="font-size:10px;font-weight:700;color:${c.text};background:${c.bg};border:1px solid ${c.border};border-radius:4px;padding:1px 6px;letter-spacing:0.5px">${esc(f.categoria)}</span>
+          </div>
+          ${f.detalle ? `<div style="font-size:11px;color:#6b7a94;margin-top:2px;line-height:1.5">${esc(f.detalle)}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <span style="font-size:10px;color:#8899aa;font-weight:600">👤 ${esc(f.nombre||f.numUsuario||'—')}</span>
+            <span style="font-size:10px;color:#b0bac8">·</span>
+            <span style="font-size:10px;color:#8899aa;font-weight:600">🕐 ${esc(fechaHora)}</span>
+          </div>
+        </div>
+        <button onclick="eliminarLogAccion(${idx})" title="Eliminar entrada"
+          style="flex-shrink:0;padding:4px 8px;background:#fff0f0;border:1px solid #fecaca;border-radius:6px;color:#e84545;font-size:11px;cursor:pointer;font-weight:700;margin-top:1px"
+          onmouseover="this.style.background='#e84545';this.style.color='white'" onmouseout="this.style.background='#fff0f0';this.style.color='#e84545'">🗑</button>
+      </div>`;
+    });
+
+    if (cont) cont.innerHTML =
+      `<div style="font-size:10px;color:#b0bac8;font-weight:600;padding:6px 12px;background:#f7f8fa;border-bottom:1px solid #eee">${filas.length} registro${filas.length!==1?'s':''} encontrado${filas.length!==1?'s':''}</div>` +
+      `<div style="border:1.5px solid #dde1e8;border-radius:8px;overflow:hidden">${rows.join('')}</div>`;
+
+    // Cache local para poder eliminar por timestamp
+    cont._logacData = filas;
+
+  } catch(e) {
+    if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#e84545;font-size:12px;font-weight:700">Sin conexión con Google Sheets</div>`;
+  }
+}
+
+async function eliminarLogAccion(idx) {
+  const cont  = document.getElementById('logac-resultado');
+  if (!cont || !cont._logacData) return;
+  const f = cont._logacData[idx];
+  if (!f || !f.timestamp) return;
+  if (!confirm(`¿Eliminar esta entrada del log?\n\n${f.accion} · ${f.nombre||f.numUsuario}`)) return;
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      body: JSON.stringify({ accion: 'eliminarLogAccion', timestamp: f.timestamp })
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      mostrarToast('✓ Entrada eliminada', 'success');
+      cargarLogAcciones();
+    } else {
+      mostrarToast('Error: ' + (json.error||''), 'error');
+    }
+  } catch(e) { mostrarToast('Error de conexión', 'error'); }
 }
 </script>
 

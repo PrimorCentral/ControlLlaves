@@ -4188,17 +4188,46 @@ function pedirReasignacion(matricula) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:white;border-radius:14px;padding:28px 28px 22px;width:380px;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;">
-      <div style="font-size:24px;margin-bottom:10px;">⚠️</div>
-      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:6px;">¿Re-asignar conductor?</div>
-      <div style="font-size:12px;color:#556;margin-bottom:6px;">Vehículo: <strong>${esc(matricula)}</strong></div>
-      <div style="font-size:12px;color:#556;margin-bottom:18px;">Conductor actual: <strong style="color:#e84545">${esc(nombre)}</strong></div>
-      <div style="font-size:12px;color:#8899aa;background:#fff8f0;border:1px solid #ffe0b2;border-radius:8px;padding:10px 12px;margin-bottom:18px;">
-        ℹ️ La asignación anterior quedará registrada en el historial.
+    <div style="background:white;border-radius:16px;padding:0;width:390px;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;overflow:hidden;">
+
+      <!-- CABECERA ÁMBAR — visualmente distinta al rojo de devolución -->
+      <div style="background:#b45309;padding:20px 24px 16px;display:flex;align-items:center;gap:14px;">
+        <div style="background:rgba(255,255,255,0.18);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">↺</div>
+        <div>
+          <div style="font-size:17px;font-weight:900;color:#fff;line-height:1.2;">Cambio de conductor</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.75);font-weight:600;margin-top:2px;">Vehículo: ${esc(matricula)}</div>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button id="btn-reasig-cancel" style="padding:9px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
-        <button id="btn-reasig-confirm" style="padding:9px 20px;background:#e84545;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Sí, re-asignar</button>
+
+      <!-- CUERPO -->
+      <div style="padding:22px 24px 20px;">
+
+        <!-- Conductor actual -->
+        <div style="background:#fff8f0;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+          <div style="font-size:10px;font-weight:800;color:#b45309;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;">Conductor a sustituir</div>
+          <div style="font-size:15px;font-weight:900;color:#1a1a2e;">${esc(nombre)}</div>
+        </div>
+
+        <!-- Aviso claro de lo que NO es esto -->
+        <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
+          <span style="font-size:18px;line-height:1.4;flex-shrink:0;">🚫</span>
+          <div>
+            <div style="font-size:12px;font-weight:900;color:#dc2626;margin-bottom:2px;">Esto NO es una devolución de llaves</div>
+            <div style="font-size:11px;color:#7f1d1d;line-height:1.5;">Solo cambia el conductor asignado al vehículo. Para registrar que las llaves han sido devueltas, usa el botón <strong>«Recibir llaves»</strong>.</div>
+          </div>
+        </div>
+
+        <!-- Info historial -->
+        <div style="font-size:11px;color:#8899aa;background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;margin-bottom:20px;">
+          ℹ️ La asignación anterior quedará registrada en el historial de reasignaciones.
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="btn-reasig-cancel" style="padding:10px 20px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="btn-reasig-confirm" style="padding:10px 22px;background:#b45309;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <span style="font-size:16px;">↺</span> Sí, cambiar conductor
+          </button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(overlay);

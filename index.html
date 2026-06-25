@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="2.9.6">
+  <meta name="app-version" content="3.1.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1247,6 +1247,80 @@
       .cell-input, .operario-search-input { border: none !important; background: transparent !important; padding: 2px 4px !important; }
       thead tr th { background: #1a1a2e !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
+
+    /* ─── MODAL FICHA VEHÍCULO ─── */
+    #modal-ficha-vehiculo {
+      display: none; position: fixed; inset: 0; z-index: 6000;
+      background: rgba(10,10,30,0.65); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    #modal-ficha-vehiculo.visible { display: flex; }
+    .ficha-box {
+      background: #fff; border-radius: 16px; width: 400px; max-width: 95vw;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      font-family: 'Barlow', sans-serif;
+      animation: nv-in 0.25s cubic-bezier(.34,1.56,.64,1);
+      overflow: hidden;
+    }
+    .ficha-header {
+      background: #1a1a2e; padding: 16px 18px 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .ficha-header-mat {
+      font-size: 16px; font-weight: 900; color: #fff;
+      background: #e84545; border-radius: 7px; padding: 4px 12px;
+      letter-spacing: 0.5px;
+    }
+    .ficha-header-tipo {
+      font-size: 11px; color: #8899cc; font-weight: 600; margin-top: 2px;
+    }
+    .ficha-close {
+      margin-left: auto; background: none; border: none;
+      color: #6b7a94; font-size: 20px; cursor: pointer; line-height: 1;
+      padding: 2px 6px; border-radius: 6px; transition: background 0.15s;
+    }
+    .ficha-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .ficha-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+    .ficha-section { border: 1px solid #eef0f5; border-radius: 10px; overflow: hidden; }
+    .ficha-section-title {
+      font-size: 9px; font-weight: 800; letter-spacing: 2px;
+      text-transform: uppercase; color: #fff;
+      background: #1a1a2e; padding: 6px 12px;
+    }
+    .ficha-rows { padding: 6px 12px; display: flex; flex-direction: column; }
+    .ficha-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid #f4f6f9; gap: 10px;
+    }
+    .ficha-row:last-child { border-bottom: none; }
+    .ficha-label { font-size: 11px; color: #8899aa; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .ficha-val { font-size: 12px; color: #1a1a2e; font-weight: 700; text-align: right; word-break: break-word; max-width: 220px; }
+    .ficha-val.vacio { color: #ccc; font-weight: 400; font-style: italic; }
+    .ficha-val.itv-ok   { color: #16a34a; }
+    .ficha-val.itv-warn { color: #92400e; }
+    .ficha-val.itv-bad  { color: #b91c1c; }
+    .ficha-tel-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      color: #fff; background: #e84545; text-decoration: none;
+      font-weight: 800; font-size: 12px; border-radius: 6px;
+      padding: 4px 10px; transition: background 0.15s;
+    }
+    .ficha-tel-link:hover { background: #c63030; }
+    .ficha-footer {
+      padding: 10px 18px; background: #f7f8fa;
+      border-top: 1px solid #eee; text-align: center;
+      font-size: 10px; color: #b0bac8; font-weight: 600;
+    }
+    /* Badge de info en el mat-badge */
+    .mat-badge { cursor: pointer; transition: background 0.15s; position: relative; }
+    .mat-badge:hover { background: #dde1ea; }
+    .mat-badge-info {
+      display: inline-block; width: 13px; height: 13px; border-radius: 50%;
+      background: #3b5bdb; color: white; font-size: 8px; font-weight: 900;
+      text-align: center; line-height: 13px; margin-left: 4px;
+      vertical-align: middle; flex-shrink: 0;
+    }
+    .mat-badge-info.has-data { background: #16a34a; }
   </style>
 </head>
 <body>
@@ -1918,7 +1992,7 @@
 
 <!-- MODAL: NUEVO VEHÍCULO -->
     <div id="modal-nuevo-vehiculo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:4000;align-items:center;justify-content:center;">
-      <div style="background:white;border-radius:14px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.25);font-family:Barlow,sans-serif;">
+      <div style="background:white;border-radius:14px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);font-family:Barlow,sans-serif;">
         <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:18px;">🚛 Añadir nuevo vehículo</div>
         <div style="display:flex;flex-direction:column;gap:12px;">
           <div>
@@ -1950,6 +2024,38 @@
             <input type="date" id="modal-add-itv-fin"
               style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;">
           </div>
+
+          <!-- ── DATOS SEGURO ── -->
+          <div style="border-top:2px solid #f0f2f5;padding-top:14px;margin-top:2px;">
+            <div style="font-size:9px;font-weight:800;letter-spacing:2px;color:#3b5bdb;text-transform:uppercase;margin-bottom:10px;">🛡️ Seguro</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Aseguradora</label>
+                <input type="text" id="modal-add-seguro-nombre" placeholder="Ej: Mapfre"
+                  style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">CIF</label>
+                <input type="text" id="modal-add-seguro-cif" placeholder="Ej: A12345678" oninput="this.value=this.value.toUpperCase()"
+                  style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Nº Póliza</label>
+                <input type="text" id="modal-add-seguro-poliza" placeholder="Ej: POL-2024-XXXX"
+                  style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+              </div>
+              <div>
+                <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Vencimiento</label>
+                <input type="date" id="modal-add-seguro-vencimiento"
+                  style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+              </div>
+              <div style="grid-column:1/-1">
+                <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">📞 Tel. Asistencia / Grúa</label>
+                <input type="tel" id="modal-add-seguro-tel" placeholder="Ej: 900 123 456"
+                  style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;color:#e84545;">
+              </div>
+            </div>
+          </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
           <button onclick="cerrarModalNuevoVehiculo()" style="padding:9px 20px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
@@ -1957,6 +2063,43 @@
         </div>
       </div>
     </div>
+
+<!-- ══ MODAL FICHA VEHÍCULO ══ -->
+<div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
+  <div class="ficha-box">
+    <div class="ficha-header">
+      <div>
+        <div class="ficha-header-mat" id="ficha-mat">—</div>
+        <div class="ficha-header-tipo" id="ficha-tipo">—</div>
+      </div>
+      <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
+    </div>
+    <div class="ficha-body">
+
+      <!-- Seguro -->
+      <div class="ficha-section">
+        <div class="ficha-section-title">🛡️ Seguro</div>
+        <div class="ficha-rows">
+          <div class="ficha-row"><span class="ficha-label">Aseguradora</span><span class="ficha-val" id="ficha-seguro-nombre">—</span></div>
+          <div class="ficha-row"><span class="ficha-label">CIF</span><span class="ficha-val" id="ficha-seguro-cif">—</span></div>
+          <div class="ficha-row"><span class="ficha-label">Nº Póliza</span><span class="ficha-val" id="ficha-seguro-poliza">—</span></div>
+          <div class="ficha-row"><span class="ficha-label">Vencimiento</span><span class="ficha-val" id="ficha-seguro-vencimiento">—</span></div>
+          <div class="ficha-row"><span class="ficha-label">Tel. Asistencia</span><span class="ficha-val" id="ficha-seguro-tel">—</span></div>
+        </div>
+      </div>
+
+      <!-- ITV -->
+      <div class="ficha-section">
+        <div class="ficha-section-title">🔧 ITV</div>
+        <div class="ficha-rows">
+          <div class="ficha-row"><span class="ficha-label">Próxima ITV</span><span class="ficha-val" id="ficha-itv">—</span></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="ficha-footer">Toca fuera o ✕ para cerrar · Solo lectura · Editar desde Admin → Vehículos</div>
+  </div>
+</div>
 
     <!-- MODAL: NUEVO CONDUCTOR -->
     <div id="modal-nuevo-conductor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:4000;align-items:center;justify-content:center;">
@@ -3906,7 +4049,7 @@ function renderTabla() {
       // Columna matrícula
       html += `<td style="min-width:175px"><div class="col-mat-cell">
         <div class="estado-dot ${devuelto?'asignado':''} ${!devuelto&&asignado&&!esBloqueado?'pendiente':''}"></div>
-        <div class="mat-badge">${esc(v.matricula)}</div>
+        <div class="mat-badge" onclick="abrirFichaVehiculo('${esc(v.matricula)}')" title="Ver ficha del vehículo">${esc(v.matricula)}<span class="mat-badge-info ${_tieneSeguro(v.matricula)?'has-data':''}">i</span></div>
         <div class="tipo-tag">${esc(v.tipo)}${v.nota?' · '+v.nota:''}${esBloqueado?` <span class="badge-no-disponible">⛔ NO DISPONIBLE</span>`:''}${reasignado?` <span class="badge-reasig" onclick="verDetalleReasignacion('${esc(v.matricula)}')" style="cursor:pointer" title="Ver asignación anterior">↺ Reasignado</span>`:''}</div>
       </div></td>`;
 
@@ -4926,7 +5069,7 @@ async function cargarFlotaDesdeSheets(mostrarError = true) {
       json.flota.forEach(v => {
         let g = GRUPOS.find(g => g.nombre === v.grupo);
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
-        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'' });
+        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
       });
       if (mostrarError) ocultarErrorCarga();
       return true;
@@ -4944,7 +5087,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -6092,6 +6235,7 @@ function renderAdminVehiculos() {
         </div>
         <div class="admin-item-actions">
           <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV">📋 ITV</button>
+          <button class="btn-item-action" onclick="editarSeguro(${gi},${vi})" title="Datos del seguro" style="background:#eef2ff;color:#3b5bdb;border-color:#c5d0ff;">🛡️ Seguro</button>
           ${!v.archivado ? `<button class="btn-item-action ${v.restringido?'btn-restringido':'btn-libre'}" onclick="toggleRestringido(${gi},${vi})">
             ${v.restringido?'🔒 Restringido':'🔓 Libre'}
           </button>` : ''}
@@ -6315,7 +6459,11 @@ function desarchivarVehiculo(gi, vi) {
 }
 
 function abrirModalNuevoVehiculo() {
-  ['modal-add-matricula','modal-add-nota','modal-add-itv-fin'].forEach(id => document.getElementById(id).value = '');
+  ['modal-add-matricula','modal-add-nota','modal-add-itv-fin',
+   'modal-add-seguro-nombre','modal-add-seguro-cif','modal-add-seguro-poliza',
+   'modal-add-seguro-vencimiento','modal-add-seguro-tel'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('modal-add-tipo').value = 'FURGONETA';
   document.getElementById('modal-add-grupo').value = '';
   document.getElementById('modal-nuevo-vehiculo').style.display = 'flex';
@@ -6330,19 +6478,166 @@ function confirmarNuevoVehiculo() {
   const grupo   = document.getElementById('modal-add-grupo').value.trim().toUpperCase();
   const nota    = document.getElementById('modal-add-nota').value.trim();
   const itv_fin = document.getElementById('modal-add-itv-fin').value.trim();
+  const seguro_nombre      = document.getElementById('modal-add-seguro-nombre').value.trim();
+  const seguro_cif         = document.getElementById('modal-add-seguro-cif').value.trim().toUpperCase();
+  const seguro_poliza      = document.getElementById('modal-add-seguro-poliza').value.trim();
+  const seguro_vencimiento = document.getElementById('modal-add-seguro-vencimiento').value.trim();
+  const seguro_tel         = document.getElementById('modal-add-seguro-tel').value.trim();
   if (!mat)     { mostrarToast('La matrícula es obligatoria', 'error'); return; }
   if (!grupo)   { mostrarToast('La nave es obligatoria', 'error'); return; }
   if (!itv_fin) { mostrarToast('La fecha de ITV es obligatoria', 'error'); return; }
   if (GRUPOS.some(g => g.vehiculos.some(v => v.matricula === mat))) { mostrarToast('Esa matrícula ya existe', 'error'); return; }
   let g = GRUPOS.find(g => g.nombre.toUpperCase() === grupo);
   if (!g) { g = { nombre: grupo, vehiculos: [] }; GRUPOS.push(g); }
-  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false, itv_fin });
+  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false, itv_fin, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel });
   cerrarModalNuevoVehiculo();
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
   mostrarToast(`✓ ${mat} añadido`, 'success');
 }
 function añadirVehiculo() { abrirModalNuevoVehiculo(); }
+
+// ── FICHA VEHÍCULO (modal solo lectura desde mat-badge) ──────────────────────
+function _getVehiculo(matricula) {
+  for (const g of GRUPOS) {
+    const v = g.vehiculos.find(x => x.matricula === matricula);
+    if (v) return v;
+  }
+  return null;
+}
+function _tieneSeguro(matricula) {
+  const v = _getVehiculo(matricula);
+  return v && (v.seguro_nombre || v.seguro_tel || v.seguro_poliza);
+}
+function abrirFichaVehiculo(matricula) {
+  const v = _getVehiculo(matricula);
+  document.getElementById('ficha-mat').textContent  = matricula;
+  document.getElementById('ficha-tipo').textContent = v ? (v.tipo + (v.nota ? ' · ' + v.nota : '')) : '—';
+
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (val && String(val).trim()) {
+      el.textContent = val; el.className = 'ficha-val';
+    } else {
+      el.textContent = 'Sin datos'; el.className = 'ficha-val vacio';
+    }
+  }
+
+  setVal('ficha-seguro-nombre', v?.seguro_nombre);
+  setVal('ficha-seguro-cif',    v?.seguro_cif);
+  setVal('ficha-seguro-poliza', v?.seguro_poliza);
+
+  // Vencimiento seguro con color si está próximo
+  const vencEl = document.getElementById('ficha-seguro-vencimiento');
+  const venc   = v?.seguro_vencimiento || '';
+  if (venc) {
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const fech = new Date(venc + 'T00:00:00');
+    const dias = Math.ceil((fech - hoy) / 86400000);
+    const txt  = venc.split('-').reverse().join('/');
+    let cls = 'ficha-val itv-ok';
+    if (dias <= 0)   cls = 'ficha-val itv-bad';
+    else if (dias <= 30) cls = 'ficha-val itv-warn';
+    const extra = dias <= 0 ? ' ⛔ VENCIDO' : dias <= 30 ? ` ⚠️ ${dias}d` : '';
+    vencEl.textContent = txt + extra;
+    vencEl.className   = cls;
+  } else {
+    vencEl.textContent = 'Sin datos'; vencEl.className = 'ficha-val vacio';
+  }
+
+  // Teléfono — link clicable
+  const telEl = document.getElementById('ficha-seguro-tel');
+  const tel   = v?.seguro_tel || '';
+  if (tel) {
+    telEl.innerHTML = `<a class="ficha-tel-link" href="tel:${tel.replace(/\s/g,'')}" onclick="event.stopPropagation()">📞 ${tel}</a>`;
+    telEl.className = 'ficha-val';
+  } else {
+    telEl.textContent = 'Sin datos'; telEl.className = 'ficha-val vacio';
+  }
+
+  // ITV
+  const itvEl = document.getElementById('ficha-itv');
+  const itv   = v?.itv_fin || '';
+  if (itv) {
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const fech = new Date(itv + 'T00:00:00');
+    const dias = Math.ceil((fech - hoy) / 86400000);
+    const txt  = itv.split('-').reverse().join('/');
+    let cls = 'ficha-val itv-ok';
+    let extra = ` ✅ (${dias}d)`;
+    if (dias <= 0)        { cls = 'ficha-val itv-bad';  extra = ' ⛔ CADUCADA'; }
+    else if (dias <= 30)  { cls = 'ficha-val itv-warn'; extra = ` ⚠️ ${dias}d`; }
+    itvEl.textContent = txt + extra;
+    itvEl.className   = cls;
+  } else {
+    itvEl.textContent = 'Sin registrar'; itvEl.className = 'ficha-val vacio';
+  }
+
+  document.getElementById('modal-ficha-vehiculo').classList.add('visible');
+}
+function cerrarFichaVehiculo() {
+  document.getElementById('modal-ficha-vehiculo').classList.remove('visible');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarFichaVehiculo();
+});
+
+// ── EDITAR SEGURO DESDE ADMIN PANEL ──────────────────────────────────────────
+function editarSeguro(gi, vi) {
+  const v = GRUPOS[gi].vehiculos[vi];
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;padding:28px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
+      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">🛡️ Datos del seguro</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:18px;">Vehículo: <strong>${esc(v.matricula)}</strong></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Aseguradora</label>
+          <input id="seg-nombre" value="${esc(v.seguro_nombre||'')}" placeholder="Ej: Mapfre"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">CIF</label>
+          <input id="seg-cif" value="${esc(v.seguro_cif||'')}" placeholder="Ej: A12345678"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Nº Póliza</label>
+          <input id="seg-poliza" value="${esc(v.seguro_poliza||'')}" placeholder="POL-2024-XXXX"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Vencimiento</label>
+          <input type="date" id="seg-vencimiento" value="${esc(v.seguro_vencimiento||'')}"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">📞 Tel. Asistencia / Grúa</label>
+          <input id="seg-tel" type="tel" value="${esc(v.seguro_tel||'')}" placeholder="900 123 456"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;color:#e84545;outline:none;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button id="seg-cancel" style="padding:9px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="seg-guardar" style="padding:9px 20px;background:#3b5bdb;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">💾 Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#seg-cancel').onclick  = () => overlay.remove();
+  overlay.querySelector('#seg-guardar').onclick = () => {
+    GRUPOS[gi].vehiculos[vi].seguro_nombre      = overlay.querySelector('#seg-nombre').value.trim();
+    GRUPOS[gi].vehiculos[vi].seguro_cif         = overlay.querySelector('#seg-cif').value.trim().toUpperCase();
+    GRUPOS[gi].vehiculos[vi].seguro_poliza      = overlay.querySelector('#seg-poliza').value.trim();
+    GRUPOS[gi].vehiculos[vi].seguro_vencimiento = overlay.querySelector('#seg-vencimiento').value.trim();
+    GRUPOS[gi].vehiculos[vi].seguro_tel         = overlay.querySelector('#seg-tel').value.trim();
+    overlay.remove();
+    renderAdminVehiculos(); renderTabla();
+    sincronizarVehiculosConSheets();
+    mostrarToast('✓ Datos del seguro guardados', 'success');
+    registrarAccion('VEHICULO', 'Editar datos seguro', GRUPOS[gi].vehiculos[vi].matricula);
+  };
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // GESTIÓN CONDUCTORES (Panel Admin)

@@ -11532,6 +11532,9 @@ async function eliminarLogAccion(idx) {
 </div>
 
 <script>
+// Bloquear clic derecho
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
 // Bloquear zoom con Ctrl+rueda del ratón
 window.addEventListener('wheel', function(e) {
   if (e.ctrlKey) e.preventDefault();

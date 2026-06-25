@@ -1259,20 +1259,21 @@
     }
 
     /* ─── MODAL FICHA VEHÍCULO ─── */
+    /* ══════════════════════════════════════════════════════════
+       MODAL FICHA TÉCNICA — versión pro con pestañas
+    ══════════════════════════════════════════════════════════ */
     #modal-ficha-vehiculo {
       display: none; position: fixed; inset: 0; z-index: 9998;
-      background: rgba(5,5,20,0.82); backdrop-filter: blur(8px);
+      background: rgba(5,5,20,0.85); backdrop-filter: blur(10px);
       align-items: center; justify-content: center; padding: 16px;
     }
     #modal-ficha-vehiculo.visible { display: flex; }
 
     .ficha-box {
-      background: #fff; border-radius: 24px;
-      width: 560px; max-width: 100%;
-      box-shadow:
-        0 40px 100px rgba(0,0,0,0.55),
-        0 0 0 1px rgba(255,255,255,0.08) inset,
-        0 1px 0 rgba(255,255,255,0.15) inset;
+      background: #fff; border-radius: 22px;
+      width: 620px; max-width: 100%;
+      max-height: 90vh; display: flex; flex-direction: column;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06) inset;
       font-family: 'Barlow', sans-serif;
       animation: ficha-in 0.32s cubic-bezier(.34,1.48,.64,1);
       overflow: hidden;
@@ -1282,149 +1283,229 @@
       to   { transform: scale(1)    translateY(0);    opacity: 1; }
     }
 
-    /* HEADER */
+    /* ── HEADER ── */
     .ficha-header {
-      background: linear-gradient(145deg, #0f0f22 0%, #1e1e40 50%, #252550 100%);
-      padding: 26px 26px 22px;
-      display: flex; align-items: flex-start; gap: 18px;
-      position: relative; overflow: hidden;
+      background: linear-gradient(145deg, #0c0c20 0%, #1a1a3a 50%, #222248 100%);
+      padding: 22px 24px 0; position: relative; overflow: hidden; flex-shrink: 0;
     }
     .ficha-header::before {
-      content: '🚛'; position: absolute; right: -10px; top: 50%;
-      transform: translateY(-50%); font-size: 96px; opacity: 0.07;
-      line-height: 1; pointer-events: none;
+      content: ''; position: absolute; right: -20px; top: -20px;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,69,69,0.14) 0%, transparent 70%);
+      pointer-events: none;
     }
-    .ficha-header::after {
-      content: ''; position: absolute;
-      inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse at 20% 50%, rgba(232,69,69,0.12) 0%, transparent 65%);
+    .ficha-header-top {
+      display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;
+      position: relative; z-index: 1;
     }
-    .ficha-header-left { display: flex; flex-direction: column; gap: 6px; flex: 1; position: relative; z-index: 1; }
+    .ficha-header-left { display: flex; flex-direction: column; gap: 8px; flex: 1; }
     .ficha-titulo-label {
       font-size: 9px; font-weight: 900; letter-spacing: 3px;
-      text-transform: uppercase; color: rgba(255,255,255,0.35);
-      line-height: 1;
+      text-transform: uppercase; color: rgba(255,255,255,0.3); line-height: 1;
     }
     .ficha-mat-plate {
-      display: inline-flex; align-items: stretch; gap: 0;
-      background: #fff; border-radius: 7px;
-      overflow: hidden; align-self: flex-start;
-      border: 2px solid #bbbfc8;
-      box-shadow: 0 3px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.9);
+      display: inline-flex; align-items: stretch;
+      background: #fff; border-radius: 7px; overflow: hidden;
+      align-self: flex-start; border: 2px solid #bbbfc8;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.9);
     }
     .ficha-mat-plate-eu {
-      background: #003399; color: #FFD700;
-      width: 28px; flex-shrink: 0;
+      background: #003399; color: #FFD700; width: 28px; flex-shrink: 0;
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; gap: 2px; padding: 6px 0;
     }
-    .ficha-mat-plate-eu .eu-stars { font-size: 8px; letter-spacing: 0.5px; line-height: 1; }
-    .ficha-mat-plate-eu .eu-code  { font-size: 11px; font-weight: 900; line-height: 1; font-family: 'Barlow', sans-serif; }
+    .ficha-mat-plate-eu .eu-stars { font-size: 8px; line-height: 1; }
+    .ficha-mat-plate-eu .eu-code  { font-size: 11px; font-weight: 900; line-height: 1; }
     .ficha-mat-plate-text {
       font-size: 26px; font-weight: 900; color: #111;
       letter-spacing: 4px; padding: 8px 16px 8px 14px; line-height: 1;
-      font-variant-numeric: tabular-nums; font-family: 'Barlow', sans-serif;
     }
-    .ficha-header-tipo {
-      font-size: 12px; color: #7788bb; font-weight: 600;
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      position: relative; z-index: 1;
+    .ficha-header-meta {
+      display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
     }
-    .ficha-header-badge {
+    .ficha-meta-tipo {
+      font-size: 12px; color: #8899cc; font-weight: 600;
+    }
+    .ficha-meta-badge {
       display: inline-flex; align-items: center; gap: 4px;
-      background: #e84545; color: white; font-size: 10px; font-weight: 800;
-      border-radius: 6px; padding: 3px 9px; letter-spacing: 0.5px;
-      box-shadow: 0 2px 8px rgba(232,69,69,0.4);
+      font-size: 10px; font-weight: 800; border-radius: 6px;
+      padding: 3px 9px; letter-spacing: 0.5px;
     }
+    .ficha-meta-badge.bloqueado { background: #e84545; color: #fff; box-shadow: 0 2px 8px rgba(232,69,69,0.4); }
+    .ficha-meta-badge.archivado { background: #6b7280; color: #fff; }
+    .ficha-meta-badge.itv-warn  { background: #f97316; color: #fff; }
+    .ficha-meta-badge.itv-bad   { background: #dc2626; color: #fff; }
     .ficha-close {
       background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-      color: #7788bb; font-size: 15px; cursor: pointer; line-height: 1;
+      color: #7788bb; font-size: 15px; cursor: pointer;
       width: 34px; height: 34px; border-radius: 10px; transition: all 0.15s;
-      flex-shrink: 0; margin-top: 0; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
       position: relative; z-index: 1;
     }
-    .ficha-close:hover {
-      background: rgba(232,69,69,0.3); border-color: rgba(232,69,69,0.6);
-      color: #fff; transform: scale(1.05);
+    .ficha-close:hover { background: rgba(232,69,69,0.3); border-color: rgba(232,69,69,0.6); color: #fff; }
+
+    /* ── TABS ── */
+    .ficha-tabs {
+      display: flex; gap: 0; position: relative; z-index: 1;
+      border-top: 1px solid rgba(255,255,255,0.07);
     }
+    .ficha-tab {
+      flex: 1; padding: 11px 8px 10px; text-align: center;
+      font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+      color: rgba(255,255,255,0.35); cursor: pointer; border: none;
+      background: transparent; transition: all 0.15s; border-bottom: 3px solid transparent;
+      font-family: 'Barlow', sans-serif; position: relative;
+    }
+    .ficha-tab:hover { color: rgba(255,255,255,0.7); }
+    .ficha-tab.active { color: #fff; border-bottom-color: #e84545; background: rgba(232,69,69,0.08); }
+    .ficha-tab-icon { font-size: 14px; display: block; margin-bottom: 2px; }
 
-    /* BODY */
-    .ficha-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; background: #f9fafb; }
+    /* ── BODY ── */
+    .ficha-body {
+      flex: 1; overflow-y: auto; background: #f4f6fa;
+      scrollbar-width: thin; scrollbar-color: #dde1ea transparent;
+    }
+    .ficha-body::-webkit-scrollbar { width: 5px; }
+    .ficha-body::-webkit-scrollbar-thumb { background: #dde1ea; border-radius: 4px; }
 
-    /* SECCIÓN */
+    /* ── TAB PANELS ── */
+    .ficha-panel { display: none; padding: 20px; flex-direction: column; gap: 14px; }
+    .ficha-panel.active { display: flex; }
+
+    /* ── SECCIÓN dentro de panel ── */
     .ficha-section {
       border-radius: 14px; overflow: hidden;
-      border: 1.5px solid #e8ecf4;
-      background: #fff;
+      border: 1.5px solid #e8ecf4; background: #fff;
       box-shadow: 0 2px 8px rgba(26,26,46,0.05);
     }
     .ficha-section-header {
       display: flex; align-items: center; gap: 10px;
       background: linear-gradient(90deg, #1a1a2e 0%, #252545 100%);
-      padding: 13px 20px;
+      padding: 12px 18px;
     }
-    .ficha-section-icon { font-size: 16px; line-height: 1; }
+    .ficha-section-icon { font-size: 15px; line-height: 1; }
     .ficha-section-title {
-      font-size: 11px; font-weight: 800; letter-spacing: 2.5px;
+      font-size: 10px; font-weight: 800; letter-spacing: 2.5px;
       text-transform: uppercase; color: #fff;
     }
-    .ficha-rows { padding: 4px 20px; display: flex; flex-direction: column; }
+    .ficha-rows { padding: 2px 18px; display: flex; flex-direction: column; }
     .ficha-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 14px 0; border-bottom: 1px solid #eef1f7; gap: 20px;
-      min-height: 48px;
+      padding: 13px 0; border-bottom: 1px solid #eef1f7; gap: 20px; min-height: 46px;
     }
     .ficha-row:last-child { border-bottom: none; }
     .ficha-label {
-      font-size: 12px; color: #8899aa; font-weight: 700;
-      white-space: nowrap; flex-shrink: 0; letter-spacing: 0.8px;
-      text-transform: uppercase;
+      font-size: 11px; color: #8899aa; font-weight: 700;
+      white-space: nowrap; flex-shrink: 0; letter-spacing: 0.8px; text-transform: uppercase;
     }
     .ficha-val {
-      font-size: 15px; color: #1a1a2e; font-weight: 700;
+      font-size: 14px; color: #1a1a2e; font-weight: 700;
       text-align: right; word-break: break-word; line-height: 1.3;
     }
-    .ficha-val.vacio { color: #c0cad8; font-weight: 400; font-style: italic; font-size: 13px; text-transform: none; }
+    .ficha-val.vacio { color: #c0cad8; font-weight: 400; font-style: italic; font-size: 12px; text-transform: none; }
     .ficha-val.itv-ok   { color: #16a34a; }
     .ficha-val.itv-warn { color: #b45309; }
     .ficha-val.itv-bad  { color: #dc2626; font-weight: 900; }
 
-    /* TELÉFONO — botón grande */
-    .ficha-tel-wrap {
-      display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1;
+    /* ── ALERTA vencimiento ── */
+    .ficha-alert {
+      border-radius: 10px; padding: 12px 16px;
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 12px; line-height: 1.5;
     }
+    .ficha-alert.warn { background: #fff8ed; border: 1.5px solid #fed7aa; border-left: 4px solid #f97316; }
+    .ficha-alert.bad  { background: #fff0f0; border: 1.5px solid #fecaca; border-left: 4px solid #e84545; }
+    .ficha-alert-icon { font-size: 18px; flex-shrink: 0; }
+    .ficha-alert-text { color: #1a1a2e; font-weight: 600; }
+
+    /* ── ITV SEMÁFORO ── */
+    .ficha-itv-big {
+      display: flex; align-items: center; gap: 16px;
+      padding: 18px 18px;
+    }
+    .ficha-itv-semaforo {
+      width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 900;
+    }
+    .ficha-itv-semaforo.ok   { background: #dcfce7; color: #16a34a; border: 2.5px solid #bbf7d0; }
+    .ficha-itv-semaforo.warn { background: #fff7ed; color: #f97316; border: 2.5px solid #fed7aa; }
+    .ficha-itv-semaforo.bad  { background: #fef2f2; color: #dc2626; border: 2.5px solid #fecaca; }
+    .ficha-itv-info { flex: 1; }
+    .ficha-itv-fecha { font-size: 20px; font-weight: 900; color: #1a1a2e; line-height: 1; }
+    .ficha-itv-desc  { font-size: 12px; color: #6b7a94; font-weight: 600; margin-top: 4px; }
+    .ficha-itv-dias  { font-size: 13px; font-weight: 800; margin-top: 3px; }
+    .ficha-itv-dias.ok   { color: #16a34a; }
+    .ficha-itv-dias.warn { color: #f97316; }
+    .ficha-itv-dias.bad  { color: #dc2626; }
+
+    /* ── TEL ── */
     .ficha-tel-link {
       display: inline-flex; align-items: center; gap: 7px;
-      color: #1a1a2e; background: #f0f2f8;
-      text-decoration: none;
+      color: #1a1a2e; background: #f0f2f8; text-decoration: none;
       font-weight: 800; font-size: 14px; border-radius: 9px;
       padding: 7px 14px; transition: all 0.15s; letter-spacing: 0.3px;
       border: 1.5px solid #dde1ea;
     }
-    .ficha-tel-link:hover {
-      background: #e84545; color: #fff; border-color: #e84545;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(232,69,69,0.3);
-    }
-    .ficha-tel-link:active { transform: translateY(0); }
-    .ficha-tel-icon { font-size: 15px; }
+    .ficha-tel-link:hover { background: #e84545; color: #fff; border-color: #e84545; }
 
-    /* FOOTER */
-    .ficha-footer {
-      padding: 12px 24px; background: #fff;
-      border-top: 1.5px solid #eef0f5;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      font-size: 10px; color: #b0bac8; font-weight: 700; letter-spacing: 0.5px;
-      text-transform: uppercase;
+    /* ── DOCUMENTOS ── */
+    .ficha-docs-cats { display: flex; flex-direction: column; gap: 12px; }
+    .ficha-docs-cat-title {
+      font-size: 10px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+      color: #6b7a94; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .ficha-docs-cat-title::after {
+      content: ''; flex: 1; height: 1px; background: #e8ecf4;
+    }
+    .ficha-doc-card {
+      display: flex; align-items: center; gap: 12px;
+      background: #fff; border: 1.5px solid #e8ecf4; border-radius: 12px;
+      padding: 12px 14px; transition: border-color 0.15s;
+    }
+    .ficha-doc-card:hover { border-color: #c5cfdf; }
+    .ficha-doc-icon {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; background: #f0f4ff;
+    }
+    .ficha-doc-info { flex: 1; min-width: 0; }
+    .ficha-doc-nombre { font-size: 13px; font-weight: 700; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ficha-doc-fecha  { font-size: 10px; color: #8899aa; font-weight: 600; margin-top: 2px; }
+    .ficha-doc-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 800; border-radius: 8px; padding: 6px 12px;
+      cursor: pointer; border: 1.5px solid; transition: all 0.15s; text-decoration: none;
+      font-family: 'Barlow', sans-serif;
+    }
+    .ficha-doc-btn.ver { background: #f0f4ff; color: #3b5bdb; border-color: #c5d0ff; }
+    .ficha-doc-btn.ver:hover { background: #3b5bdb; color: #fff; border-color: #3b5bdb; }
+    .ficha-doc-empty {
+      background: #f9fafb; border: 2px dashed #e0e4ed; border-radius: 12px;
+      padding: 20px; text-align: center;
+      font-size: 12px; color: #b0bac8; font-weight: 600;
+    }
+    .ficha-docs-loading {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 30px; color: #8899aa; font-size: 12px; font-weight: 600;
+    }
+
+    /* ── SPINNER inline ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ficha-spinner {
+      width: 18px; height: 18px; border: 2.5px solid #e0e4ed;
+      border-top-color: #e84545; border-radius: 50%;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
     }
 
     /* RESPONSIVE */
     @media (max-width: 768px) {
       .ficha-box { border-radius: 18px; }
-      .ficha-header { padding: 20px 18px 16px; }
+      .ficha-header { padding: 18px 16px 0; }
       .ficha-mat-plate-text { font-size: 20px; letter-spacing: 2px; }
-      .ficha-body { padding: 14px; gap: 10px; }
-      .ficha-tel-link { font-size: 14px; padding: 9px 14px; }
+      .ficha-panel { padding: 14px; }
+      .ficha-tab { font-size: 9px; padding: 10px 4px 9px; }
+      .ficha-tab-icon { font-size: 13px; }
     }
 
     /* Badge de info en el mat-badge */
@@ -6317,6 +6398,7 @@ function renderAdminVehiculos() {
         <div class="admin-item-actions">
           <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV">📋 ITV</button>
           <button class="btn-item-action" onclick="editarSeguro(${gi},${vi})" title="Datos del seguro" style="background:#eef2ff;color:#3b5bdb;border-color:#c5d0ff;">🛡️ Seguro</button>
+          <button class="btn-item-action" onclick="abrirGestorDocumentos('${esc(v.matricula)}')" title="Gestionar documentos" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;">📂 Docs</button>
           ${!v.archivado ? `<button class="btn-item-action ${v.restringido?'btn-restringido':'btn-libre'}" onclick="toggleRestringido(${gi},${vi})">
             ${v.restringido?'🔒 Restringido':'🔓 Libre'}
           </button>` : ''}
@@ -6591,57 +6673,104 @@ function _tieneSeguro(matricula) {
   const v = _getVehiculo(matricula);
   return v && (v.seguro_aseguradora || v.seguro_nombre || v.seguro_tel || v.seguro_poliza);
 }
-function abrirFichaVehiculo(matricula) {
-  const v = _getVehiculo(matricula);
-  // Extraer solo la matrícula real (quitar prefijo de marca si lo hay)
-  // Ejemplo: "IVECO 0248 KTK" → "0248 KTK" | "1234 ABC" → "1234 ABC"
-  const matReal = (function(m) {
-    // Patrón matrícula española: 4 dígitos + 3 letras (con o sin espacio)
-    const m1 = m.match(/\b(\d{4}\s?[A-Z]{3})\b/);
-    if (m1) return m1[1];
-    // Matrícula antigua: letras + dígitos + letras (ej. B 1234 KT)
-    const m2 = m.match(/\b([A-Z]{1,2}\s?\d{3,4}\s?[A-Z]{1,2})\b/);
-    if (m2) return m2[1];
-    // Si no encaja, devolver como está
-    return m;
-  })(matricula);
-  document.getElementById('ficha-mat').textContent  = matReal;
-  document.getElementById('ficha-tipo').textContent = v ? (v.tipo + (v.nota ? ' · ' + v.nota : '')) : '—';
+// ── FICHA TÉCNICA PRO ────────────────────────────────────────────────────────
+const CLOUDINARY_CLOUD = 'dnfpuvvxl';
 
+const FICHA_DOC_CATEGORIAS = [
+  { id: 'ficha_tecnica',       label: 'Ficha técnica',         icon: '📄' },
+  { id: 'permiso_circulacion', label: 'Permiso de circulación',icon: '🪪' },
+  { id: 'informe_itv',         label: 'Informe ITV',           icon: '🔧' },
+  { id: 'poliza_seguro',       label: 'Póliza de seguro',      icon: '🛡️' },
+  { id: 'otros',               label: 'Otros',                 icon: '📎' },
+];
+
+let _fichaMat = ''; // matrícula activa en la ficha
+
+function _fichaMatReal(m) {
+  const m1 = m.match(/\b(\d{4}\s?[A-Z]{3})\b/);
+  if (m1) return m1[1];
+  const m2 = m.match(/\b([A-Z]{1,2}\s?\d{3,4}\s?[A-Z]{1,2})\b/);
+  if (m2) return m2[1];
+  return m;
+}
+
+function fichaTabSwitch(tab) {
+  document.querySelectorAll('.ficha-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ficha-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.ficha-tab[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`ficha-panel-${tab}`).classList.add('active');
+  if (tab === 'docs') _fichaCargarDocs(_fichaMat);
+}
+
+function abrirFichaVehiculo(matricula) {
+  _fichaMat = matricula;
+  const v = _getVehiculo(matricula);
+  const matReal = _fichaMatReal(matricula);
+
+  // ── HEADER ──
+  document.getElementById('ficha-mat').textContent = matReal;
+  const tipoEl = document.getElementById('ficha-tipo');
+  tipoEl.textContent = v ? (v.tipo + (v.nota ? ' · ' + v.nota : '')) : '—';
+
+  // Pills de estado
+  const badgesEl = document.getElementById('ficha-header-badges');
+  badgesEl.innerHTML = '';
+  if (v?.bloqueado) {
+    badgesEl.innerHTML += `<span class="ficha-meta-badge bloqueado">⛔ Bloqueado</span>`;
+  }
+  if (v?.archivado) {
+    badgesEl.innerHTML += `<span class="ficha-meta-badge archivado">📦 Archivado</span>`;
+  }
+  // ITV badge en header
+  const itv = v?.itv_fin || '';
+  if (itv) {
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const dias = Math.ceil((new Date(itv + 'T00:00:00') - hoy) / 86400000);
+    if (dias <= 0)       badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">⛔ ITV Caducada</span>`;
+    else if (dias <= 30) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-warn">⚠️ ITV ${dias}d</span>`;
+  }
+
+  // ── PANEL SEGURO ──
   function setVal(id, val) {
     const el = document.getElementById(id);
+    if (!el) return;
     if (val && String(val).trim()) {
       el.textContent = val; el.className = 'ficha-val';
     } else {
       el.textContent = 'Sin datos'; el.className = 'ficha-val vacio';
     }
   }
+  setVal('ficha-seg-aseguradora', v?.seguro_aseguradora);
+  setVal('ficha-seg-nombre',      v?.seguro_nombre);
+  setVal('ficha-seg-cif',         v?.seguro_cif);
+  setVal('ficha-seg-poliza',      v?.seguro_poliza);
 
-  setVal('ficha-seguro-aseguradora', v?.seguro_aseguradora);
-  setVal('ficha-seguro-nombre', v?.seguro_nombre);
-  setVal('ficha-seguro-cif',    v?.seguro_cif);
-  setVal('ficha-seguro-poliza', v?.seguro_poliza);
-
-  // Vencimiento seguro con color si está próximo
-  const vencEl = document.getElementById('ficha-seguro-vencimiento');
+  // Vencimiento seguro
+  const vencEl = document.getElementById('ficha-seg-vencimiento');
   const venc   = v?.seguro_vencimiento || '';
+  const alertaEl = document.getElementById('ficha-seg-alerta');
+  alertaEl.style.display = 'none';
   if (venc) {
     const hoy  = new Date(); hoy.setHours(0,0,0,0);
-    const fech = new Date(venc + 'T00:00:00');
-    const dias = Math.ceil((fech - hoy) / 86400000);
+    const dias = Math.ceil((new Date(venc + 'T00:00:00') - hoy) / 86400000);
     const txt  = venc.split('-').reverse().join('/');
-    let cls = 'ficha-val itv-ok';
-    if (dias <= 0)   cls = 'ficha-val itv-bad';
-    else if (dias <= 30) cls = 'ficha-val itv-warn';
-    const extra = dias <= 0 ? ' ⛔ VENCIDO' : dias <= 30 ? ` ⚠️ ${dias}d` : '';
-    vencEl.textContent = txt + extra;
-    vencEl.className   = cls;
+    if (dias <= 0) {
+      vencEl.textContent = txt + ' ⛔'; vencEl.className = 'ficha-val itv-bad';
+      alertaEl.style.display = 'flex'; alertaEl.className = 'ficha-alert bad';
+      alertaEl.innerHTML = `<span class="ficha-alert-icon">⛔</span><span class="ficha-alert-text">El seguro está <strong>vencido</strong>. Contacta con la aseguradora.</span>`;
+    } else if (dias <= 30) {
+      vencEl.textContent = txt + ` ⚠️ ${dias}d`; vencEl.className = 'ficha-val itv-warn';
+      alertaEl.style.display = 'flex'; alertaEl.className = 'ficha-alert warn';
+      alertaEl.innerHTML = `<span class="ficha-alert-icon">⚠️</span><span class="ficha-alert-text">El seguro vence en <strong>${dias} días</strong>. Renuévalo pronto.</span>`;
+    } else {
+      vencEl.textContent = txt; vencEl.className = 'ficha-val itv-ok';
+    }
   } else {
     vencEl.textContent = 'Sin datos'; vencEl.className = 'ficha-val vacio';
   }
 
-  // Teléfono — link clicable
-  const telEl = document.getElementById('ficha-seguro-tel');
+  // Tel
+  const telEl = document.getElementById('ficha-seg-tel');
   const tel   = v?.seguro_tel || '';
   if (tel) {
     telEl.innerHTML = `<a class="ficha-tel-link" href="tel:${tel.replace(/\s/g,'')}" onclick="event.stopPropagation()">📞 ${tel}</a>`;
@@ -6650,28 +6779,96 @@ function abrirFichaVehiculo(matricula) {
     telEl.textContent = 'Sin datos'; telEl.className = 'ficha-val vacio';
   }
 
-  // ITV
-  const itvEl = document.getElementById('ficha-itv');
-  const itv   = v?.itv_fin || '';
+  // ── PANEL ITV ──
+  const itvBig = document.getElementById('ficha-itv-big');
   if (itv) {
     const hoy  = new Date(); hoy.setHours(0,0,0,0);
-    const fech = new Date(itv + 'T00:00:00');
-    const dias = Math.ceil((fech - hoy) / 86400000);
+    const dias = Math.ceil((new Date(itv + 'T00:00:00') - hoy) / 86400000);
     const txt  = itv.split('-').reverse().join('/');
-    let cls = 'ficha-val itv-ok';
-    let extra = ` ✅ (${dias}d)`;
-    if (dias <= 0)        { cls = 'ficha-val itv-bad';  extra = ' ⛔ CADUCADA'; }
-    else if (dias <= 30)  { cls = 'ficha-val itv-warn'; extra = ` ⚠️ ${dias}d`; }
-    itvEl.textContent = txt + extra;
-    itvEl.className   = cls;
+    let semaforoClass = 'ok', semaforoEmoji = '✅', diasClass = 'ok', diasTxt = `${dias} días restantes`;
+    if (dias <= 0)       { semaforoClass = 'bad';  semaforoEmoji = '⛔'; diasClass = 'bad';  diasTxt = 'CADUCADA'; }
+    else if (dias <= 30) { semaforoClass = 'warn'; semaforoEmoji = '⚠️'; diasClass = 'warn'; diasTxt = `${dias} días restantes`; }
+    itvBig.innerHTML = `
+      <div class="ficha-itv-semaforo ${semaforoClass}">${semaforoEmoji}</div>
+      <div class="ficha-itv-info">
+        <div class="ficha-itv-fecha">${txt}</div>
+        <div class="ficha-itv-desc">Próxima ITV</div>
+        <div class="ficha-itv-dias ${diasClass}">${diasTxt}</div>
+      </div>`;
   } else {
-    itvEl.textContent = 'Sin registrar'; itvEl.className = 'ficha-val vacio';
+    itvBig.innerHTML = `
+      <div class="ficha-itv-semaforo bad">—</div>
+      <div class="ficha-itv-info">
+        <div class="ficha-itv-fecha" style="color:#b0bac8;font-size:15px;font-style:italic">Sin registrar</div>
+        <div class="ficha-itv-desc">No hay fecha de ITV en el sistema</div>
+      </div>`;
   }
+
+  // ── PANEL DOCS — se carga al abrir la pestaña ──
+  document.getElementById('ficha-docs-content').innerHTML =
+    `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Carga la pestaña para ver los documentos</div>`;
+
+  // Activar primera pestaña (seguro)
+  document.querySelectorAll('.ficha-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ficha-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.ficha-tab[data-tab="seguro"]').classList.add('active');
+  document.getElementById('ficha-panel-seguro').classList.add('active');
 
   document.getElementById('modal-ficha-vehiculo').classList.add('visible');
 }
+
+async function _fichaCargarDocs(matricula) {
+  const cont = document.getElementById('ficha-docs-content');
+  cont.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Cargando documentos…</div>`;
+  try {
+    const r = await fetch(`${APPS_SCRIPT_URL}?accion=cargarDocumentos&matricula=${encodeURIComponent(matricula)}`);
+    const d = await r.json();
+    _fichaRenderDocs(d.docs || []);
+  } catch(e) {
+    cont.innerHTML = `<div class="ficha-docs-loading" style="color:#e84545">Error al cargar documentos</div>`;
+  }
+}
+
+function _fichaRenderDocs(docs) {
+  const cont = document.getElementById('ficha-docs-content');
+  cont.innerHTML = '';
+  // Agrupar por categoría
+  FICHA_DOC_CATEGORIAS.forEach(cat => {
+    const catDocs = docs.filter(d => d.categoria === cat.id);
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class="ficha-docs-cat-title">${cat.icon} ${cat.label}</div>`;
+    if (catDocs.length === 0) {
+      wrap.innerHTML += `<div class="ficha-doc-empty">Sin documentos en esta categoría</div>`;
+    } else {
+      catDocs.forEach(doc => {
+        const isPdf = (doc.formato || '').toLowerCase() === 'pdf' || (doc.nombre || '').toLowerCase().endsWith('.pdf');
+        const icono = isPdf ? '📄' : '🖼️';
+        const fecha = doc.fecha ? new Date(doc.fecha).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+        wrap.innerHTML += `
+          <div class="ficha-doc-card">
+            <div class="ficha-doc-icon">${icono}</div>
+            <div class="ficha-doc-info">
+              <div class="ficha-doc-nombre" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</div>
+              <div class="ficha-doc-fecha">Subido: ${fecha} · ${esc(doc.subido_por || '—')}</div>
+            </div>
+            <a class="ficha-doc-btn ver" href="${esc(doc.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">👁 Ver</a>
+          </div>`;
+      });
+    }
+    cont.appendChild(wrap);
+  });
+  if (docs.length === 0) {
+    cont.innerHTML = `<div class="ficha-doc-empty" style="padding:28px;font-size:13px">
+      <div style="font-size:32px;margin-bottom:8px">📂</div>
+      No hay documentos asociados a este vehículo.<br>
+      <span style="font-size:11px;color:#c0cad8">Puedes añadirlos desde el Panel Admin.</span>
+    </div>`;
+  }
+}
+
 function cerrarFichaVehiculo() {
   document.getElementById('modal-ficha-vehiculo').classList.remove('visible');
+  _fichaMat = '';
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') cerrarFichaVehiculo();
@@ -6738,6 +6935,245 @@ function editarSeguro(gi, vi) {
     mostrarToast('✓ Datos del seguro guardados', 'success');
     registrarAccion('VEHICULO', 'Editar datos seguro', GRUPOS[gi].vehiculos[vi].matricula);
   };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// GESTOR DE DOCUMENTOS — Panel Admin (Cloudinary)
+// ════════════════════════════════════════════════════════════════════════════
+const _DOCS_CATS = [
+  { id: 'ficha_tecnica',       label: 'Ficha técnica',          icon: '📄' },
+  { id: 'permiso_circulacion', label: 'Permiso de circulación', icon: '🪪' },
+  { id: 'informe_itv',         label: 'Informe ITV',            icon: '🔧' },
+  { id: 'poliza_seguro',       label: 'Póliza de seguro',       icon: '🛡️' },
+  { id: 'otros',               label: 'Otros',                  icon: '📎' },
+];
+
+async function abrirGestorDocumentos(matricula) {
+  // ── Overlay ──
+  const overlay = document.createElement('div');
+  overlay.id = 'overlay-docs';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,20,0.82);z-index:6000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);';
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px;width:580px;max-width:97vw;max-height:88vh;
+                display:flex;flex-direction:column;box-shadow:0 40px 100px rgba(0,0,0,0.5);
+                font-family:'Barlow',sans-serif;overflow:hidden;">
+
+      <!-- Cabecera -->
+      <div style="background:linear-gradient(135deg,#0c0c20,#1a1a3a);padding:20px 22px 16px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div>
+            <div style="font-size:9px;font-weight:900;letter-spacing:3px;color:rgba(255,255,255,0.35);text-transform:uppercase;">Panel Admin · Documentos</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;margin-top:4px;">📂 ${esc(matricula)}</div>
+          </div>
+          <button id="docs-close" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
+            color:#7788bb;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:15px;
+            display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+      </div>
+
+      <!-- Subir nuevo -->
+      <div style="background:#f8faff;border-bottom:1.5px solid #e8ecf4;padding:16px 20px;flex-shrink:0;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#3b5bdb;margin-bottom:10px;">➕ Subir nuevo documento</div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-size:9px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Categoría</label>
+            <select id="docs-cat" style="width:100%;padding:8px 10px;border:1.5px solid #dde1ea;border-radius:8px;font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;color:#1a1a2e;background:#fff;outline:none;">
+              ${_DOCS_CATS.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}
+            </select>
+          </div>
+          <div style="flex:1;min-width:160px;">
+            <label style="font-size:9px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Archivo (PDF / Imagen)</label>
+            <input type="file" id="docs-file" accept=".pdf,image/*"
+              style="width:100%;padding:6px 10px;border:1.5px solid #dde1ea;border-radius:8px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;color:#1a1a2e;background:#fff;cursor:pointer;outline:none;">
+          </div>
+          <button id="docs-subir" style="padding:9px 18px;background:#16a34a;color:#fff;border:none;border-radius:9px;
+            font-family:'Barlow',sans-serif;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;
+            box-shadow:0 4px 14px rgba(22,163,74,0.3);flex-shrink:0;">⬆ Subir</button>
+        </div>
+        <div id="docs-upload-status" style="margin-top:8px;font-size:11px;font-weight:700;display:none;"></div>
+      </div>
+
+      <!-- Lista documentos -->
+      <div id="docs-lista" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px;
+           scrollbar-width:thin;scrollbar-color:#dde1ea transparent;">
+        <div style="display:flex;align-items:center;gap:8px;color:#8899aa;font-size:12px;font-weight:600;padding:20px 0;justify-content:center;">
+          <div style="width:18px;height:18px;border:2.5px solid #e0e4ed;border-top-color:#3b5bdb;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
+          Cargando documentos…
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Cerrar
+  overlay.querySelector('#docs-close').onclick = () => overlay.remove();
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  // Cargar docs actuales
+  await _docsCargar(matricula, overlay);
+
+  // Subir
+  overlay.querySelector('#docs-subir').onclick = () => _docsSubir(matricula, overlay);
+}
+
+async function _docsCargar(matricula, overlay) {
+  const lista = overlay.querySelector('#docs-lista');
+  lista.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:#8899aa;font-size:12px;font-weight:600;padding:20px 0;justify-content:center;">
+    <div style="width:18px;height:18px;border:2.5px solid #e0e4ed;border-top-color:#3b5bdb;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
+    Cargando documentos…</div>`;
+  try {
+    const r = await fetch(`${APPS_SCRIPT_URL}?accion=cargarDocumentos&matricula=${encodeURIComponent(matricula)}`);
+    const d = await r.json();
+    _docsRender(d.docs || [], matricula, overlay);
+  } catch(e) {
+    lista.innerHTML = `<div style="color:#e84545;font-size:12px;font-weight:700;padding:16px 0;text-align:center;">Error al cargar documentos</div>`;
+  }
+}
+
+function _docsRender(docs, matricula, overlay) {
+  const lista = overlay.querySelector('#docs-lista');
+  if (docs.length === 0) {
+    lista.innerHTML = `<div style="text-align:center;padding:30px 0;color:#b0bac8;font-size:13px;font-weight:600;">
+      <div style="font-size:36px;margin-bottom:8px;">📂</div>
+      No hay documentos aún.<br>
+      <span style="font-size:11px;">Usa el formulario de arriba para subir el primero.</span>
+    </div>`;
+    return;
+  }
+
+  // Agrupar por categoría
+  let html = '';
+  _DOCS_CATS.forEach(cat => {
+    const catDocs = docs.filter(d => d.categoria === cat.id);
+    if (catDocs.length === 0) return;
+    html += `<div style="font-size:9px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#6b7a94;
+              margin-top:8px;margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+              ${cat.icon} ${cat.label}
+              <span style="flex:1;height:1px;background:#e8ecf4;"></span>
+             </div>`;
+    catDocs.forEach(doc => {
+      const isPdf = (doc.formato||'').toLowerCase() === 'pdf' || (doc.url||'').toLowerCase().includes('/image/upload/') === false || (doc.nombre||'').toLowerCase().endsWith('.pdf');
+      const icono = isPdf ? '📄' : '🖼️';
+      const fecha = doc.fecha ? new Date(doc.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+      html += `<div data-pubid="${esc(doc.public_id)}" style="display:flex;align-items:center;gap:10px;
+                background:#fff;border:1.5px solid #e8ecf4;border-radius:11px;padding:10px 12px;transition:border-color 0.15s;">
+        <div style="width:38px;height:38px;border-radius:9px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${icono}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(doc.nombre)}">${esc(doc.nombre||'Sin nombre')}</div>
+          <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:2px;">${fecha} · ${esc(doc.subido_por||'—')}</div>
+        </div>
+        <a href="${esc(doc.url)}" target="_blank" rel="noopener"
+          style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
+                 border-radius:7px;padding:5px 10px;cursor:pointer;border:1.5px solid #c5d0ff;
+                 background:#f0f4ff;color:#3b5bdb;text-decoration:none;white-space:nowrap;flex-shrink:0;"
+          onclick="event.stopPropagation()">👁 Ver</a>
+        <button onclick="_docsEliminar('${esc(doc.public_id)}','${esc(matricula)}',this)"
+          style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
+                 border-radius:7px;padding:5px 10px;cursor:pointer;border:1.5px solid #fecaca;
+                 background:#fff0f0;color:#dc2626;flex-shrink:0;font-family:'Barlow',sans-serif;">🗑 Eliminar</button>
+      </div>`;
+    });
+  });
+
+  lista.innerHTML = html;
+}
+
+async function _docsSubir(matricula, overlay) {
+  const fileInput  = overlay.querySelector('#docs-file');
+  const catSelect  = overlay.querySelector('#docs-cat');
+  const statusEl   = overlay.querySelector('#docs-upload-status');
+  const btnSubir   = overlay.querySelector('#docs-subir');
+  const file       = fileInput.files[0];
+
+  if (!file) { mostrarToast('Selecciona un archivo primero', 'error'); return; }
+
+  const MAX_MB = 10;
+  if (file.size > MAX_MB * 1024 * 1024) {
+    mostrarToast(`El archivo supera los ${MAX_MB} MB`, 'error'); return;
+  }
+
+  const categoria  = catSelect.value;
+  const catLabel   = _DOCS_CATS.find(c => c.id === categoria)?.label || categoria;
+  const matLimpia  = matricula.replace(/\s/g, '_').toUpperCase();
+  const public_folder = `GESTOR_FLOTA/${matLimpia}`;
+
+  btnSubir.disabled = true; btnSubir.textContent = '⏳ Subiendo…';
+  statusEl.style.display = 'flex'; statusEl.style.gap = '8px'; statusEl.style.alignItems = 'center';
+  statusEl.innerHTML = `<div style="width:14px;height:14px;border:2px solid #dde1ea;border-top-color:#16a34a;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="color:#6b7a94;">Subiendo a Cloudinary…</span>`;
+
+  try {
+    // ── Upload a Cloudinary (unsigned preset GESTOR_FLOTA) ──
+    const formato = file.type.includes('pdf') ? 'pdf' : 'image';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', 'GESTOR_FLOTA');
+    fd.append('folder', public_folder);
+
+    const endpoint = formato === 'pdf'
+      ? `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`
+      : `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
+
+    const cRes  = await fetch(endpoint, { method: 'POST', body: fd });
+    const cData = await cRes.json();
+
+    if (!cData.secure_url) throw new Error(cData.error?.message || 'Error Cloudinary');
+
+    statusEl.innerHTML = `<div style="width:14px;height:14px;border:2px solid #dde1ea;border-top-color:#16a34a;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="color:#6b7a94;">Guardando referencia…</span>`;
+
+    // ── Guardar referencia en Sheets ──
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        accion: 'guardarDocumento',
+        doc: {
+          matricula,
+          categoria,
+          nombre:     file.name,
+          public_id:  cData.public_id,
+          url:        cData.secure_url,
+          formato,
+          subido_por: (usuarioActual?.nombre || 'Admin'),
+        }
+      })
+    });
+    const rData = await resp.json();
+    if (!rData.ok) throw new Error(rData.error || 'Error al guardar');
+
+    // ── Éxito ──
+    statusEl.innerHTML = `<span style="color:#16a34a;font-weight:800;">✓ Documento subido correctamente</span>`;
+    fileInput.value = '';
+    mostrarToast(`✓ ${catLabel} subido`, 'success');
+    registrarAccion('VEHICULO', 'Subir documento', `${matricula} · ${catLabel} · ${file.name}`);
+    await _docsCargar(matricula, overlay);
+
+  } catch(err) {
+    statusEl.innerHTML = `<span style="color:#e84545;font-weight:800;">⚠ Error: ${err.message}</span>`;
+    mostrarToast('Error al subir el documento', 'error');
+  } finally {
+    btnSubir.disabled = false; btnSubir.textContent = '⬆ Subir';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+  }
+}
+
+async function _docsEliminar(publicId, matricula, btnEl) {
+  if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+  const overlay = document.getElementById('overlay-docs');
+  btnEl.disabled = true; btnEl.textContent = '…';
+  try {
+    const r = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ accion: 'eliminarDocumento', public_id: publicId })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    mostrarToast('Documento eliminado', 'success');
+    registrarAccion('VEHICULO', 'Eliminar documento', matricula);
+    await _docsCargar(matricula, overlay);
+  } catch(e) {
+    mostrarToast('Error al eliminar', 'error');
+    btnEl.disabled = false; btnEl.textContent = '🗑 Eliminar';
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -11465,76 +11901,108 @@ async function eliminarLogAccion(idx) {
 <!-- ══ MODAL FICHA VEHÍCULO — hijo directo de body ══ -->
 <div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
   <div class="ficha-box">
+
+    <!-- ── HEADER ── -->
     <div class="ficha-header">
-      <div class="ficha-header-left">
-        <div class="ficha-titulo-label">FICHA TÉCNICA VEHÍCULO</div>
-        <div class="ficha-mat-plate">
-          <div class="ficha-mat-plate-eu">
-            <span class="eu-stars">★★★</span>
-            <span class="eu-code">E</span>
+      <div class="ficha-header-top">
+        <div class="ficha-header-left">
+          <div class="ficha-titulo-label">Ficha técnica vehículo</div>
+          <div class="ficha-mat-plate">
+            <div class="ficha-mat-plate-eu">
+              <span class="eu-stars">★★★</span>
+              <span class="eu-code">E</span>
+            </div>
+            <div class="ficha-mat-plate-text" id="ficha-mat">—</div>
           </div>
-          <div class="ficha-mat-plate-text" id="ficha-mat">—</div>
+          <div class="ficha-header-meta">
+            <span class="ficha-meta-tipo" id="ficha-tipo">—</span>
+            <span id="ficha-header-badges"></span>
+          </div>
         </div>
-        <div class="ficha-header-tipo">
-          <span id="ficha-tipo">—</span>
-          <span class="ficha-header-badge" id="ficha-header-badge" style="display:none"></span>
-        </div>
+        <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
       </div>
-      <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
+
+      <!-- ── TABS ── -->
+      <div class="ficha-tabs">
+        <button class="ficha-tab active" data-tab="seguro" onclick="fichaTabSwitch('seguro')">
+          <span class="ficha-tab-icon">🛡️</span>Seguro
+        </button>
+        <button class="ficha-tab" data-tab="itv" onclick="fichaTabSwitch('itv')">
+          <span class="ficha-tab-icon">🔧</span>ITV
+        </button>
+        <button class="ficha-tab" data-tab="docs" onclick="fichaTabSwitch('docs')">
+          <span class="ficha-tab-icon">📂</span>Documentos
+        </button>
+      </div>
     </div>
+
+    <!-- ── BODY ── -->
     <div class="ficha-body">
 
-      <!-- Seguro -->
-      <div class="ficha-section">
-        <div class="ficha-section-header">
-          <span class="ficha-section-icon">🛡️</span>
-          <span class="ficha-section-title">Seguro</span>
-        </div>
-        <div class="ficha-rows">
-          <div class="ficha-row">
-            <span class="ficha-label">Aseguradora</span>
-            <span class="ficha-val" id="ficha-seguro-aseguradora">—</span>
+      <!-- PANEL SEGURO -->
+      <div class="ficha-panel active" id="ficha-panel-seguro">
+
+        <!-- Alerta vencimiento -->
+        <div id="ficha-seg-alerta" class="ficha-alert warn" style="display:none"></div>
+
+        <div class="ficha-section">
+          <div class="ficha-section-header">
+            <span class="ficha-section-icon">🛡️</span>
+            <span class="ficha-section-title">Datos del seguro</span>
           </div>
-          <div class="ficha-row">
-            <span class="ficha-label">Tomador</span>
-            <span class="ficha-val" id="ficha-seguro-nombre">—</span>
-          </div>
-          <div class="ficha-row">
-            <span class="ficha-label">CIF</span>
-            <span class="ficha-val" id="ficha-seguro-cif">—</span>
-          </div>
-          <div class="ficha-row">
-            <span class="ficha-label">Nº Póliza</span>
-            <span class="ficha-val" id="ficha-seguro-poliza">—</span>
-          </div>
-          <div class="ficha-row">
-            <span class="ficha-label">Vencimiento</span>
-            <span class="ficha-val" id="ficha-seguro-vencimiento">—</span>
-          </div>
-          <div class="ficha-row" style="padding: 12px 0;">
-            <span class="ficha-label">Tel. Asistencia</span>
-            <span class="ficha-val" id="ficha-seguro-tel">—</span>
+          <div class="ficha-rows">
+            <div class="ficha-row">
+              <span class="ficha-label">Aseguradora</span>
+              <span class="ficha-val" id="ficha-seg-aseguradora">—</span>
+            </div>
+            <div class="ficha-row">
+              <span class="ficha-label">Tomador</span>
+              <span class="ficha-val" id="ficha-seg-nombre">—</span>
+            </div>
+            <div class="ficha-row">
+              <span class="ficha-label">CIF</span>
+              <span class="ficha-val" id="ficha-seg-cif">—</span>
+            </div>
+            <div class="ficha-row">
+              <span class="ficha-label">Nº Póliza</span>
+              <span class="ficha-val" id="ficha-seg-poliza">—</span>
+            </div>
+            <div class="ficha-row">
+              <span class="ficha-label">Vencimiento</span>
+              <span class="ficha-val" id="ficha-seg-vencimiento">—</span>
+            </div>
+            <div class="ficha-row" style="padding: 11px 0;">
+              <span class="ficha-label">Tel. Asistencia</span>
+              <span class="ficha-val" id="ficha-seg-tel">—</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- ITV -->
-      <div class="ficha-section">
-        <div class="ficha-section-header">
-          <span class="ficha-section-icon">🔧</span>
-          <span class="ficha-section-title">ITV</span>
-        </div>
-        <div class="ficha-rows">
-          <div class="ficha-row">
-            <span class="ficha-label">Próxima ITV</span>
-            <span class="ficha-val" id="ficha-itv">—</span>
+      <!-- PANEL ITV -->
+      <div class="ficha-panel" id="ficha-panel-itv">
+        <div class="ficha-section">
+          <div class="ficha-section-header">
+            <span class="ficha-section-icon">🔧</span>
+            <span class="ficha-section-title">Inspección Técnica</span>
+          </div>
+          <div id="ficha-itv-big" class="ficha-itv-big">
+            <!-- Contenido dinámico -->
           </div>
         </div>
       </div>
 
-    </div>
+      <!-- PANEL DOCUMENTOS -->
+      <div class="ficha-panel" id="ficha-panel-docs">
+        <div id="ficha-docs-content" class="ficha-docs-cats">
+          <div class="ficha-docs-loading">
+            <div class="ficha-spinner"></div>Carga la pestaña para ver los documentos
+          </div>
+        </div>
+      </div>
 
-  </div>
+    </div><!-- /ficha-body -->
+  </div><!-- /ficha-box -->
 </div>
 
 <script>

@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.3">
+  <meta name="app-version" content="3.1.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -64,6 +64,16 @@
     #modal-nueva-version .btn-actualizar:active { transform: translateY(0); }
     #modal-nueva-version .nv-footer {
       margin-top: 14px; font-size: 10px; color: #b0bac8; font-weight: 600;
+    }
+    /* Ocultar visualmente los campos de clave sin usar type=password */
+    input.inp-clave {
+      -webkit-text-security: disc;
+      font-family: 'password-dots', monospace;
+    }
+    @font-face {
+      font-family: 'password-dots';
+      src: local('Arial');
+      unicode-range: U+0020-007E;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; overflow: hidden; }
@@ -1675,8 +1685,8 @@
       </div>
       <div class="login-field">
         <label>Clave de acceso</label>
-        <input type="password" id="mlr-clave" placeholder="••••••" maxlength="20"
-          autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
+        <input type="text" class="inp-clave" id="mlr-clave" placeholder="••••••" maxlength="20"
+          autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
           onkeydown="if(event.key==='Enter') loginResponsable()">
       </div>
 
@@ -1851,8 +1861,8 @@
     <h2>Panel de Administración</h2>
     <p id="admin-login-subtitle">Introduce la contraseña de administrador</p>
     <div class="error-msg" id="admin-error-msg">Contraseña incorrecta</div>
-    <input type="password" id="inp-admin-password" placeholder="• • • • •" maxlength="20"
-      autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
+    <input type="text" class="inp-clave" id="inp-admin-password" placeholder="• • • • •" maxlength="20"
+      autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
       onkeydown="if(event.key==='Enter') verificarPasswordAdmin()">
     <button class="btn-entrar" id="btn-admin-entrar" onclick="verificarPasswordAdmin()">Entrar</button>
     <div id="admin-login-loading" style="display:none;margin:10px 0 4px;display:none;align-items:center;justify-content:center;gap:10px;padding:10px 0">
@@ -2229,8 +2239,8 @@
           </div>
           <div>
             <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Clave de acceso <span style="color:#e84545">*</span></label>
-            <input type="password" id="modal-resp-clave" placeholder="Clave de acceso"
-              autocomplete="new-password" data-lpignore="true" data-1p-ignore="true"
+            <input type="text" class="inp-clave" id="modal-resp-clave" placeholder="Clave de acceso"
+              autocomplete="off" data-lpignore="true" data-1p-ignore="true"
               style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;">
           </div>
           <div>
@@ -2364,10 +2374,10 @@
               <span id="admin-pass-sync-text">Comprobando estado en Sheets…</span>
             </div>
             <div class="admin-add-form" style="flex-direction:column;gap:10px">
-              <input type="password" id="admin-pass-nueva" placeholder="Nueva contraseña (mínimo 4 caracteres)"
-                autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
-              <input type="password" id="admin-pass-confirm" placeholder="Repetir nueva contraseña"
-                autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+              <input type="text" class="inp-clave" id="admin-pass-nueva" placeholder="Nueva contraseña (mínimo 4 caracteres)"
+                autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+              <input type="text" class="inp-clave" id="admin-pass-confirm" placeholder="Repetir nueva contraseña"
+                autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
               <button class="btn-add-item" id="btn-cambiar-pass" onclick="cambiarPasswordAdmin()" style="background:#e84545">🚛 Cambiar y guardar en Sheets</button>
             </div>
           </div>
@@ -2382,10 +2392,10 @@
               <span id="config-pass-sync-text">Comprobando estado en Sheets…</span>
             </div>
             <div class="admin-add-form" style="flex-direction:column;gap:10px">
-              <input type="password" id="config-pass-nueva" placeholder="Nueva contraseña de Config (mínimo 4 caracteres)"
-                autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
-              <input type="password" id="config-pass-confirm" placeholder="Repetir contraseña"
-                autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+              <input type="text" class="inp-clave" id="config-pass-nueva" placeholder="Nueva contraseña de Config (mínimo 4 caracteres)"
+                autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+              <input type="text" class="inp-clave" id="config-pass-confirm" placeholder="Repetir contraseña"
+                autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
               <button class="btn-add-item" id="btn-cambiar-config-pass" onclick="cambiarPasswordConfig()" style="background:#3b5bdb">🔐 Cambiar contraseña de Config</button>
             </div>
           </div>
@@ -10626,18 +10636,18 @@ function forzarActualizacion() {
     <div class="cc-loading" id="cc-loading"><div class="cc-loading-spinner"></div><div class="cc-loading-text" id="cc-loading-text">Comprobando…</div></div>
     <div class="cc-field">
       <label>Clave actual</label>
-      <input type="password" id="cc-actual" placeholder="••••••" maxlength="20"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+      <input type="text" class="inp-clave" id="cc-actual" placeholder="••••••" maxlength="20"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
     </div>
     <div class="cc-field">
       <label>Nueva clave</label>
-      <input type="password" id="cc-nueva" placeholder="••••••" maxlength="20"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+      <input type="text" class="inp-clave" id="cc-nueva" placeholder="••••••" maxlength="20"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
     </div>
     <div class="cc-field">
       <label>Confirmar nueva clave</label>
-      <input type="password" id="cc-confirmar" placeholder="••••••" maxlength="20"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
+      <input type="text" class="inp-clave" id="cc-confirmar" placeholder="••••••" maxlength="20"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
         onkeydown="if(event.key==='Enter') guardarCambioClave()">
     </div>
     <div class="cc-error" id="cc-error"></div>
@@ -10757,8 +10767,8 @@ document.getElementById('modal-cambio-clave').addEventListener('click', function
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:6px;text-align:left;">
       <label style="font-size:10px;font-weight:800;color:#556;letter-spacing:1px;text-transform:uppercase;">Contraseña de Config</label>
-      <input type="password" id="inp-config-password" placeholder="• • • • •" maxlength="30"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true"
+      <input type="text" class="inp-clave" id="inp-config-password" placeholder="• • • • •" maxlength="30"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true"
         style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:15px;text-align:center;letter-spacing:4px;outline:none;"
         onkeydown="if(event.key==='Enter') verificarPasswordConfig()">
     </div>
@@ -10778,18 +10788,18 @@ document.getElementById('modal-cambio-clave').addEventListener('click', function
     <div class="cc-sub">Introduce tu clave actual y la nueva clave</div>
     <div class="cc-field">
       <label>Clave actual</label>
-      <input type="password" id="cc-actual" placeholder="••••••" maxlength="20"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+      <input type="text" class="inp-clave" id="cc-actual" placeholder="••••••" maxlength="20"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
     </div>
     <div class="cc-field">
       <label>Nueva clave</label>
-      <input type="password" id="cc-nueva" placeholder="••••••" maxlength="20"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+      <input type="text" class="inp-clave" id="cc-nueva" placeholder="••••••" maxlength="20"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
     </div>
     <div class="cc-field">
       <label>Confirmar nueva clave</label>
-      <input type="password" id="cc-confirmar" placeholder="••••••" maxlength="20"
-        autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
+      <input type="text" class="inp-clave" id="cc-confirmar" placeholder="••••••" maxlength="20"
+        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
         onkeydown="if(event.key==='Enter') guardarCambioClave()">
     </div>
     <div class="cc-error" id="cc-error"></div>
@@ -11521,5 +11531,18 @@ async function eliminarLogAccion(idx) {
   </div>
 </div>
 
+<script>
+// Bloquear zoom con Ctrl+rueda del ratón
+window.addEventListener('wheel', function(e) {
+  if (e.ctrlKey) e.preventDefault();
+}, { passive: false });
+
+// Bloquear Ctrl++ y Ctrl+- y Ctrl+0
+window.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+    e.preventDefault();
+  }
+});
+</script>
 </body>
 </html>

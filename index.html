@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.2">
+  <meta name="app-version" content="3.1.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -5135,7 +5135,7 @@ async function cargarFlotaDesdeSheets(mostrarError = true) {
       json.flota.forEach(v => {
         let g = GRUPOS.find(g => g.nombre === v.grupo);
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
-        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
       });
       if (mostrarError) ocultarErrorCarga();
       return true;
@@ -5153,7 +5153,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -6544,6 +6544,7 @@ function confirmarNuevoVehiculo() {
   const grupo   = document.getElementById('modal-add-grupo').value.trim().toUpperCase();
   const nota    = document.getElementById('modal-add-nota').value.trim();
   const itv_fin = document.getElementById('modal-add-itv-fin').value.trim();
+  const seguro_aseguradora = (document.getElementById('modal-add-seguro-aseguradora')||{value:''}).value.trim();
   const seguro_nombre      = document.getElementById('modal-add-seguro-nombre').value.trim();
   const seguro_cif         = document.getElementById('modal-add-seguro-cif').value.trim().toUpperCase();
   const seguro_poliza      = document.getElementById('modal-add-seguro-poliza').value.trim();
@@ -6555,7 +6556,7 @@ function confirmarNuevoVehiculo() {
   if (GRUPOS.some(g => g.vehiculos.some(v => v.matricula === mat))) { mostrarToast('Esa matrícula ya existe', 'error'); return; }
   let g = GRUPOS.find(g => g.nombre.toUpperCase() === grupo);
   if (!g) { g = { nombre: grupo, vehiculos: [] }; GRUPOS.push(g); }
-  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false, itv_fin, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel });
+  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false, itv_fin, seguro_aseguradora, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel });
   cerrarModalNuevoVehiculo();
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
   sincronizarVehiculosConSheets();
@@ -6573,7 +6574,7 @@ function _getVehiculo(matricula) {
 }
 function _tieneSeguro(matricula) {
   const v = _getVehiculo(matricula);
-  return v && (v.seguro_nombre || v.seguro_tel || v.seguro_poliza);
+  return v && (v.seguro_aseguradora || v.seguro_nombre || v.seguro_tel || v.seguro_poliza);
 }
 function abrirFichaVehiculo(matricula) {
   const v = _getVehiculo(matricula);
@@ -6601,6 +6602,7 @@ function abrirFichaVehiculo(matricula) {
     }
   }
 
+  setVal('ficha-seguro-aseguradora', v?.seguro_aseguradora);
   setVal('ficha-seguro-nombre', v?.seguro_nombre);
   setVal('ficha-seguro-cif',    v?.seguro_cif);
   setVal('ficha-seguro-poliza', v?.seguro_poliza);
@@ -6672,7 +6674,12 @@ function editarSeguro(gi, vi) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Aseguradora</label>
-          <input id="seg-nombre" value="${esc(v.seguro_nombre||'')}" placeholder="Ej: Mapfre"
+          <input id="seg-aseguradora" value="${esc(v.seguro_aseguradora||'')}" placeholder="Ej: Mapfre"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">Tomador</label>
+          <input id="seg-nombre" value="${esc(v.seguro_nombre||'')}" placeholder="Nombre del tomador"
             style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;outline:none;">
         </div>
         <div>
@@ -6704,6 +6711,7 @@ function editarSeguro(gi, vi) {
   document.body.appendChild(overlay);
   overlay.querySelector('#seg-cancel').onclick  = () => overlay.remove();
   overlay.querySelector('#seg-guardar').onclick = () => {
+    GRUPOS[gi].vehiculos[vi].seguro_aseguradora = overlay.querySelector('#seg-aseguradora').value.trim();
     GRUPOS[gi].vehiculos[vi].seguro_nombre      = overlay.querySelector('#seg-nombre').value.trim();
     GRUPOS[gi].vehiculos[vi].seguro_cif         = overlay.querySelector('#seg-cif').value.trim().toUpperCase();
     GRUPOS[gi].vehiculos[vi].seguro_poliza      = overlay.querySelector('#seg-poliza').value.trim();
@@ -11469,6 +11477,10 @@ async function eliminarLogAccion(idx) {
         <div class="ficha-rows">
           <div class="ficha-row">
             <span class="ficha-label">Aseguradora</span>
+            <span class="ficha-val" id="ficha-seguro-aseguradora">—</span>
+          </div>
+          <div class="ficha-row">
+            <span class="ficha-label">Tomador</span>
             <span class="ficha-val" id="ficha-seguro-nombre">—</span>
           </div>
           <div class="ficha-row">

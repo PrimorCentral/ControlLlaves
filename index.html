@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.1">
+  <meta name="app-version" content="3.1.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1251,118 +1251,164 @@
     /* ─── MODAL FICHA VEHÍCULO ─── */
     #modal-ficha-vehiculo {
       display: none; position: fixed; inset: 0; z-index: 9998;
-      background: rgba(10,10,30,0.72); backdrop-filter: blur(6px);
+      background: rgba(5,5,20,0.82); backdrop-filter: blur(8px);
       align-items: center; justify-content: center; padding: 16px;
     }
     #modal-ficha-vehiculo.visible { display: flex; }
 
     .ficha-box {
-      background: #fff; border-radius: 20px;
-      width: 520px; max-width: 100%;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset;
+      background: #fff; border-radius: 24px;
+      width: 560px; max-width: 100%;
+      box-shadow:
+        0 40px 100px rgba(0,0,0,0.55),
+        0 0 0 1px rgba(255,255,255,0.08) inset,
+        0 1px 0 rgba(255,255,255,0.15) inset;
       font-family: 'Barlow', sans-serif;
-      animation: nv-in 0.28s cubic-bezier(.34,1.56,.64,1);
+      animation: ficha-in 0.32s cubic-bezier(.34,1.48,.64,1);
       overflow: hidden;
+    }
+    @keyframes ficha-in {
+      from { transform: scale(0.88) translateY(24px); opacity: 0; }
+      to   { transform: scale(1)    translateY(0);    opacity: 1; }
     }
 
     /* HEADER */
     .ficha-header {
-      background: linear-gradient(135deg, #1a1a2e 0%, #252545 100%);
-      padding: 22px 24px 18px;
-      display: flex; align-items: flex-start; gap: 16px;
+      background: linear-gradient(145deg, #0f0f22 0%, #1e1e40 50%, #252550 100%);
+      padding: 26px 26px 22px;
+      display: flex; align-items: flex-start; gap: 18px;
       position: relative; overflow: hidden;
     }
     .ficha-header::before {
-      content: '🚛'; position: absolute; right: 20px; top: 50%;
-      transform: translateY(-50%); font-size: 64px; opacity: 0.06; line-height: 1;
+      content: '🚛'; position: absolute; right: -10px; top: 50%;
+      transform: translateY(-50%); font-size: 96px; opacity: 0.07;
+      line-height: 1; pointer-events: none;
     }
-    .ficha-header-left { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .ficha-header-mat {
-      font-size: 22px; font-weight: 900; color: #fff;
-      letter-spacing: 1px; line-height: 1;
+    .ficha-header::after {
+      content: ''; position: absolute;
+      inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 20% 50%, rgba(232,69,69,0.12) 0%, transparent 65%);
+    }
+    .ficha-header-left { display: flex; flex-direction: column; gap: 8px; flex: 1; position: relative; z-index: 1; }
+    .ficha-mat-plate {
+      display: inline-flex; align-items: center; gap: 0;
+      background: #fff; border-radius: 8px;
+      overflow: hidden; align-self: flex-start;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.15);
+    }
+    .ficha-mat-plate-eu {
+      background: #003399; color: #FFD700; font-size: 10px; font-weight: 900;
+      padding: 0 5px; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 1px; min-height: 100%;
+      letter-spacing: 0.5px; line-height: 1;
+    }
+    .ficha-mat-plate-eu .eu-stars { font-size: 7px; letter-spacing: 1px; }
+    .ficha-mat-plate-eu .eu-code  { font-size: 9px; font-weight: 900; }
+    .ficha-mat-plate-text {
+      font-size: 24px; font-weight: 900; color: #1a1a2e;
+      letter-spacing: 3px; padding: 7px 14px 7px 12px; line-height: 1;
+      font-variant-numeric: tabular-nums;
     }
     .ficha-header-tipo {
-      font-size: 12px; color: #8899cc; font-weight: 600;
+      font-size: 12px; color: #7788bb; font-weight: 600;
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      position: relative; z-index: 1;
     }
     .ficha-header-badge {
       display: inline-flex; align-items: center; gap: 4px;
       background: #e84545; color: white; font-size: 10px; font-weight: 800;
-      border-radius: 5px; padding: 2px 8px; letter-spacing: 0.5px;
+      border-radius: 6px; padding: 3px 9px; letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(232,69,69,0.4);
     }
     .ficha-close {
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
-      color: #8899cc; font-size: 16px; cursor: pointer; line-height: 1;
-      padding: 6px 8px; border-radius: 8px; transition: all 0.15s;
-      flex-shrink: 0; margin-top: 2px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      color: #7788bb; font-size: 15px; cursor: pointer; line-height: 1;
+      width: 34px; height: 34px; border-radius: 10px; transition: all 0.15s;
+      flex-shrink: 0; margin-top: 0; display: flex; align-items: center; justify-content: center;
+      position: relative; z-index: 1;
     }
-    .ficha-close:hover { background: rgba(232,69,69,0.25); border-color: #e84545; color: #fff; }
+    .ficha-close:hover {
+      background: rgba(232,69,69,0.3); border-color: rgba(232,69,69,0.6);
+      color: #fff; transform: scale(1.05);
+    }
 
     /* BODY */
-    .ficha-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+    .ficha-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; background: #f9fafb; }
 
     /* SECCIÓN */
-    .ficha-section { border-radius: 12px; overflow: hidden; border: 1.5px solid #eef0f5; }
+    .ficha-section {
+      border-radius: 14px; overflow: hidden;
+      border: 1.5px solid #e8ecf4;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(26,26,46,0.05);
+    }
     .ficha-section-header {
-      display: flex; align-items: center; gap: 8px;
-      background: #f8f9fc; padding: 10px 14px;
-      border-bottom: 1.5px solid #eef0f5;
+      display: flex; align-items: center; gap: 10px;
+      background: linear-gradient(90deg, #1a1a2e 0%, #252545 100%);
+      padding: 11px 16px;
     }
     .ficha-section-icon { font-size: 16px; line-height: 1; }
     .ficha-section-title {
-      font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
-      text-transform: uppercase; color: #1a1a2e;
+      font-size: 10px; font-weight: 800; letter-spacing: 2px;
+      text-transform: uppercase; color: #fff;
     }
-    .ficha-rows { padding: 4px 14px; display: flex; flex-direction: column; }
+    .ficha-rows { padding: 2px 16px; display: flex; flex-direction: column; }
     .ficha-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 0; border-bottom: 1px solid #f4f6f9; gap: 16px;
-      min-height: 40px;
+      padding: 11px 0; border-bottom: 1px solid #f0f3f8; gap: 16px;
+      min-height: 42px;
     }
     .ficha-row:last-child { border-bottom: none; }
     .ficha-label {
-      font-size: 12px; color: #8899aa; font-weight: 600;
-      white-space: nowrap; flex-shrink: 0;
+      font-size: 11px; color: #99aabb; font-weight: 700;
+      white-space: nowrap; flex-shrink: 0; letter-spacing: 0.3px;
+      text-transform: uppercase;
     }
     .ficha-val {
-      font-size: 13px; color: #1a1a2e; font-weight: 700;
+      font-size: 14px; color: #1a1a2e; font-weight: 700;
       text-align: right; word-break: break-word;
     }
-    .ficha-val.vacio { color: #c8d0dc; font-weight: 500; font-style: italic; font-size: 12px; }
+    .ficha-val.vacio { color: #c8d0dc; font-weight: 500; font-style: italic; font-size: 12px; text-transform: none; }
     .ficha-val.itv-ok   { color: #16a34a; }
     .ficha-val.itv-warn { color: #b45309; }
-    .ficha-val.itv-bad  { color: #dc2626; }
+    .ficha-val.itv-bad  { color: #dc2626; font-weight: 900; }
 
     /* TELÉFONO — botón grande */
     .ficha-tel-wrap {
       display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1;
     }
     .ficha-tel-link {
-      display: inline-flex; align-items: center; gap: 7px;
-      color: #fff; background: #e84545; text-decoration: none;
-      font-weight: 900; font-size: 15px; border-radius: 10px;
-      padding: 8px 16px; transition: all 0.15s; letter-spacing: 0.3px;
-      box-shadow: 0 4px 14px rgba(232,69,69,0.35);
+      display: inline-flex; align-items: center; gap: 8px;
+      color: #fff; background: linear-gradient(135deg, #e84545 0%, #c63030 100%);
+      text-decoration: none;
+      font-weight: 900; font-size: 15px; border-radius: 12px;
+      padding: 10px 20px; transition: all 0.18s; letter-spacing: 0.3px;
+      box-shadow: 0 6px 20px rgba(232,69,69,0.4), 0 2px 6px rgba(232,69,69,0.25);
     }
-    .ficha-tel-link:hover { background: #c63030; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(232,69,69,0.45); }
-    .ficha-tel-link:active { transform: translateY(0); }
+    .ficha-tel-link:hover {
+      background: linear-gradient(135deg, #c63030 0%, #a82020 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(232,69,69,0.5), 0 4px 10px rgba(232,69,69,0.3);
+    }
+    .ficha-tel-link:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(232,69,69,0.35); }
     .ficha-tel-icon { font-size: 18px; }
 
     /* FOOTER */
     .ficha-footer {
-      padding: 12px 22px; background: #f7f8fa;
-      border-top: 1px solid #eef0f5;
+      padding: 12px 24px; background: #fff;
+      border-top: 1.5px solid #eef0f5;
       display: flex; align-items: center; justify-content: center; gap: 6px;
-      font-size: 10px; color: #b0bac8; font-weight: 600; letter-spacing: 0.3px;
+      font-size: 10px; color: #b0bac8; font-weight: 700; letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     /* RESPONSIVE */
     @media (max-width: 768px) {
-      .ficha-box { border-radius: 16px; }
-      .ficha-header { padding: 18px 18px 14px; }
-      .ficha-header-mat { font-size: 18px; }
-      .ficha-body { padding: 16px; gap: 12px; }
-      .ficha-tel-link { font-size: 14px; padding: 8px 14px; }
+      .ficha-box { border-radius: 18px; }
+      .ficha-header { padding: 20px 18px 16px; }
+      .ficha-mat-plate-text { font-size: 20px; letter-spacing: 2px; }
+      .ficha-body { padding: 14px; gap: 10px; }
+      .ficha-tel-link { font-size: 14px; padding: 9px 14px; }
     }
 
     /* Badge de info en el mat-badge */
@@ -11385,7 +11431,13 @@ async function eliminarLogAccion(idx) {
   <div class="ficha-box">
     <div class="ficha-header">
       <div class="ficha-header-left">
-        <div class="ficha-header-mat" id="ficha-mat">—</div>
+        <div class="ficha-mat-plate">
+          <div class="ficha-mat-plate-eu">
+            <span class="eu-stars">★★★</span>
+            <span class="eu-code">E</span>
+          </div>
+          <div class="ficha-mat-plate-text" id="ficha-mat">—</div>
+        </div>
         <div class="ficha-header-tipo">
           <span id="ficha-tipo">—</span>
           <span class="ficha-header-badge" id="ficha-header-badge" style="display:none"></span>

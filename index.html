@@ -1291,23 +1291,24 @@
     }
     .ficha-header-left { display: flex; flex-direction: column; gap: 8px; flex: 1; position: relative; z-index: 1; }
     .ficha-mat-plate {
-      display: inline-flex; align-items: center; gap: 0;
-      background: #fff; border-radius: 8px;
+      display: inline-flex; align-items: stretch; gap: 0;
+      background: #fff; border-radius: 7px;
       overflow: hidden; align-self: flex-start;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.15);
+      border: 2px solid #bbbfc8;
+      box-shadow: 0 3px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.9);
     }
     .ficha-mat-plate-eu {
-      background: #003399; color: #FFD700; font-size: 10px; font-weight: 900;
-      padding: 0 5px; display: flex; flex-direction: column; align-items: center;
-      justify-content: center; gap: 1px; min-height: 100%;
-      letter-spacing: 0.5px; line-height: 1;
+      background: #003399; color: #FFD700;
+      width: 28px; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 2px; padding: 6px 0;
     }
-    .ficha-mat-plate-eu .eu-stars { font-size: 7px; letter-spacing: 1px; }
-    .ficha-mat-plate-eu .eu-code  { font-size: 9px; font-weight: 900; }
+    .ficha-mat-plate-eu .eu-stars { font-size: 8px; letter-spacing: 0.5px; line-height: 1; }
+    .ficha-mat-plate-eu .eu-code  { font-size: 11px; font-weight: 900; line-height: 1; font-family: 'Barlow', sans-serif; }
     .ficha-mat-plate-text {
-      font-size: 24px; font-weight: 900; color: #1a1a2e;
-      letter-spacing: 3px; padding: 7px 14px 7px 12px; line-height: 1;
-      font-variant-numeric: tabular-nums;
+      font-size: 26px; font-weight: 900; color: #111;
+      letter-spacing: 4px; padding: 8px 16px 8px 14px; line-height: 1;
+      font-variant-numeric: tabular-nums; font-family: 'Barlow', sans-serif;
     }
     .ficha-header-tipo {
       font-size: 12px; color: #7788bb; font-weight: 600;
@@ -6576,7 +6577,19 @@ function _tieneSeguro(matricula) {
 }
 function abrirFichaVehiculo(matricula) {
   const v = _getVehiculo(matricula);
-  document.getElementById('ficha-mat').textContent  = matricula;
+  // Extraer solo la matrícula real (quitar prefijo de marca si lo hay)
+  // Ejemplo: "IVECO 0248 KTK" → "0248 KTK" | "1234 ABC" → "1234 ABC"
+  const matReal = (function(m) {
+    // Patrón matrícula española: 4 dígitos + 3 letras (con o sin espacio)
+    const m1 = m.match(/\b(\d{4}\s?[A-Z]{3})\b/);
+    if (m1) return m1[1];
+    // Matrícula antigua: letras + dígitos + letras (ej. B 1234 KT)
+    const m2 = m.match(/\b([A-Z]{1,2}\s?\d{3,4}\s?[A-Z]{1,2})\b/);
+    if (m2) return m2[1];
+    // Si no encaja, devolver como está
+    return m;
+  })(matricula);
+  document.getElementById('ficha-mat').textContent  = matReal;
   document.getElementById('ficha-tipo').textContent = v ? (v.tipo + (v.nota ? ' · ' + v.nota : '')) : '—';
 
   function setVal(id, val) {
@@ -11492,9 +11505,7 @@ async function eliminarLogAccion(idx) {
       </div>
 
     </div>
-    <div class="ficha-footer">
-      <span>✏️ Editar datos desde Admin → Vehículos → 🛡️ Seguro</span>
-    </div>
+
   </div>
 </div>
 

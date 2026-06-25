@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.1">
+  <meta name="app-version" content="2.9.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1250,74 +1250,128 @@
 
     /* ─── MODAL FICHA VEHÍCULO ─── */
     #modal-ficha-vehiculo {
-      display: none; position: fixed; inset: 0; z-index: 6000;
-      background: rgba(10,10,30,0.65); backdrop-filter: blur(4px);
-      align-items: center; justify-content: center;
+      display: none; position: fixed; inset: 0; z-index: 9998;
+      background: rgba(10,10,30,0.72); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 16px;
     }
     #modal-ficha-vehiculo.visible { display: flex; }
+
     .ficha-box {
-      background: #fff; border-radius: 16px; width: 400px; max-width: 95vw;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      background: #fff; border-radius: 20px;
+      width: 520px; max-width: 100%;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset;
       font-family: 'Barlow', sans-serif;
-      animation: nv-in 0.25s cubic-bezier(.34,1.56,.64,1);
+      animation: nv-in 0.28s cubic-bezier(.34,1.56,.64,1);
       overflow: hidden;
     }
+
+    /* HEADER */
     .ficha-header {
-      background: #1a1a2e; padding: 16px 18px 14px;
-      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #252545 100%);
+      padding: 22px 24px 18px;
+      display: flex; align-items: flex-start; gap: 16px;
+      position: relative; overflow: hidden;
     }
+    .ficha-header::before {
+      content: '🚛'; position: absolute; right: 20px; top: 50%;
+      transform: translateY(-50%); font-size: 64px; opacity: 0.06; line-height: 1;
+    }
+    .ficha-header-left { display: flex; flex-direction: column; gap: 6px; flex: 1; }
     .ficha-header-mat {
-      font-size: 16px; font-weight: 900; color: #fff;
-      background: #e84545; border-radius: 7px; padding: 4px 12px;
-      letter-spacing: 0.5px;
+      font-size: 22px; font-weight: 900; color: #fff;
+      letter-spacing: 1px; line-height: 1;
     }
     .ficha-header-tipo {
-      font-size: 11px; color: #8899cc; font-weight: 600; margin-top: 2px;
+      font-size: 12px; color: #8899cc; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .ficha-header-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #e84545; color: white; font-size: 10px; font-weight: 800;
+      border-radius: 5px; padding: 2px 8px; letter-spacing: 0.5px;
     }
     .ficha-close {
-      margin-left: auto; background: none; border: none;
-      color: #6b7a94; font-size: 20px; cursor: pointer; line-height: 1;
-      padding: 2px 6px; border-radius: 6px; transition: background 0.15s;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      color: #8899cc; font-size: 16px; cursor: pointer; line-height: 1;
+      padding: 6px 8px; border-radius: 8px; transition: all 0.15s;
+      flex-shrink: 0; margin-top: 2px;
     }
-    .ficha-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
-    .ficha-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
-    .ficha-section { border: 1px solid #eef0f5; border-radius: 10px; overflow: hidden; }
+    .ficha-close:hover { background: rgba(232,69,69,0.25); border-color: #e84545; color: #fff; }
+
+    /* BODY */
+    .ficha-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* SECCIÓN */
+    .ficha-section { border-radius: 12px; overflow: hidden; border: 1.5px solid #eef0f5; }
+    .ficha-section-header {
+      display: flex; align-items: center; gap: 8px;
+      background: #f8f9fc; padding: 10px 14px;
+      border-bottom: 1.5px solid #eef0f5;
+    }
+    .ficha-section-icon { font-size: 16px; line-height: 1; }
     .ficha-section-title {
-      font-size: 9px; font-weight: 800; letter-spacing: 2px;
-      text-transform: uppercase; color: #fff;
-      background: #1a1a2e; padding: 6px 12px;
+      font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+      text-transform: uppercase; color: #1a1a2e;
     }
-    .ficha-rows { padding: 6px 12px; display: flex; flex-direction: column; }
+    .ficha-rows { padding: 4px 14px; display: flex; flex-direction: column; }
     .ficha-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 0; border-bottom: 1px solid #f4f6f9; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid #f4f6f9; gap: 16px;
+      min-height: 40px;
     }
     .ficha-row:last-child { border-bottom: none; }
-    .ficha-label { font-size: 11px; color: #8899aa; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
-    .ficha-val { font-size: 12px; color: #1a1a2e; font-weight: 700; text-align: right; word-break: break-word; max-width: 220px; }
-    .ficha-val.vacio { color: #ccc; font-weight: 400; font-style: italic; }
+    .ficha-label {
+      font-size: 12px; color: #8899aa; font-weight: 600;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .ficha-val {
+      font-size: 13px; color: #1a1a2e; font-weight: 700;
+      text-align: right; word-break: break-word;
+    }
+    .ficha-val.vacio { color: #c8d0dc; font-weight: 500; font-style: italic; font-size: 12px; }
     .ficha-val.itv-ok   { color: #16a34a; }
-    .ficha-val.itv-warn { color: #92400e; }
-    .ficha-val.itv-bad  { color: #b91c1c; }
+    .ficha-val.itv-warn { color: #b45309; }
+    .ficha-val.itv-bad  { color: #dc2626; }
+
+    /* TELÉFONO — botón grande */
+    .ficha-tel-wrap {
+      display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1;
+    }
     .ficha-tel-link {
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; gap: 7px;
       color: #fff; background: #e84545; text-decoration: none;
-      font-weight: 800; font-size: 12px; border-radius: 6px;
-      padding: 4px 10px; transition: background 0.15s;
+      font-weight: 900; font-size: 15px; border-radius: 10px;
+      padding: 8px 16px; transition: all 0.15s; letter-spacing: 0.3px;
+      box-shadow: 0 4px 14px rgba(232,69,69,0.35);
     }
-    .ficha-tel-link:hover { background: #c63030; }
+    .ficha-tel-link:hover { background: #c63030; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(232,69,69,0.45); }
+    .ficha-tel-link:active { transform: translateY(0); }
+    .ficha-tel-icon { font-size: 18px; }
+
+    /* FOOTER */
     .ficha-footer {
-      padding: 10px 18px; background: #f7f8fa;
-      border-top: 1px solid #eee; text-align: center;
-      font-size: 10px; color: #b0bac8; font-weight: 600;
+      padding: 12px 22px; background: #f7f8fa;
+      border-top: 1px solid #eef0f5;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 10px; color: #b0bac8; font-weight: 600; letter-spacing: 0.3px;
     }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .ficha-box { border-radius: 16px; }
+      .ficha-header { padding: 18px 18px 14px; }
+      .ficha-header-mat { font-size: 18px; }
+      .ficha-body { padding: 16px; gap: 12px; }
+      .ficha-tel-link { font-size: 14px; padding: 8px 14px; }
+    }
+
     /* Badge de info en el mat-badge */
     .mat-badge { cursor: pointer; transition: background 0.15s; position: relative; }
     .mat-badge:hover { background: #dde1ea; }
     .mat-badge-info {
-      display: inline-block; width: 13px; height: 13px; border-radius: 50%;
+      display: inline-block; width: 14px; height: 14px; border-radius: 50%;
       background: #3b5bdb; color: white; font-size: 8px; font-weight: 900;
-      text-align: center; line-height: 13px; margin-left: 4px;
+      text-align: center; line-height: 14px; margin-left: 4px;
       vertical-align: middle; flex-shrink: 0;
     }
     .mat-badge-info.has-data { background: #16a34a; }
@@ -2064,42 +2118,7 @@
       </div>
     </div>
 
-<!-- ══ MODAL FICHA VEHÍCULO ══ -->
-<div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
-  <div class="ficha-box">
-    <div class="ficha-header">
-      <div>
-        <div class="ficha-header-mat" id="ficha-mat">—</div>
-        <div class="ficha-header-tipo" id="ficha-tipo">—</div>
-      </div>
-      <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
-    </div>
-    <div class="ficha-body">
 
-      <!-- Seguro -->
-      <div class="ficha-section">
-        <div class="ficha-section-title">🛡️ Seguro</div>
-        <div class="ficha-rows">
-          <div class="ficha-row"><span class="ficha-label">Aseguradora</span><span class="ficha-val" id="ficha-seguro-nombre">—</span></div>
-          <div class="ficha-row"><span class="ficha-label">CIF</span><span class="ficha-val" id="ficha-seguro-cif">—</span></div>
-          <div class="ficha-row"><span class="ficha-label">Nº Póliza</span><span class="ficha-val" id="ficha-seguro-poliza">—</span></div>
-          <div class="ficha-row"><span class="ficha-label">Vencimiento</span><span class="ficha-val" id="ficha-seguro-vencimiento">—</span></div>
-          <div class="ficha-row"><span class="ficha-label">Tel. Asistencia</span><span class="ficha-val" id="ficha-seguro-tel">—</span></div>
-        </div>
-      </div>
-
-      <!-- ITV -->
-      <div class="ficha-section">
-        <div class="ficha-section-title">🔧 ITV</div>
-        <div class="ficha-rows">
-          <div class="ficha-row"><span class="ficha-label">Próxima ITV</span><span class="ficha-val" id="ficha-itv">—</span></div>
-        </div>
-      </div>
-
-    </div>
-    <div class="ficha-footer">Toca fuera o ✕ para cerrar · Solo lectura · Editar desde Admin → Vehículos</div>
-  </div>
-</div>
 
     <!-- MODAL: NUEVO CONDUCTOR -->
     <div id="modal-nuevo-conductor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:4000;align-items:center;justify-content:center;">
@@ -11360,6 +11379,72 @@ async function eliminarLogAccion(idx) {
   };
 })();
 </script>
+
+<!-- ══ MODAL FICHA VEHÍCULO — hijo directo de body ══ -->
+<div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
+  <div class="ficha-box">
+    <div class="ficha-header">
+      <div class="ficha-header-left">
+        <div class="ficha-header-mat" id="ficha-mat">—</div>
+        <div class="ficha-header-tipo">
+          <span id="ficha-tipo">—</span>
+          <span class="ficha-header-badge" id="ficha-header-badge" style="display:none"></span>
+        </div>
+      </div>
+      <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
+    </div>
+    <div class="ficha-body">
+
+      <!-- Seguro -->
+      <div class="ficha-section">
+        <div class="ficha-section-header">
+          <span class="ficha-section-icon">🛡️</span>
+          <span class="ficha-section-title">Seguro</span>
+        </div>
+        <div class="ficha-rows">
+          <div class="ficha-row">
+            <span class="ficha-label">Aseguradora</span>
+            <span class="ficha-val" id="ficha-seguro-nombre">—</span>
+          </div>
+          <div class="ficha-row">
+            <span class="ficha-label">CIF</span>
+            <span class="ficha-val" id="ficha-seguro-cif">—</span>
+          </div>
+          <div class="ficha-row">
+            <span class="ficha-label">Nº Póliza</span>
+            <span class="ficha-val" id="ficha-seguro-poliza">—</span>
+          </div>
+          <div class="ficha-row">
+            <span class="ficha-label">Vencimiento</span>
+            <span class="ficha-val" id="ficha-seguro-vencimiento">—</span>
+          </div>
+          <div class="ficha-row" style="padding: 12px 0;">
+            <span class="ficha-label">Tel. Asistencia</span>
+            <span class="ficha-val" id="ficha-seguro-tel">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ITV -->
+      <div class="ficha-section">
+        <div class="ficha-section-header">
+          <span class="ficha-section-icon">🔧</span>
+          <span class="ficha-section-title">ITV</span>
+        </div>
+        <div class="ficha-rows">
+          <div class="ficha-row">
+            <span class="ficha-label">Próxima ITV</span>
+            <span class="ficha-val" id="ficha-itv">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="ficha-footer">
+      <span>✏️ Editar datos desde Admin → Vehículos → 🛡️ Seguro</span>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

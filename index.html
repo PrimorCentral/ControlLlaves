@@ -20,6 +20,26 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- PDF.js — visor de documentos embebido -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module" id="pdfjs-script"></script>
+  <script>
+    // Carga diferida de PDF.js (compatible con module y non-module)
+    window._pdfjs = null;
+    import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs')
+      .then(m => {
+        window._pdfjs = m;
+        window._pdfjs.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+      })
+      .catch(() => {
+        // Fallback: intentar con versión anterior si el CDN falla
+        import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(m => {
+          window._pdfjs = m;
+          window._pdfjs.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        });
+      });
+  </script>
   <style>
     /* ─── MODAL NUEVA VERSIÓN ─── */
     #modal-nueva-version {
@@ -1507,7 +1527,7 @@
     }
     #modal-visor-doc.visible { display: flex; }
     .visor-box {
-      background: #fff; border-radius: 18px; overflow: hidden;
+      background: #1a1a1a; border-radius: 18px; overflow: hidden;
       width: 95vw; max-width: 95vw; height: 88vh;
       display: flex; flex-direction: column;
       box-shadow: 0 50px 120px rgba(0,0,0,0.7);
@@ -1534,40 +1554,54 @@
       transition: background 0.15s, color 0.15s; font-family: 'Barlow', sans-serif;
       white-space: nowrap; flex-shrink: 0; min-width: 80px;
     }
-    .visor-btn.print { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
-    .visor-btn.print:hover { background: rgba(255,255,255,0.18); }
-    .visor-btn.dl    { background: #16a34a; color: #fff; border-color: #16a34a; }
-    .visor-btn.dl:hover { background: #15803d; }
-    .visor-btn.close { background: rgba(232,69,69,0.15); color: #e84545; border-color: rgba(232,69,69,0.3); }
-    .visor-btn.close:hover { background: #e84545; color: #fff; border-color: #e84545; }
+    .visor-btn.print  { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
+    .visor-btn.print:hover  { background: rgba(255,255,255,0.18); }
+    .visor-btn.dl     { background: #16a34a; color: #fff; border-color: #16a34a; }
+    .visor-btn.dl:hover     { background: #15803d; }
+    .visor-btn.close  { background: rgba(232,69,69,0.15); color: #e84545; border-color: rgba(232,69,69,0.3); }
+    .visor-btn.close:hover  { background: #e84545; color: #fff; border-color: #e84545; }
     .visor-btn.rotate { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
     .visor-btn.rotate:hover { background: rgba(255,255,255,0.18); }
-    .visor-body { overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-    #visor-rotate-wrapper {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #visor-doc-iframe {
-      border: none; display: block; background: #fff; flex-shrink: 0;
-      transition: transform 0.35s cubic-bezier(.4,0,.2,1);
-      transform-origin: center center;
-    }
-    #visor-doc-img {
-      object-fit: contain; display: none; background: #1a1a1a; flex-shrink: 0;
-      padding: 16px; box-sizing: border-box;
-      transition: transform 0.35s cubic-bezier(.4,0,.2,1);
-      transform-origin: center center;
-    }
+    .visor-btn.zoom-in  { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); min-width: 40px; }
+    .visor-btn.zoom-in:hover  { background: rgba(255,255,255,0.18); }
+    .visor-btn.zoom-out { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); min-width: 40px; }
+    .visor-btn.zoom-out:hover { background: rgba(255,255,255,0.18); }
+    .visor-zoom-label { font-size: 11px; font-weight: 800; color: #ccc; min-width: 42px; text-align: center; }
+    .visor-page-ctrl { display: flex; align-items: center; gap: 6px; }
+    .visor-page-label { font-size: 11px; color: #aaa; font-weight: 600; white-space: nowrap; }
     .visor-body {
-      flex: 1; min-height: 0; background: #1a1a1a; position: relative;
+      flex: 1; min-height: 0; background: #2a2a2a; position: relative;
+      overflow: auto; display: flex; align-items: flex-start; justify-content: center;
     }
-    #visor-doc-iframe {
-      width: 100%; height: 100%; border: none; display: block; background: #fff;
+    /* PDF.js canvas */
+    #visor-pdf-container {
+      display: none; flex-direction: column; align-items: center;
+      padding: 20px; gap: 12px; min-width: 100%;
     }
+    #visor-pdf-container.active { display: flex; }
+    .visor-pdf-page {
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      display: block; background: #fff;
+      transition: transform 0.25s ease;
+    }
+    /* Imagen */
     #visor-doc-img {
-      width: 100%; height: 100%; object-fit: contain;
-      display: none; background: #1a1a1a; padding: 16px; box-sizing: border-box;
+      display: none; max-width: 100%; max-height: 100%;
+      object-fit: contain; padding: 16px; box-sizing: border-box;
+      transition: transform 0.3s ease; transform-origin: center center;
     }
+    #visor-doc-img.active { display: block; }
+    /* Loading spinner del visor */
+    #visor-loading {
+      display: none; position: absolute; inset: 0;
+      align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+    }
+    #visor-loading.active { display: flex; }
+    #visor-loading .vl-spinner {
+      width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #e84545; border-radius: 50%; animation: cc-spin 0.7s linear infinite;
+    }
+    #visor-loading .vl-text { font-size: 13px; font-weight: 700; color: #aaa; }
 
     /* RESPONSIVE */
     @media (max-width: 768px) {
@@ -6955,101 +6989,196 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── VISOR DE DOCUMENTOS INLINE ───────────────────────────────────────────────
-function abrirVisorDoc(url, nombre, formato) {
-  const isPdf  = formato === 'pdf' || nombre.toLowerCase().endsWith('.pdf');
-  const modal  = document.getElementById('modal-visor-doc');
-  const titulo = document.getElementById('visor-doc-titulo');
-  const iframe = document.getElementById('visor-doc-iframe');
-  const imgEl  = document.getElementById('visor-doc-img');
-  const btnDl  = document.getElementById('visor-doc-descargar');
-  const wrapper = document.getElementById('visor-rotate-wrapper');
-  const box     = document.querySelector('.visor-box');
+// ── VISOR DE DOCUMENTOS — PDF.js embebido ────────────────────────────────────
+let _visorPdfDoc   = null;   // PDFDocumentProxy activo
+let _visorRotDeg   = 0;      // rotación acumulada (0,90,180,270)
+let _visorZoom     = 1.0;    // escala actual
+let _visorIsPdf    = false;  // modo actual
+let _visorImgDeg   = 0;      // rotación acumulada para imágenes
+let _visorPrintUrl = '';     // URL para imprimir / descargar
 
-  // Resetear rotación previa
-  if (wrapper) wrapper.dataset.deg = '0';
-  if (box) box.classList.remove('rotado');
-  iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.transform = 'none';
-  imgEl.style.width  = '100%'; imgEl.style.height  = '100%'; imgEl.style.transform  = 'none';
+async function abrirVisorDoc(url, nombre, formato) {
+  const isPdf = formato === 'pdf' || (nombre || '').toLowerCase().endsWith('.pdf');
+  _visorIsPdf  = isPdf;
+  _visorRotDeg = 0;
+  _visorZoom   = 1.0;
+  _visorImgDeg = 0;
+  _visorPrintUrl = url;
+
+  // Elementos
+  const modal       = document.getElementById('modal-visor-doc');
+  const titulo      = document.getElementById('visor-doc-titulo');
+  const pdfCont     = document.getElementById('visor-pdf-container');
+  const imgEl       = document.getElementById('visor-doc-img');
+  const loading     = document.getElementById('visor-loading');
+  const pdfControls = document.getElementById('visor-pdf-controls');
+  const imgControls = document.getElementById('visor-img-controls');
+  const btnDl       = document.getElementById('visor-doc-descargar');
+  const zoomLabel   = document.getElementById('visor-zoom-label');
 
   titulo.textContent = nombre || 'Documento';
 
-  // Extraer fileId de la URL de Drive (/file/d/FILEID/preview)
+  // URL de descarga directa (Drive)
   const fileIdMatch = url.match(/\/file\/d\/([^/]+)/);
   const fileId      = fileIdMatch ? fileIdMatch[1] : null;
+  btnDl.href        = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+  btnDl.download    = nombre || 'documento';
 
-  // URL de descarga directa
-  btnDl.href     = fileId
-    ? `https://drive.google.com/uc?export=download&id=${fileId}`
-    : url;
-  btnDl.download = nombre || 'documento';
+  // Resetear UI
+  pdfCont.innerHTML = '';
+  pdfCont.classList.remove('active');
+  imgEl.classList.remove('active');
+  imgEl.style.transform = 'none';
+  pdfControls.style.display = 'none';
+  imgControls.style.display = 'none';
+  loading.classList.add('active');
+  modal.classList.add('visible');
 
   if (isPdf) {
-    iframe.style.display = 'block';
-    imgEl.style.display  = 'none';
-    iframe.src = url;
+    pdfControls.style.display = 'flex';
+    if (zoomLabel) zoomLabel.textContent = '100%';
+    await _visorRenderPdf(url, fileId);
   } else {
-    iframe.style.display = 'none';
-    imgEl.style.display  = 'block';
-    imgEl.src = fileId
-      ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`
-      : url;
+    imgControls.style.display = 'flex';
+    imgEl.classList.add('active');
+    imgEl.src = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200` : url;
+    imgEl.onload  = () => loading.classList.remove('active');
+    imgEl.onerror = () => loading.classList.remove('active');
   }
-
-  modal.classList.add('visible');
 }
 
-function rotarVisorDoc() {
-  const wrapper = document.getElementById("visor-rotate-wrapper");
-  const iframe  = document.getElementById("visor-doc-iframe");
-  const imgEl   = document.getElementById("visor-doc-img");
-  if (!wrapper || !iframe) return;
+async function _visorRenderPdf(url, fileId) {
+  const loading = document.getElementById('visor-loading');
+  const pdfCont = document.getElementById('visor-pdf-container');
 
-  const grados = [0, 90, 180, 270];
-  const actual  = parseInt(wrapper.dataset.deg || "0", 10);
-  const nuevo   = grados[(grados.indexOf(actual) + 1) % 4];
-  wrapper.dataset.deg = nuevo;
+  // URL CORS-friendly: usamos el proxy de Drive si es un fileId
+  const pdfUrl = fileId
+    ? `https://drive.google.com/uc?export=download&id=${fileId}`
+    : url;
 
-  const body      = wrapper.parentElement;
-  const bw        = body.offsetWidth  || 900;
-  const bh        = body.offsetHeight || 600;
-  const esLateral = nuevo === 90 || nuevo === 270;
-  const scale     = esLateral ? Math.min(bh / bw, bw / bh) : 1;
-  const t         = nuevo === 0 ? "none" : "rotate(" + nuevo + "deg) scale(" + scale + ")";
+  try {
+    if (!window._pdfjs) {
+      // PDF.js aún no cargó, esperar un poco
+      await new Promise(r => setTimeout(r, 800));
+    }
+    if (!window._pdfjs) throw new Error('PDF.js no disponible');
 
-  iframe.style.width = "100%"; iframe.style.height = "100%";
-  iframe.style.transform = t; iframe.style.transformOrigin = "center center";
-  if (imgEl) { imgEl.style.width="100%"; imgEl.style.height="100%"; imgEl.style.transform=t; imgEl.style.transformOrigin="center center"; }
+    const pdfjsLib = window._pdfjs;
+    _visorPdfDoc = await pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise;
+
+    pdfCont.innerHTML = '';
+    pdfCont.classList.add('active');
+
+    const totalPages = _visorPdfDoc.numPages;
+    for (let p = 1; p <= totalPages; p++) {
+      const page   = await _visorPdfDoc.getPage(p);
+      const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
+      const canvas = document.createElement('canvas');
+      canvas.className = 'visor-pdf-page';
+      canvas.width  = vp.width;
+      canvas.height = vp.height;
+      pdfCont.appendChild(canvas);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    }
+    loading.classList.remove('active');
+  } catch(err) {
+    loading.classList.remove('active');
+    pdfCont.innerHTML = `
+      <div style="color:#e84545;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;
+                  text-align:center;padding:40px 20px;background:#2a1a1a;border-radius:12px;margin:20px;">
+        ⚠️ No se pudo cargar el PDF.<br>
+        <a href="${pdfUrl}" target="_blank" download
+           style="color:#4caf50;text-decoration:underline;margin-top:10px;display:inline-block;">
+          Descargar documento
+        </a>
+      </div>`;
+    pdfCont.classList.add('active');
+    console.warn('[Visor PDF.js]', err);
+  }
+}
+
+async function rotarVisorDoc() {
+  if (_visorIsPdf) {
+    _visorRotDeg = (_visorRotDeg + 90) % 360;
+    const pdfCont = document.getElementById('visor-pdf-container');
+    const loading = document.getElementById('visor-loading');
+    loading.classList.add('active');
+    pdfCont.innerHTML = '';
+    if (_visorPdfDoc) {
+      const totalPages = _visorPdfDoc.numPages;
+      for (let p = 1; p <= totalPages; p++) {
+        const page   = await _visorPdfDoc.getPage(p);
+        const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
+        const canvas = document.createElement('canvas');
+        canvas.className = 'visor-pdf-page';
+        canvas.width  = vp.width;
+        canvas.height = vp.height;
+        pdfCont.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      }
+    }
+    loading.classList.remove('active');
+  } else {
+    _visorImgDeg = (_visorImgDeg + 90) % 360;
+    const imgEl = document.getElementById('visor-doc-img');
+    if (imgEl) imgEl.style.transform = `rotate(${_visorImgDeg}deg)`;
+  }
+}
+
+async function visorZoom(delta) {
+  _visorZoom = Math.max(0.25, Math.min(4, _visorZoom + delta));
+  const zoomLabel = document.getElementById('visor-zoom-label');
+  if (zoomLabel) zoomLabel.textContent = Math.round(_visorZoom * 100) + '%';
+  if (!_visorIsPdf || !_visorPdfDoc) return;
+  const pdfCont = document.getElementById('visor-pdf-container');
+  const loading = document.getElementById('visor-loading');
+  loading.classList.add('active');
+  pdfCont.innerHTML = '';
+  const totalPages = _visorPdfDoc.numPages;
+  for (let p = 1; p <= totalPages; p++) {
+    const page   = await _visorPdfDoc.getPage(p);
+    const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
+    const canvas = document.createElement('canvas');
+    canvas.className = 'visor-pdf-page';
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+    pdfCont.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+  }
+  loading.classList.remove('active');
 }
 
 function cerrarVisorDoc() {
-  const modal = document.getElementById('modal-visor-doc');
+  const modal   = document.getElementById('modal-visor-doc');
+  const pdfCont = document.getElementById('visor-pdf-container');
+  const imgEl   = document.getElementById('visor-doc-img');
+  const loading = document.getElementById('visor-loading');
   modal.classList.remove('visible');
-  // Resetear rotación
-  const wrapper = document.getElementById('visor-rotate-wrapper');
-  if (wrapper) { wrapper.dataset.deg = '0'; }
-  const iframe = document.getElementById('visor-doc-iframe');
-  const imgEl  = document.getElementById('visor-doc-img');
-  if (iframe) { iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.transform = 'none'; }
-  if (imgEl)  { imgEl.style.width  = '100%'; imgEl.style.height  = '100%'; imgEl.style.transform  = 'none'; }
   setTimeout(() => {
-    const iframe = document.getElementById('visor-doc-iframe');
-    const imgEl  = document.getElementById('visor-doc-img');
-    if (iframe) iframe.src = '';
-    if (imgEl)  imgEl.src  = '';
+    pdfCont.innerHTML = '';
+    pdfCont.classList.remove('active');
+    imgEl.classList.remove('active');
+    imgEl.src = '';
+    imgEl.style.transform = 'none';
+    loading.classList.remove('active');
+    _visorPdfDoc = null;
+    _visorRotDeg = 0;
+    _visorZoom   = 1.0;
+    _visorImgDeg = 0;
   }, 300);
 }
 
 function imprimirVisorDoc() {
-  const iframe = document.getElementById('visor-doc-iframe');
-  const imgEl  = document.getElementById('visor-doc-img');
-  if (imgEl && imgEl.style.display !== 'none') {
-    // Para imágenes: abrir en nueva ventana y print
-    const w = window.open(imgEl.src, '_blank');
-    w && w.addEventListener('load', () => w.print());
-  } else if (iframe && iframe.src) {
-    try { iframe.contentWindow.print(); }
-    catch(e) { window.open(iframe.src, '_blank'); }
+  if (_visorIsPdf) {
+    // Abrir en nueva pestaña para imprimir (el navegador tiene su propio diálogo)
+    const win = window.open(_visorPrintUrl, '_blank');
+    win && win.addEventListener('load', () => { try { win.print(); } catch(e) {} });
+  } else {
+    const imgEl = document.getElementById('visor-doc-img');
+    if (imgEl && imgEl.src) {
+      const w = window.open(imgEl.src, '_blank');
+      w && w.addEventListener('load', () => w.print());
+    }
   }
 }
 
@@ -12072,16 +12201,33 @@ async function eliminarLogAccion(idx) {
     <div class="visor-header">
       <div class="visor-header-icon">📄</div>
       <div class="visor-titulo" id="visor-doc-titulo">Documento</div>
+      <!-- Controles PDF.js (solo visibles en PDFs) -->
+      <div id="visor-pdf-controls" style="display:none; align-items:center; gap:6px;">
+        <div class="visor-page-ctrl">
+          <button class="visor-btn zoom-out" onclick="visorZoom(-0.25)" title="Reducir">−</button>
+          <span class="visor-zoom-label" id="visor-zoom-label">100%</span>
+          <button class="visor-btn zoom-in"  onclick="visorZoom(+0.25)" title="Ampliar">+</button>
+        </div>
+        <button class="visor-btn rotate" onclick="rotarVisorDoc()" title="Rotar 90°">↻ Rotar</button>
+      </div>
+      <!-- Controles imagen (solo visibles en imágenes) -->
+      <div id="visor-img-controls" style="display:none; align-items:center; gap:6px;">
+        <button class="visor-btn rotate" onclick="rotarVisorDoc()" title="Rotar 90°">↻ Rotar</button>
+      </div>
       <button class="visor-btn print" onclick="imprimirVisorDoc()">🖨️ Imprimir</button>
-      <button class="visor-btn rotate" onclick="rotarVisorDoc()" id="btn-visor-rotar" title="Rotar 90°">↻ Rotar</button>
       <a class="visor-btn dl" id="visor-doc-descargar" href="#" download>⬇ Descargar</a>
       <button class="visor-btn close" onclick="cerrarVisorDoc()">✕ Cerrar</button>
     </div>
-    <div class="visor-body">
-      <div id="visor-rotate-wrapper">
-        <iframe id="visor-doc-iframe" src="" allow="fullscreen"></iframe>
-        <img id="visor-doc-img" src="" alt="Documento">
+    <div class="visor-body" id="visor-body">
+      <!-- Spinner de carga -->
+      <div id="visor-loading">
+        <div class="vl-spinner"></div>
+        <div class="vl-text">Cargando documento…</div>
       </div>
+      <!-- Contenedor PDF.js (una página por canvas) -->
+      <div id="visor-pdf-container"></div>
+      <!-- Imagen directa -->
+      <img id="visor-doc-img" src="" alt="Documento">
     </div>
   </div>
 </div>

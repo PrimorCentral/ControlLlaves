@@ -7137,7 +7137,8 @@ async function _visorRenderPaginas() {
   const totalPages = _visorPdfDoc.numPages;
   for (let p = 1; p <= totalPages; p++) {
     const page   = await _visorPdfDoc.getPage(p);
-    const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
+    const rotacionTotal = (page.rotate + _visorRotDeg) % 360;
+    const vp     = page.getViewport({ scale: _visorZoom, rotation: rotacionTotal });
     const canvas = document.createElement('canvas');
     canvas.className = 'visor-pdf-page';
     canvas.width  = vp.width;

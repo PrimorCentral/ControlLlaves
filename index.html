@@ -1316,10 +1316,10 @@
       pointer-events: none;
     }
     .ficha-header-top {
-      display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px;
       position: relative; z-index: 1;
     }
-    .ficha-header-left { display: flex; flex-direction: row; align-items: center; gap: 20px; flex: 1; flex-wrap: wrap; }
+    .ficha-header-left { display: flex; flex-direction: column; gap: 6px; }
     .ficha-titulo-label {
       font-size: 15px; font-weight: 900; letter-spacing: 3px;
       text-transform: uppercase; line-height: 1;
@@ -12280,12 +12280,12 @@ async function eliminarLogAccion(idx) {
             </div>
             <div class="ficha-mat-plate-text" id="ficha-mat">—</div>
           </div>
-          <div class="ficha-titulo-label">Ficha técnica vehículo</div>
-          <div class="ficha-header-meta" style="flex-basis:100%;margin-top:6px;">
+          <div class="ficha-header-meta" style="margin-top:4px;">
             <span class="ficha-meta-tipo" id="ficha-tipo">—</span>
             <span id="ficha-header-badges"></span>
           </div>
         </div>
+        <div class="ficha-titulo-label">Ficha técnica vehículo</div>
         <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
       </div>
 

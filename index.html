@@ -1542,7 +1542,7 @@
     .visor-btn.close:hover { background: #e84545; color: #fff; border-color: #e84545; }
     .visor-btn.rotate { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
     .visor-btn.rotate:hover { background: rgba(255,255,255,0.18); }
-    .visor-body { overflow: hidden; position: relative; }
+    .visor-body { overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
     #visor-rotate-wrapper {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -7020,11 +7020,16 @@ function rotarVisorDoc() {
     iframe.style.height    = bw + 'px';
     iframe.style.transform = `rotate(${nuevo}deg)`;
     if (imgEl) { imgEl.style.width = bh + 'px'; imgEl.style.height = bw + 'px'; imgEl.style.transform = `rotate(${nuevo}deg)`; }
+  } else if (nuevo === 180) {
+    iframe.style.width     = '100%';
+    iframe.style.height    = '100%';
+    iframe.style.transform = 'rotate(180deg)';
+    if (imgEl) { imgEl.style.width = '100%'; imgEl.style.height = '100%'; imgEl.style.transform = 'rotate(180deg)'; }
   } else {
-    iframe.style.width     = bw + 'px';
-    iframe.style.height    = bh + 'px';
-    iframe.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none';
-    if (imgEl) { imgEl.style.width = bw + 'px'; imgEl.style.height = bh + 'px'; imgEl.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none'; }
+    iframe.style.width     = '100%';
+    iframe.style.height    = '100%';
+    iframe.style.transform = 'none';
+    if (imgEl) { imgEl.style.width = '100%'; imgEl.style.height = '100%'; imgEl.style.transform = 'none'; }
   }
 }
 

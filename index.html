@@ -1508,13 +1508,11 @@
     #modal-visor-doc.visible { display: flex; }
     .visor-box {
       background: #fff; border-radius: 18px; overflow: hidden;
-      width: 760px; max-width: 100%; height: 88vh;
+      width: 95vw; max-width: 95vw; height: 88vh;
       display: flex; flex-direction: column;
       box-shadow: 0 50px 120px rgba(0,0,0,0.7);
       animation: ficha-in 0.28s cubic-bezier(.34,1.4,.64,1);
-      transition: width 0.3s ease;
     }
-    .visor-box.rotado { width: 95vw; }
     .visor-header {
       background: linear-gradient(135deg, #0c0c20, #1a1a3a);
       padding: 14px 18px; display: flex; align-items: center;
@@ -7005,20 +7003,17 @@ function rotarVisorDoc() {
   const wrapper = document.getElementById('visor-rotate-wrapper');
   const iframe  = document.getElementById('visor-doc-iframe');
   const imgEl   = document.getElementById('visor-doc-img');
-  const box     = document.querySelector('.visor-box');
   if (!wrapper || !iframe) return;
 
-  const grados    = [0, 90, 180, 270];
-  const actual    = parseInt(wrapper.dataset.deg || '0', 10);
-  const nuevo     = grados[(grados.indexOf(actual) + 1) % 4];
+  const grados = [0, 90, 180, 270];
+  const actual  = parseInt(wrapper.dataset.deg || '0', 10);
+  const nuevo   = grados[(grados.indexOf(actual) + 1) % 4];
   wrapper.dataset.deg = nuevo;
 
+  const body      = wrapper.parentElement;
+  const bw        = body.offsetWidth  || 900;
+  const bh        = body.offsetHeight || 600;
   const esLateral = nuevo === 90 || nuevo === 270;
-  if (box) box.classList.toggle('rotado', esLateral);
-
-  const body = wrapper.parentElement;
-  const bw   = body.offsetWidth  || 900;
-  const bh   = body.offsetHeight || 600;
 
   if (esLateral) {
     iframe.style.width     = bh + 'px';
@@ -7039,8 +7034,6 @@ function cerrarVisorDoc() {
   // Resetear rotación
   const wrapper = document.getElementById('visor-rotate-wrapper');
   if (wrapper) { wrapper.dataset.deg = '0'; }
-  const box = document.querySelector('.visor-box');
-  if (box) box.classList.remove('rotado');
   const iframe = document.getElementById('visor-doc-iframe');
   const imgEl  = document.getElementById('visor-doc-img');
   if (iframe) { iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.transform = 'none'; }

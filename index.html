@@ -1291,7 +1291,7 @@
 
     .ficha-box {
       background: #fff; border-radius: 22px;
-      width: 620px; max-width: 100%;
+      width: 820px; max-width: 100%;
       height: 82vh; max-height: 780px; min-height: 500px;
       display: flex; flex-direction: column;
       box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06) inset;
@@ -1319,10 +1319,19 @@
       display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px;
       position: relative; z-index: 1;
     }
-    .ficha-header-left { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .ficha-header-left { display: flex; flex-direction: row; align-items: center; gap: 16px; flex: 1; flex-wrap: wrap; }
     .ficha-titulo-label {
-      font-size: 9px; font-weight: 900; letter-spacing: 3px;
-      text-transform: uppercase; color: rgba(255,255,255,0.3); line-height: 1;
+      font-size: 11px; font-weight: 900; letter-spacing: 2.5px;
+      text-transform: uppercase; line-height: 1;
+      color: #ff3a3a;
+      background: linear-gradient(135deg, rgba(232,40,40,0.18) 0%, rgba(180,20,20,0.10) 100%);
+      border: 1.5px solid rgba(232,60,60,0.55);
+      border-radius: 8px;
+      padding: 6px 13px;
+      box-shadow: 0 0 14px rgba(232,50,50,0.35), inset 0 1px 0 rgba(255,100,100,0.15);
+      text-shadow: 0 0 12px rgba(255,80,80,0.6);
+      letter-spacing: 2px;
+      white-space: nowrap;
     }
     .ficha-mat-plate {
       display: inline-flex; align-items: stretch;
@@ -12264,7 +12273,6 @@ async function eliminarLogAccion(idx) {
     <div class="ficha-header">
       <div class="ficha-header-top">
         <div class="ficha-header-left">
-          <div class="ficha-titulo-label">Ficha técnica vehículo</div>
           <div class="ficha-mat-plate">
             <div class="ficha-mat-plate-eu">
               <span class="eu-stars">★★★</span>
@@ -12272,7 +12280,8 @@ async function eliminarLogAccion(idx) {
             </div>
             <div class="ficha-mat-plate-text" id="ficha-mat">—</div>
           </div>
-          <div class="ficha-header-meta">
+          <div class="ficha-titulo-label">Ficha técnica vehículo</div>
+          <div class="ficha-header-meta" style="flex-basis:100%;margin-top:6px;">
             <span class="ficha-meta-tipo" id="ficha-tipo">—</span>
             <span id="ficha-header-badges"></span>
           </div>

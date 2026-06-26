@@ -7051,72 +7051,108 @@ async function _visorRenderPdf(url, fileId) {
   const loading = document.getElementById('visor-loading');
   const pdfCont = document.getElementById('visor-pdf-container');
 
-  // URL CORS-friendly: usamos el proxy de Drive si es un fileId
-  const pdfUrl = fileId
-    ? `https://drive.google.com/uc?export=download&id=${fileId}`
-    : url;
+  // Esperar a que PDF.js esté disponible (carga async)
+  if (!window._pdfjs) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  if (!window._pdfjs) {
+    _visorMostrarErrorPdf('PDF.js no disponible. Recarga la página e inténtalo de nuevo.', url, fileId);
+    return;
+  }
+
+  const pdfjsLib = window._pdfjs;
+
+  // ── Obtener el PDF a través del proxy GAS ──────────────────────────────────
+  // El GAS corre con credenciales de desarrollador y tiene acceso a DriveApp,
+  // por lo que puede leer cualquier archivo de la carpeta de flota y devolverlo
+  // como base64, evitando completamente el problema de CORS con Drive.
+  if (!fileId) {
+    _visorMostrarErrorPdf('No se pudo identificar el archivo (fileId ausente).', url, fileId);
+    return;
+  }
+
+  let arrayBuffer = null;
+  try {
+    const proxyUrl = `${APPS_SCRIPT_URL}?accion=proxyDoc&fileId=${encodeURIComponent(fileId)}`;
+    const resp     = await fetch(proxyUrl, { redirect: 'follow' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    if (!json.ok || !json.base64) throw new Error(json.error || 'Sin datos');
+
+    // Convertir base64 → ArrayBuffer
+    const binary = atob(json.base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    arrayBuffer = bytes.buffer;
+  } catch(e) {
+    console.warn('[Visor PDF.js] proxy GAS fallido:', e.message);
+    _visorMostrarErrorPdf('No se pudo cargar el documento a través del servidor.', url, fileId);
+    return;
+  }
 
   try {
-    if (!window._pdfjs) {
-      // PDF.js aún no cargó, esperar un poco
-      await new Promise(r => setTimeout(r, 800));
-    }
-    if (!window._pdfjs) throw new Error('PDF.js no disponible');
-
-    const pdfjsLib = window._pdfjs;
-    _visorPdfDoc = await pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise;
-
+    _visorPdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
     pdfCont.innerHTML = '';
     pdfCont.classList.add('active');
-
-    const totalPages = _visorPdfDoc.numPages;
-    for (let p = 1; p <= totalPages; p++) {
-      const page   = await _visorPdfDoc.getPage(p);
-      const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
-      const canvas = document.createElement('canvas');
-      canvas.className = 'visor-pdf-page';
-      canvas.width  = vp.width;
-      canvas.height = vp.height;
-      pdfCont.appendChild(canvas);
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-    }
+    await _visorRenderPaginas();
     loading.classList.remove('active');
   } catch(err) {
-    loading.classList.remove('active');
-    pdfCont.innerHTML = `
-      <div style="color:#e84545;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;
-                  text-align:center;padding:40px 20px;background:#2a1a1a;border-radius:12px;margin:20px;">
-        ⚠️ No se pudo cargar el PDF.<br>
-        <a href="${pdfUrl}" target="_blank" download
-           style="color:#4caf50;text-decoration:underline;margin-top:10px;display:inline-block;">
-          Descargar documento
+    console.warn('[Visor PDF.js] render error:', err);
+    _visorMostrarErrorPdf('Error al renderizar el PDF.', url, fileId);
+  }
+}
+
+function _visorMostrarErrorPdf(msg, url, fileId) {
+  const loading = document.getElementById('visor-loading');
+  const pdfCont = document.getElementById('visor-pdf-container');
+  const dlUrl   = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+  const viewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/view` : url;
+  loading.classList.remove('active');
+  pdfCont.innerHTML = `
+    <div style="color:#e84545;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;
+                text-align:center;padding:40px 24px;background:#2a1a1a;border-radius:14px;
+                margin:24px;max-width:420px;">
+      <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+      <div style="margin-bottom:10px;">${msg}</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap;">
+        <a href="${viewUrl}" target="_blank"
+           style="color:#fff;background:#3b5bdb;border-radius:8px;padding:8px 16px;
+                  text-decoration:none;font-size:12px;font-weight:800;">
+          🔗 Abrir en Drive
         </a>
-      </div>`;
-    pdfCont.classList.add('active');
-    console.warn('[Visor PDF.js]', err);
+        <a href="${dlUrl}" target="_blank" download
+           style="color:#fff;background:#16a34a;border-radius:8px;padding:8px 16px;
+                  text-decoration:none;font-size:12px;font-weight:800;">
+          ⬇ Descargar
+        </a>
+      </div>
+    </div>`;
+  pdfCont.classList.add('active');
+}
+
+async function _visorRenderPaginas() {
+  const pdfCont = document.getElementById('visor-pdf-container');
+  if (!_visorPdfDoc) return;
+  pdfCont.innerHTML = '';
+  const totalPages = _visorPdfDoc.numPages;
+  for (let p = 1; p <= totalPages; p++) {
+    const page   = await _visorPdfDoc.getPage(p);
+    const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
+    const canvas = document.createElement('canvas');
+    canvas.className = 'visor-pdf-page';
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+    pdfCont.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
   }
 }
 
 async function rotarVisorDoc() {
   if (_visorIsPdf) {
     _visorRotDeg = (_visorRotDeg + 90) % 360;
-    const pdfCont = document.getElementById('visor-pdf-container');
     const loading = document.getElementById('visor-loading');
     loading.classList.add('active');
-    pdfCont.innerHTML = '';
-    if (_visorPdfDoc) {
-      const totalPages = _visorPdfDoc.numPages;
-      for (let p = 1; p <= totalPages; p++) {
-        const page   = await _visorPdfDoc.getPage(p);
-        const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
-        const canvas = document.createElement('canvas');
-        canvas.className = 'visor-pdf-page';
-        canvas.width  = vp.width;
-        canvas.height = vp.height;
-        pdfCont.appendChild(canvas);
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-      }
-    }
+    await _visorRenderPaginas();
     loading.classList.remove('active');
   } else {
     _visorImgDeg = (_visorImgDeg + 90) % 360;
@@ -7130,21 +7166,9 @@ async function visorZoom(delta) {
   const zoomLabel = document.getElementById('visor-zoom-label');
   if (zoomLabel) zoomLabel.textContent = Math.round(_visorZoom * 100) + '%';
   if (!_visorIsPdf || !_visorPdfDoc) return;
-  const pdfCont = document.getElementById('visor-pdf-container');
   const loading = document.getElementById('visor-loading');
   loading.classList.add('active');
-  pdfCont.innerHTML = '';
-  const totalPages = _visorPdfDoc.numPages;
-  for (let p = 1; p <= totalPages; p++) {
-    const page   = await _visorPdfDoc.getPage(p);
-    const vp     = page.getViewport({ scale: _visorZoom, rotation: _visorRotDeg });
-    const canvas = document.createElement('canvas');
-    canvas.className = 'visor-pdf-page';
-    canvas.width  = vp.width;
-    canvas.height = vp.height;
-    pdfCont.appendChild(canvas);
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-  }
+  await _visorRenderPaginas();
   loading.classList.remove('active');
 }
 

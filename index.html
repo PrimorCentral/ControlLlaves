@@ -1512,7 +1512,9 @@
       display: flex; flex-direction: column;
       box-shadow: 0 50px 120px rgba(0,0,0,0.7);
       animation: ficha-in 0.28s cubic-bezier(.34,1.4,.64,1);
+      transition: width 0.3s ease;
     }
+    .visor-box.rotado { width: 95vw; }
     .visor-header {
       background: linear-gradient(135deg, #0c0c20, #1a1a3a);
       padding: 14px 18px; display: flex; align-items: center;
@@ -6990,21 +6992,20 @@ function abrirVisorDoc(url, nombre, formato) {
 function rotarVisorDoc() {
   const wrapper = document.getElementById('visor-rotate-wrapper');
   if (!wrapper) return;
-  const body = wrapper.parentElement;
-
-  // Calcular scale óptimo: cuando rota 90/270, el ancho pasa a ser el alto
-  // Usamos el ratio altura/anchura del contenedor para que encaje
-  const w = body.offsetWidth  || 760;
-  const h = body.offsetHeight || 600;
-  const scale = Math.min(w / h, h / w) * 0.95;
-  wrapper.style.setProperty('--visor-scale', scale);
+  const box = document.querySelector('.visor-box');
 
   const pasos = ['', 'r90', 'r180', 'r270'];
   const actual = pasos.findIndex(c => c && wrapper.classList.contains(c));
   const idx    = actual < 0 ? 0 : actual;
   pasos.forEach(c => c && wrapper.classList.remove(c));
-  if (idx < 3) wrapper.classList.add(pasos[idx + 1]);
-  // idx === 3 → vuelve a 0 (sin clase, posición original)
+  const siguiente = idx < 3 ? pasos[idx + 1] : '';
+  if (siguiente) wrapper.classList.add(siguiente);
+
+  // Modal ancho en 90° y 270°, normal en 0° y 180°
+  if (box) {
+    const esLateral = siguiente === 'r90' || siguiente === 'r270';
+    box.classList.toggle('rotado', esLateral);
+  }
 }
 
 function cerrarVisorDoc() {
@@ -7013,6 +7014,8 @@ function cerrarVisorDoc() {
   // Resetear rotación
   const wrapper = document.getElementById('visor-rotate-wrapper');
   if (wrapper) { wrapper.classList.remove('r90','r180','r270'); wrapper.style.removeProperty('--visor-scale'); }
+  const box = document.querySelector('.visor-box');
+  if (box) box.classList.remove('rotado');
   setTimeout(() => {
     const iframe = document.getElementById('visor-doc-iframe');
     const imgEl  = document.getElementById('visor-doc-img');

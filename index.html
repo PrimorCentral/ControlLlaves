@@ -1539,6 +1539,16 @@
     .visor-btn.dl:hover { background: #15803d; }
     .visor-btn.close { background: rgba(232,69,69,0.15); color: #e84545; border-color: rgba(232,69,69,0.3); }
     .visor-btn.close:hover { background: #e84545; color: #fff; border-color: #e84545; }
+    .visor-btn.rotate { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
+    .visor-btn.rotate:hover { background: rgba(255,255,255,0.18); }
+    #visor-doc-iframe { transition: transform 0.3s ease; transform-origin: center center; }
+    #visor-doc-img    { transition: transform 0.3s ease; transform-origin: center center; }
+    .visor-body.rotated-90  #visor-doc-iframe,
+    .visor-body.rotated-90  #visor-doc-img  { transform: rotate(90deg)  scale(0.75); }
+    .visor-body.rotated-180 #visor-doc-iframe,
+    .visor-body.rotated-180 #visor-doc-img  { transform: rotate(180deg) scale(0.75); }
+    .visor-body.rotated-270 #visor-doc-iframe,
+    .visor-body.rotated-270 #visor-doc-img  { transform: rotate(270deg) scale(0.75); }
     .visor-body {
       flex: 1; min-height: 0; background: #1a1a1a; position: relative;
     }
@@ -6974,10 +6984,27 @@ function abrirVisorDoc(url, nombre, formato) {
   modal.classList.add('visible');
 }
 
+function rotarVisorDoc() {
+  const body = document.querySelector('.visor-body');
+  if (!body) return;
+  const clases = ['rotated-90', 'rotated-180', 'rotated-270'];
+  if (!body.classList.contains('rotated-90') && !body.classList.contains('rotated-180') && !body.classList.contains('rotated-270')) {
+    body.classList.add('rotated-90');
+  } else if (body.classList.contains('rotated-90')) {
+    body.classList.remove('rotated-90'); body.classList.add('rotated-180');
+  } else if (body.classList.contains('rotated-180')) {
+    body.classList.remove('rotated-180'); body.classList.add('rotated-270');
+  } else {
+    body.classList.remove('rotated-270');
+  }
+}
+
 function cerrarVisorDoc() {
   const modal = document.getElementById('modal-visor-doc');
   modal.classList.remove('visible');
-  // Limpiar para no dejar recursos cargando
+  // Resetear rotación
+  const body = document.querySelector('.visor-body');
+  if (body) body.classList.remove('rotated-90', 'rotated-180', 'rotated-270');
   setTimeout(() => {
     const iframe = document.getElementById('visor-doc-iframe');
     const imgEl  = document.getElementById('visor-doc-img');
@@ -12019,6 +12046,7 @@ async function eliminarLogAccion(idx) {
       <div class="visor-header-icon">📄</div>
       <div class="visor-titulo" id="visor-doc-titulo">Documento</div>
       <button class="visor-btn print" onclick="imprimirVisorDoc()">🖨️ Imprimir</button>
+      <button class="visor-btn rotate" onclick="rotarVisorDoc()" id="btn-visor-rotar" title="Rotar 90°">↻ Rotar</button>
       <a class="visor-btn dl" id="visor-doc-descargar" href="#" download>⬇ Descargar</a>
       <button class="visor-btn close" onclick="cerrarVisorDoc()">✕ Cerrar</button>
     </div>

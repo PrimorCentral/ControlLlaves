@@ -1541,14 +1541,17 @@
     .visor-btn.close:hover { background: #e84545; color: #fff; border-color: #e84545; }
     .visor-btn.rotate { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
     .visor-btn.rotate:hover { background: rgba(255,255,255,0.18); }
-    #visor-doc-iframe { transition: transform 0.3s ease; transform-origin: center center; }
-    #visor-doc-img    { transition: transform 0.3s ease; transform-origin: center center; }
-    .visor-body.rotated-90  #visor-doc-iframe,
-    .visor-body.rotated-90  #visor-doc-img  { transform: rotate(90deg)  scale(0.75); }
-    .visor-body.rotated-180 #visor-doc-iframe,
-    .visor-body.rotated-180 #visor-doc-img  { transform: rotate(180deg) scale(0.75); }
-    .visor-body.rotated-270 #visor-doc-iframe,
-    .visor-body.rotated-270 #visor-doc-img  { transform: rotate(270deg) scale(0.75); }
+    .visor-body { overflow: hidden; }
+    #visor-rotate-wrapper {
+      width: 100%; height: 100%;
+      transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+      transform-origin: center center;
+    }
+    #visor-rotate-wrapper.r90  { transform: rotate(90deg)  scale(var(--visor-scale, 0.75)); }
+    #visor-rotate-wrapper.r180 { transform: rotate(180deg) scale(1); }
+    #visor-rotate-wrapper.r270 { transform: rotate(270deg) scale(var(--visor-scale, 0.75)); }
+    #visor-doc-iframe { width: 100%; height: 100%; border: none; display: block; background: #fff; }
+    #visor-doc-img    { width: 100%; height: 100%; object-fit: contain; display: none; background: #1a1a1a; padding: 16px; box-sizing: border-box; }
     .visor-body {
       flex: 1; min-height: 0; background: #1a1a1a; position: relative;
     }
@@ -6985,26 +6988,31 @@ function abrirVisorDoc(url, nombre, formato) {
 }
 
 function rotarVisorDoc() {
-  const body = document.querySelector('.visor-body');
-  if (!body) return;
-  const clases = ['rotated-90', 'rotated-180', 'rotated-270'];
-  if (!body.classList.contains('rotated-90') && !body.classList.contains('rotated-180') && !body.classList.contains('rotated-270')) {
-    body.classList.add('rotated-90');
-  } else if (body.classList.contains('rotated-90')) {
-    body.classList.remove('rotated-90'); body.classList.add('rotated-180');
-  } else if (body.classList.contains('rotated-180')) {
-    body.classList.remove('rotated-180'); body.classList.add('rotated-270');
-  } else {
-    body.classList.remove('rotated-270');
-  }
+  const wrapper = document.getElementById('visor-rotate-wrapper');
+  if (!wrapper) return;
+  const body = wrapper.parentElement;
+
+  // Calcular scale óptimo: cuando rota 90/270, el ancho pasa a ser el alto
+  // Usamos el ratio altura/anchura del contenedor para que encaje
+  const w = body.offsetWidth  || 760;
+  const h = body.offsetHeight || 600;
+  const scale = Math.min(w / h, h / w) * 0.95;
+  wrapper.style.setProperty('--visor-scale', scale);
+
+  const pasos = ['', 'r90', 'r180', 'r270'];
+  const actual = pasos.findIndex(c => c && wrapper.classList.contains(c));
+  const idx    = actual < 0 ? 0 : actual;
+  pasos.forEach(c => c && wrapper.classList.remove(c));
+  if (idx < 3) wrapper.classList.add(pasos[idx + 1]);
+  // idx === 3 → vuelve a 0 (sin clase, posición original)
 }
 
 function cerrarVisorDoc() {
   const modal = document.getElementById('modal-visor-doc');
   modal.classList.remove('visible');
   // Resetear rotación
-  const body = document.querySelector('.visor-body');
-  if (body) body.classList.remove('rotated-90', 'rotated-180', 'rotated-270');
+  const wrapper = document.getElementById('visor-rotate-wrapper');
+  if (wrapper) { wrapper.classList.remove('r90','r180','r270'); wrapper.style.removeProperty('--visor-scale'); }
   setTimeout(() => {
     const iframe = document.getElementById('visor-doc-iframe');
     const imgEl  = document.getElementById('visor-doc-img');
@@ -12051,8 +12059,10 @@ async function eliminarLogAccion(idx) {
       <button class="visor-btn close" onclick="cerrarVisorDoc()">✕ Cerrar</button>
     </div>
     <div class="visor-body">
-      <iframe id="visor-doc-iframe" src="" allow="fullscreen"></iframe>
-      <img id="visor-doc-img" src="" alt="Documento">
+      <div id="visor-rotate-wrapper">
+        <iframe id="visor-doc-iframe" src="" allow="fullscreen"></iframe>
+        <img id="visor-doc-img" src="" alt="Documento">
+      </div>
     </div>
   </div>
 </div>

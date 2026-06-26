@@ -6728,7 +6728,7 @@ function _tieneSeguro(matricula) {
   return v && (v.seguro_aseguradora || v.seguro_nombre || v.seguro_tel || v.seguro_poliza);
 }
 // ── FICHA TÉCNICA PRO ────────────────────────────────────────────────────────
-const CLOUDINARY_CLOUD = 'dnfpuvvxl';
+// Google Drive — documentos gestionados via GAS
 
 const FICHA_DOC_CATEGORIAS = [
   { id: 'ficha_tecnica',       label: 'Ficha técnica',         icon: '📄' },
@@ -6938,7 +6938,7 @@ document.addEventListener('keydown', e => {
 
 // ── VISOR DE DOCUMENTOS INLINE ───────────────────────────────────────────────
 function abrirVisorDoc(url, nombre, formato) {
-  const isPdf = formato === 'pdf' || nombre.toLowerCase().endsWith('.pdf');
+  const isPdf  = formato === 'pdf' || nombre.toLowerCase().endsWith('.pdf');
   const modal  = document.getElementById('modal-visor-doc');
   const titulo = document.getElementById('visor-doc-titulo');
   const iframe = document.getElementById('visor-doc-iframe');
@@ -6946,18 +6946,29 @@ function abrirVisorDoc(url, nombre, formato) {
   const btnDl  = document.getElementById('visor-doc-descargar');
 
   titulo.textContent = nombre || 'Documento';
-  btnDl.href         = url;
-  btnDl.download     = nombre || 'documento';
+
+  // Extraer fileId de la URL de Drive (/file/d/FILEID/preview)
+  const fileIdMatch = url.match(/\/file\/d\/([^/]+)/);
+  const fileId      = fileIdMatch ? fileIdMatch[1] : null;
+
+  // URL de descarga directa
+  btnDl.href     = fileId
+    ? `https://drive.google.com/uc?export=download&id=${fileId}`
+    : url;
+  btnDl.download = nombre || 'documento';
 
   if (isPdf) {
     iframe.style.display = 'block';
     imgEl.style.display  = 'none';
-    // Google Docs viewer como fallback para PDFs de Cloudinary
-    iframe.src = url;
+    // Drive /preview renderiza el PDF nativamente sin restricciones
+    iframe.src = url; // url ya es /file/d/ID/preview
   } else {
+    // Para imágenes en Drive usar thumbnail de alta resolución
     iframe.style.display = 'none';
     imgEl.style.display  = 'block';
-    imgEl.src = url;
+    imgEl.src = fileId
+      ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`
+      : url;
   }
 
   modal.classList.add('visible');
@@ -7193,11 +7204,11 @@ function _docsRender(docs, matricula, overlay) {
 }
 
 async function _docsSubir(matricula, overlay) {
-  const fileInput  = overlay.querySelector('#docs-file');
-  const catSelect  = overlay.querySelector('#docs-cat');
-  const statusEl   = overlay.querySelector('#docs-upload-status');
-  const btnSubir   = overlay.querySelector('#docs-subir');
-  const file       = fileInput.files[0];
+  const fileInput = overlay.querySelector('#docs-file');
+  const catSelect = overlay.querySelector('#docs-cat');
+  const statusEl  = overlay.querySelector('#docs-upload-status');
+  const btnSubir  = overlay.querySelector('#docs-subir');
+  const file      = fileInput.files[0];
 
   if (!file) { mostrarToast('Selecciona un archivo primero', 'error'); return; }
 
@@ -7206,52 +7217,41 @@ async function _docsSubir(matricula, overlay) {
     mostrarToast(`El archivo supera los ${MAX_MB} MB`, 'error'); return;
   }
 
-  const categoria  = catSelect.value;
-  const catLabel   = _DOCS_CATS.find(c => c.id === categoria)?.label || categoria;
-  const matLimpia  = matricula.replace(/\s/g, '_').toUpperCase();
-  const public_folder = `GESTOR_FLOTA/${matLimpia}`;
+  const categoria = catSelect.value;
+  const catLabel  = _DOCS_CATS.find(c => c.id === categoria)?.label || categoria;
 
   btnSubir.disabled = true; btnSubir.textContent = '⏳ Subiendo…';
   statusEl.style.display = 'flex'; statusEl.style.gap = '8px'; statusEl.style.alignItems = 'center';
-  statusEl.innerHTML = `<div style="width:14px;height:14px;border:2px solid #dde1ea;border-top-color:#16a34a;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="color:#6b7a94;">Subiendo a Cloudinary…</span>`;
+  statusEl.innerHTML = `<div style="width:14px;height:14px;border:2px solid #dde1ea;border-top-color:#16a34a;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="color:#6b7a94;">Subiendo a Google Drive…</span>`;
 
   try {
-    // ── Upload a Cloudinary (unsigned preset GESTOR_FLOTA) ──
-    const formato = file.type.includes('pdf') ? 'pdf' : 'image';
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', 'GESTOR_FLOTA');
-    fd.append('folder', public_folder);
+    // ── Leer archivo como base64 ──
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = () => res(reader.result.split(',')[1]);
+      reader.onerror = () => rej(new Error('Error leyendo el archivo'));
+      reader.readAsDataURL(file);
+    });
 
-    const endpoint = formato === 'pdf'
-      ? `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`
-      : `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
+    statusEl.innerHTML = `<div style="width:14px;height:14px;border:2px solid #dde1ea;border-top-color:#16a34a;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="color:#6b7a94;">Guardando en Drive…</span>`;
 
-    const cRes  = await fetch(endpoint, { method: 'POST', body: fd });
-    const cData = await cRes.json();
-
-    if (!cData.secure_url) throw new Error(cData.error?.message || 'Error Cloudinary');
-
-    statusEl.innerHTML = `<div style="width:14px;height:14px;border:2px solid #dde1ea;border-top-color:#16a34a;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="color:#6b7a94;">Guardando referencia…</span>`;
-
-    // ── Guardar referencia en Sheets ──
+    // ── Enviar al GAS para subir a Drive ──
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({
-        accion: 'guardarDocumento',
-        doc: {
+        accion: 'subirDocumento',
+        archivo: {
           matricula,
           categoria,
           nombre:     file.name,
-          public_id:  cData.public_id,
-          url:        cData.secure_url,
-          formato,
+          mimeType:   file.type || 'application/octet-stream',
+          base64,
           subido_por: (usuarioActual?.nombre || 'Admin'),
         }
       })
     });
     const rData = await resp.json();
-    if (!rData.ok) throw new Error(rData.error || 'Error al guardar');
+    if (!rData.ok) throw new Error(rData.error || 'Error al guardar en Drive');
 
     // ── Éxito ──
     statusEl.innerHTML = `<span style="color:#16a34a;font-weight:800;">✓ Documento subido correctamente</span>`;
@@ -7276,7 +7276,7 @@ async function _docsEliminar(publicId, matricula, btnEl) {
   try {
     const r = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ accion: 'eliminarDocumento', public_id: publicId })
+      body: JSON.stringify({ accion: 'eliminarDocumento', fileId: publicId })
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error);

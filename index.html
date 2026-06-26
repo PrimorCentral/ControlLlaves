@@ -7021,6 +7021,8 @@ function rotarVisorDoc() {
   iframe.style.transform = t; iframe.style.transformOrigin = "center center";
   if (imgEl) { imgEl.style.width="100%"; imgEl.style.height="100%"; imgEl.style.transform=t; imgEl.style.transformOrigin="center center"; }
 }
+
+function cerrarVisorDoc() {
   const modal = document.getElementById('modal-visor-doc');
   modal.classList.remove('visible');
   // Resetear rotación

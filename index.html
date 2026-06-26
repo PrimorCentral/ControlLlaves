@@ -1530,10 +1530,11 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .visor-btn {
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       font-size: 11px; font-weight: 800; border-radius: 8px;
       padding: 7px 13px; cursor: pointer; border: 1.5px solid;
-      transition: all 0.15s; font-family: 'Barlow', sans-serif; white-space: nowrap; flex-shrink: 0;
+      transition: background 0.15s, color 0.15s; font-family: 'Barlow', sans-serif;
+      white-space: nowrap; flex-shrink: 0; min-width: 80px;
     }
     .visor-btn.print { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
     .visor-btn.print:hover { background: rgba(255,255,255,0.18); }
@@ -7007,50 +7008,29 @@ function rotarVisorDoc() {
   const box     = document.querySelector('.visor-box');
   if (!wrapper || !iframe) return;
 
-  // Ciclo de grados: 0 → 90 → 180 → 270 → 0
-  const grados = [0, 90, 180, 270];
-  const actual  = parseInt(wrapper.dataset.deg || '0', 10);
-  const idx     = grados.indexOf(actual);
-  const nuevo   = grados[(idx + 1) % 4];
+  const grados    = [0, 90, 180, 270];
+  const actual    = parseInt(wrapper.dataset.deg || '0', 10);
+  const nuevo     = grados[(grados.indexOf(actual) + 1) % 4];
   wrapper.dataset.deg = nuevo;
 
-  const body = wrapper.parentElement;
-  const bw   = body.offsetWidth  || 760;
-  const bh   = body.offsetHeight || 600;
-
   const esLateral = nuevo === 90 || nuevo === 270;
-
-  // Modal ancho al girar lateral
   if (box) box.classList.toggle('rotado', esLateral);
 
-  // Damos tiempo al modal a expandirse antes de calcular dimensiones
-  setTimeout(() => {
-    const bw2 = body.offsetWidth  || 760;
-    const bh2 = body.offsetHeight || 600;
+  const body = wrapper.parentElement;
+  const bw   = body.offsetWidth  || 900;
+  const bh   = body.offsetHeight || 600;
 
-    if (esLateral) {
-      // El iframe ocupa bh2 de ancho y bw2 de alto (intercambiado)
-      // y luego lo rotamos para que encaje visualmente
-      const scale = Math.min(bw2 / bh2, bh2 / bw2);
-      iframe.style.width  = bh2 + 'px';
-      iframe.style.height = bw2 + 'px';
-      iframe.style.transform = `rotate(${nuevo}deg) scale(${scale * 0.96})`;
-      if (imgEl) {
-        imgEl.style.width  = bh2 + 'px';
-        imgEl.style.height = bw2 + 'px';
-        imgEl.style.transform = `rotate(${nuevo}deg) scale(${scale * 0.96})`;
-      }
-    } else {
-      iframe.style.width  = bw2 + 'px';
-      iframe.style.height = bh2 + 'px';
-      iframe.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none';
-      if (imgEl) {
-        imgEl.style.width  = bw2 + 'px';
-        imgEl.style.height = bh2 + 'px';
-        imgEl.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none';
-      }
-    }
-  }, esLateral ? 320 : 0);
+  if (esLateral) {
+    iframe.style.width     = bh + 'px';
+    iframe.style.height    = bw + 'px';
+    iframe.style.transform = `rotate(${nuevo}deg)`;
+    if (imgEl) { imgEl.style.width = bh + 'px'; imgEl.style.height = bw + 'px'; imgEl.style.transform = `rotate(${nuevo}deg)`; }
+  } else {
+    iframe.style.width     = bw + 'px';
+    iframe.style.height    = bh + 'px';
+    iframe.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none';
+    if (imgEl) { imgEl.style.width = bw + 'px'; imgEl.style.height = bh + 'px'; imgEl.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none'; }
+  }
 }
 
 function cerrarVisorDoc() {

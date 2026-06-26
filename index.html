@@ -1543,17 +1543,22 @@
     .visor-btn.close:hover { background: #e84545; color: #fff; border-color: #e84545; }
     .visor-btn.rotate { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
     .visor-btn.rotate:hover { background: rgba(255,255,255,0.18); }
-    .visor-body { overflow: hidden; }
+    .visor-body { overflow: hidden; position: relative; }
     #visor-rotate-wrapper {
-      width: 100%; height: 100%;
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #visor-doc-iframe {
+      border: none; display: block; background: #fff;
       transition: transform 0.35s cubic-bezier(.4,0,.2,1);
       transform-origin: center center;
     }
-    #visor-rotate-wrapper.r90  { transform: rotate(90deg)  scale(var(--visor-scale, 0.75)); }
-    #visor-rotate-wrapper.r180 { transform: rotate(180deg) scale(1); }
-    #visor-rotate-wrapper.r270 { transform: rotate(270deg) scale(var(--visor-scale, 0.75)); }
-    #visor-doc-iframe { width: 100%; height: 100%; border: none; display: block; background: #fff; }
-    #visor-doc-img    { width: 100%; height: 100%; object-fit: contain; display: none; background: #1a1a1a; padding: 16px; box-sizing: border-box; }
+    #visor-doc-img {
+      object-fit: contain; display: none; background: #1a1a1a;
+      padding: 16px; box-sizing: border-box;
+      transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+      transform-origin: center center;
+    }
     .visor-body {
       flex: 1; min-height: 0; background: #1a1a1a; position: relative;
     }
@@ -6959,6 +6964,14 @@ function abrirVisorDoc(url, nombre, formato) {
   const iframe = document.getElementById('visor-doc-iframe');
   const imgEl  = document.getElementById('visor-doc-img');
   const btnDl  = document.getElementById('visor-doc-descargar');
+  const wrapper = document.getElementById('visor-rotate-wrapper');
+  const box     = document.querySelector('.visor-box');
+
+  // Resetear rotación previa
+  if (wrapper) wrapper.dataset.deg = '0';
+  if (box) box.classList.remove('rotado');
+  iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.transform = 'none';
+  imgEl.style.width  = '100%'; imgEl.style.height  = '100%'; imgEl.style.transform  = 'none';
 
   titulo.textContent = nombre || 'Documento';
 
@@ -6975,10 +6988,8 @@ function abrirVisorDoc(url, nombre, formato) {
   if (isPdf) {
     iframe.style.display = 'block';
     imgEl.style.display  = 'none';
-    // Drive /preview renderiza el PDF nativamente sin restricciones
-    iframe.src = url; // url ya es /file/d/ID/preview
+    iframe.src = url;
   } else {
-    // Para imágenes en Drive usar thumbnail de alta resolución
     iframe.style.display = 'none';
     imgEl.style.display  = 'block';
     imgEl.src = fileId
@@ -6991,21 +7002,55 @@ function abrirVisorDoc(url, nombre, formato) {
 
 function rotarVisorDoc() {
   const wrapper = document.getElementById('visor-rotate-wrapper');
-  if (!wrapper) return;
-  const box = document.querySelector('.visor-box');
+  const iframe  = document.getElementById('visor-doc-iframe');
+  const imgEl   = document.getElementById('visor-doc-img');
+  const box     = document.querySelector('.visor-box');
+  if (!wrapper || !iframe) return;
 
-  const pasos = ['', 'r90', 'r180', 'r270'];
-  const actual = pasos.findIndex(c => c && wrapper.classList.contains(c));
-  const idx    = actual < 0 ? 0 : actual;
-  pasos.forEach(c => c && wrapper.classList.remove(c));
-  const siguiente = idx < 3 ? pasos[idx + 1] : '';
-  if (siguiente) wrapper.classList.add(siguiente);
+  // Ciclo de grados: 0 → 90 → 180 → 270 → 0
+  const grados = [0, 90, 180, 270];
+  const actual  = parseInt(wrapper.dataset.deg || '0', 10);
+  const idx     = grados.indexOf(actual);
+  const nuevo   = grados[(idx + 1) % 4];
+  wrapper.dataset.deg = nuevo;
 
-  // Modal ancho en 90° y 270°, normal en 0° y 180°
-  if (box) {
-    const esLateral = siguiente === 'r90' || siguiente === 'r270';
-    box.classList.toggle('rotado', esLateral);
-  }
+  const body = wrapper.parentElement;
+  const bw   = body.offsetWidth  || 760;
+  const bh   = body.offsetHeight || 600;
+
+  const esLateral = nuevo === 90 || nuevo === 270;
+
+  // Modal ancho al girar lateral
+  if (box) box.classList.toggle('rotado', esLateral);
+
+  // Damos tiempo al modal a expandirse antes de calcular dimensiones
+  setTimeout(() => {
+    const bw2 = body.offsetWidth  || 760;
+    const bh2 = body.offsetHeight || 600;
+
+    if (esLateral) {
+      // El iframe ocupa bh2 de ancho y bw2 de alto (intercambiado)
+      // y luego lo rotamos para que encaje visualmente
+      const scale = Math.min(bw2 / bh2, bh2 / bw2);
+      iframe.style.width  = bh2 + 'px';
+      iframe.style.height = bw2 + 'px';
+      iframe.style.transform = `rotate(${nuevo}deg) scale(${scale * 0.96})`;
+      if (imgEl) {
+        imgEl.style.width  = bh2 + 'px';
+        imgEl.style.height = bw2 + 'px';
+        imgEl.style.transform = `rotate(${nuevo}deg) scale(${scale * 0.96})`;
+      }
+    } else {
+      iframe.style.width  = bw2 + 'px';
+      iframe.style.height = bh2 + 'px';
+      iframe.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none';
+      if (imgEl) {
+        imgEl.style.width  = bw2 + 'px';
+        imgEl.style.height = bh2 + 'px';
+        imgEl.style.transform = nuevo === 180 ? 'rotate(180deg)' : 'none';
+      }
+    }
+  }, esLateral ? 320 : 0);
 }
 
 function cerrarVisorDoc() {
@@ -7013,9 +7058,13 @@ function cerrarVisorDoc() {
   modal.classList.remove('visible');
   // Resetear rotación
   const wrapper = document.getElementById('visor-rotate-wrapper');
-  if (wrapper) { wrapper.classList.remove('r90','r180','r270'); wrapper.style.removeProperty('--visor-scale'); }
+  if (wrapper) { wrapper.dataset.deg = '0'; }
   const box = document.querySelector('.visor-box');
   if (box) box.classList.remove('rotado');
+  const iframe = document.getElementById('visor-doc-iframe');
+  const imgEl  = document.getElementById('visor-doc-img');
+  if (iframe) { iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.transform = 'none'; }
+  if (imgEl)  { imgEl.style.width  = '100%'; imgEl.style.height  = '100%'; imgEl.style.transform  = 'none'; }
   setTimeout(() => {
     const iframe = document.getElementById('visor-doc-iframe');
     const imgEl  = document.getElementById('visor-doc-img');

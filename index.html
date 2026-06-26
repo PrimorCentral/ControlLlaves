@@ -7000,13 +7000,13 @@ function abrirVisorDoc(url, nombre, formato) {
 }
 
 function rotarVisorDoc() {
-  const wrapper = document.getElementById('visor-rotate-wrapper');
-  const iframe  = document.getElementById('visor-doc-iframe');
-  const imgEl   = document.getElementById('visor-doc-img');
+  const wrapper = document.getElementById("visor-rotate-wrapper");
+  const iframe  = document.getElementById("visor-doc-iframe");
+  const imgEl   = document.getElementById("visor-doc-img");
   if (!wrapper || !iframe) return;
 
   const grados = [0, 90, 180, 270];
-  const actual  = parseInt(wrapper.dataset.deg || '0', 10);
+  const actual  = parseInt(wrapper.dataset.deg || "0", 10);
   const nuevo   = grados[(grados.indexOf(actual) + 1) % 4];
   wrapper.dataset.deg = nuevo;
 
@@ -7014,42 +7014,13 @@ function rotarVisorDoc() {
   const bw        = body.offsetWidth  || 900;
   const bh        = body.offsetHeight || 600;
   const esLateral = nuevo === 90 || nuevo === 270;
+  const scale     = esLateral ? Math.min(bh / bw, bw / bh) : 1;
+  const t         = nuevo === 0 ? "none" : "rotate(" + nuevo + "deg) scale(" + scale + ")";
 
-  if (esLateral) {
-    iframe.style.position      = 'relative';
-    iframe.style.left          = '';
-    iframe.style.top           = '';
-    iframe.style.margin        = 'auto';
-    iframe.style.display       = 'block';
-    iframe.style.width         = bh + 'px';
-    iframe.style.height        = bw + 'px';
-    iframe.style.transform     = `rotate(${nuevo}deg)`;
-    iframe.style.transformOrigin = 'center center';
-    if (imgEl) { imgEl.style.position='relative'; imgEl.style.margin='auto'; imgEl.style.width=bh+'px'; imgEl.style.height=bw+'px'; imgEl.style.transform=`rotate(${nuevo}deg)`; imgEl.style.transformOrigin='center center'; }
-  } else if (nuevo === 180) {
-    iframe.style.position      = 'relative';
-    iframe.style.left          = '';
-    iframe.style.top           = '';
-    iframe.style.margin        = '0';
-    iframe.style.width         = '100%';
-    iframe.style.height        = '100%';
-    iframe.style.transform     = 'rotate(180deg)';
-    iframe.style.transformOrigin = 'center center';
-    if (imgEl) { imgEl.style.position='relative'; imgEl.style.margin='0'; imgEl.style.width='100%'; imgEl.style.height='100%'; imgEl.style.transform='rotate(180deg)'; imgEl.style.transformOrigin='center center'; }
-  } else {
-    iframe.style.position      = 'relative';
-    iframe.style.left          = '';
-    iframe.style.top           = '';
-    iframe.style.margin        = '0';
-    iframe.style.width         = '100%';
-    iframe.style.height        = '100%';
-    iframe.style.transform     = 'none';
-    iframe.style.transformOrigin = 'center center';
-    if (imgEl) { imgEl.style.position='relative'; imgEl.style.margin='0'; imgEl.style.width='100%'; imgEl.style.height='100%'; imgEl.style.transform='none'; imgEl.style.transformOrigin='center center'; }
-  }
+  iframe.style.width = "100%"; iframe.style.height = "100%";
+  iframe.style.transform = t; iframe.style.transformOrigin = "center center";
+  if (imgEl) { imgEl.style.width="100%"; imgEl.style.height="100%"; imgEl.style.transform=t; imgEl.style.transformOrigin="center center"; }
 }
-
-function cerrarVisorDoc() {
   const modal = document.getElementById('modal-visor-doc');
   modal.classList.remove('visible');
   // Resetear rotación

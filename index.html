@@ -1272,7 +1272,8 @@
     .ficha-box {
       background: #fff; border-radius: 22px;
       width: 620px; max-width: 100%;
-      max-height: 90vh; display: flex; flex-direction: column;
+      height: 82vh; max-height: 780px; min-height: 500px;
+      display: flex; flex-direction: column;
       box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06) inset;
       font-family: 'Barlow', sans-serif;
       animation: ficha-in 0.32s cubic-bezier(.34,1.48,.64,1);
@@ -1498,6 +1499,57 @@
       animation: spin 0.7s linear infinite; flex-shrink: 0;
     }
 
+    /* ── VISOR DE DOCUMENTOS ── */
+    #modal-visor-doc {
+      display: none; position: fixed; inset: 0; z-index: 10000;
+      background: rgba(3,3,15,0.92); backdrop-filter: blur(12px);
+      align-items: center; justify-content: center; padding: 12px;
+    }
+    #modal-visor-doc.visible { display: flex; }
+    .visor-box {
+      background: #fff; border-radius: 18px; overflow: hidden;
+      width: 760px; max-width: 100%; height: 88vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 50px 120px rgba(0,0,0,0.7);
+      animation: ficha-in 0.28s cubic-bezier(.34,1.4,.64,1);
+    }
+    .visor-header {
+      background: linear-gradient(135deg, #0c0c20, #1a1a3a);
+      padding: 14px 18px; display: flex; align-items: center;
+      gap: 12px; flex-shrink: 0;
+    }
+    .visor-header-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: rgba(232,69,69,0.2); border: 1px solid rgba(232,69,69,0.3);
+      display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .visor-titulo {
+      flex: 1; font-size: 13px; font-weight: 800; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .visor-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 800; border-radius: 8px;
+      padding: 7px 13px; cursor: pointer; border: 1.5px solid;
+      transition: all 0.15s; font-family: 'Barlow', sans-serif; white-space: nowrap; flex-shrink: 0;
+    }
+    .visor-btn.print { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.15); }
+    .visor-btn.print:hover { background: rgba(255,255,255,0.18); }
+    .visor-btn.dl    { background: #16a34a; color: #fff; border-color: #16a34a; }
+    .visor-btn.dl:hover { background: #15803d; }
+    .visor-btn.close { background: rgba(232,69,69,0.15); color: #e84545; border-color: rgba(232,69,69,0.3); }
+    .visor-btn.close:hover { background: #e84545; color: #fff; border-color: #e84545; }
+    .visor-body {
+      flex: 1; min-height: 0; background: #1a1a1a; position: relative;
+    }
+    #visor-doc-iframe {
+      width: 100%; height: 100%; border: none; display: block; background: #fff;
+    }
+    #visor-doc-img {
+      width: 100%; height: 100%; object-fit: contain;
+      display: none; background: #1a1a1a; padding: 16px; box-sizing: border-box;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 768px) {
       .ficha-box { border-radius: 18px; }
@@ -1506,6 +1558,8 @@
       .ficha-panel { padding: 14px; }
       .ficha-tab { font-size: 9px; padding: 10px 4px 9px; }
       .ficha-tab-icon { font-size: 13px; }
+      .visor-box { border-radius: 12px; height: 92vh; }
+      .visor-titulo { font-size: 11px; }
     }
 
     /* Badge de info en el mat-badge */
@@ -6851,7 +6905,7 @@ function _fichaRenderDocs(docs) {
               <div class="ficha-doc-nombre" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</div>
               <div class="ficha-doc-fecha">Subido: ${fecha} · ${esc(doc.subido_por || '—')}</div>
             </div>
-            <a class="ficha-doc-btn ver" href="${esc(doc.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">👁 Ver</a>
+            <button class="ficha-doc-btn ver" onclick="event.stopPropagation();abrirVisorDoc('${esc(doc.url)}','${esc(doc.nombre||'')}','${esc(doc.formato||'')}')">👁 Ver</button>
           </div>`;
       });
     }
@@ -6871,8 +6925,68 @@ function cerrarFichaVehiculo() {
   _fichaMat = '';
 }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') cerrarFichaVehiculo();
+  if (e.key === 'Escape') {
+    // Primero cierra el visor si está abierto, luego la ficha
+    const visor = document.getElementById('modal-visor-doc');
+    if (visor && visor.classList.contains('visible')) {
+      cerrarVisorDoc();
+    } else {
+      cerrarFichaVehiculo();
+    }
+  }
 });
+
+// ── VISOR DE DOCUMENTOS INLINE ───────────────────────────────────────────────
+function abrirVisorDoc(url, nombre, formato) {
+  const isPdf = formato === 'pdf' || nombre.toLowerCase().endsWith('.pdf');
+  const modal  = document.getElementById('modal-visor-doc');
+  const titulo = document.getElementById('visor-doc-titulo');
+  const iframe = document.getElementById('visor-doc-iframe');
+  const imgEl  = document.getElementById('visor-doc-img');
+  const btnDl  = document.getElementById('visor-doc-descargar');
+
+  titulo.textContent = nombre || 'Documento';
+  btnDl.href         = url;
+  btnDl.download     = nombre || 'documento';
+
+  if (isPdf) {
+    iframe.style.display = 'block';
+    imgEl.style.display  = 'none';
+    // Google Docs viewer como fallback para PDFs de Cloudinary
+    iframe.src = url;
+  } else {
+    iframe.style.display = 'none';
+    imgEl.style.display  = 'block';
+    imgEl.src = url;
+  }
+
+  modal.classList.add('visible');
+}
+
+function cerrarVisorDoc() {
+  const modal = document.getElementById('modal-visor-doc');
+  modal.classList.remove('visible');
+  // Limpiar para no dejar recursos cargando
+  setTimeout(() => {
+    const iframe = document.getElementById('visor-doc-iframe');
+    const imgEl  = document.getElementById('visor-doc-img');
+    if (iframe) iframe.src = '';
+    if (imgEl)  imgEl.src  = '';
+  }, 300);
+}
+
+function imprimirVisorDoc() {
+  const iframe = document.getElementById('visor-doc-iframe');
+  const imgEl  = document.getElementById('visor-doc-img');
+  if (imgEl && imgEl.style.display !== 'none') {
+    // Para imágenes: abrir en nueva ventana y print
+    const w = window.open(imgEl.src, '_blank');
+    w && w.addEventListener('load', () => w.print());
+  } else if (iframe && iframe.src) {
+    try { iframe.contentWindow.print(); }
+    catch(e) { window.open(iframe.src, '_blank'); }
+  }
+}
 
 // ── EDITAR SEGURO DESDE ADMIN PANEL ──────────────────────────────────────────
 function editarSeguro(gi, vi) {
@@ -7063,11 +7177,10 @@ function _docsRender(docs, matricula, overlay) {
           <div style="font-size:13px;font-weight:700;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(doc.nombre)}">${esc(doc.nombre||'Sin nombre')}</div>
           <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:2px;">${fecha} · ${esc(doc.subido_por||'—')}</div>
         </div>
-        <a href="${esc(doc.url)}" target="_blank" rel="noopener"
+        <button onclick="event.stopPropagation();abrirVisorDoc('${esc(doc.url)}','${esc(doc.nombre||'')}','${esc(doc.formato||'')}')"
           style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
                  border-radius:7px;padding:5px 10px;cursor:pointer;border:1.5px solid #c5d0ff;
-                 background:#f0f4ff;color:#3b5bdb;text-decoration:none;white-space:nowrap;flex-shrink:0;"
-          onclick="event.stopPropagation()">👁 Ver</a>
+                 background:#f0f4ff;color:#3b5bdb;white-space:nowrap;flex-shrink:0;font-family:'Barlow',sans-serif;">👁 Ver</button>
         <button onclick="_docsEliminar('${esc(doc.public_id)}','${esc(matricula)}',this)"
           style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
                  border-radius:7px;padding:5px 10px;cursor:pointer;border:1.5px solid #fecaca;
@@ -11899,6 +12012,23 @@ async function eliminarLogAccion(idx) {
 </script>
 
 <!-- ══ MODAL FICHA VEHÍCULO — hijo directo de body ══ -->
+<!-- ── VISOR DE DOCUMENTOS INLINE ── -->
+<div id="modal-visor-doc" onclick="if(event.target===this)cerrarVisorDoc()">
+  <div class="visor-box">
+    <div class="visor-header">
+      <div class="visor-header-icon">📄</div>
+      <div class="visor-titulo" id="visor-doc-titulo">Documento</div>
+      <button class="visor-btn print" onclick="imprimirVisorDoc()">🖨️ Imprimir</button>
+      <a class="visor-btn dl" id="visor-doc-descargar" href="#" download>⬇ Descargar</a>
+      <button class="visor-btn close" onclick="cerrarVisorDoc()">✕ Cerrar</button>
+    </div>
+    <div class="visor-body">
+      <iframe id="visor-doc-iframe" src="" allow="fullscreen"></iframe>
+      <img id="visor-doc-img" src="" alt="Documento">
+    </div>
+  </div>
+</div>
+
 <div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
   <div class="ficha-box">
 

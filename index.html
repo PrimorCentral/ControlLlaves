@@ -5201,8 +5201,8 @@ function setSyncStatus(estado, msg) {
 
 function iniciarSync() {
   detenerSync();
-  // Sincronizar al instante al arrancar
-  syncSilencioso();
+  // Primer sync con delay para no colisionar con el renderizado inicial
+  setTimeout(() => syncSilencioso(), 3000);
   // Y luego cada 5 segundos
   _syncTimer = setInterval(() => syncSilencioso(), SYNC_INTERVALO);
   // Al volver a la pestaña después de estar en background → sync inmediato

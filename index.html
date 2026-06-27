@@ -2751,7 +2751,6 @@
 
           <!-- GUARDAR -->
           <div style="display:flex;justify-content:flex-end;gap:10px;padding:4px 0 8px">
-            <button onclick="rutasResetDefaults()" style="padding:10px 20px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">↺ Restablecer por defecto</button>
             <button onclick="rutasGuardar()" style="padding:10px 28px;background:#16a34a;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:1px;">💾 Guardar cambios</button>
           </div>
         </div>
@@ -4671,6 +4670,76 @@ function setDato(matricula, campo, valor) {
   datos[key][campo] = valor;
   pendientesGuardar.add(key);
 }
+// ─── MODALES DE SISTEMA (reemplazo de confirm/alert/prompt nativos) ───────────
+function _crearOverlayModal(html) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)';
+  ov.innerHTML = `<div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.2s cubic-bezier(.34,1.56,.64,1)">${html}</div>`;
+  document.body.appendChild(ov);
+  return ov;
+}
+
+// appConfirm(msg, {titulo, icono, labelOk, colorOk}) → Promise<boolean>
+function appConfirm(msg, opts = {}) {
+  return new Promise(resolve => {
+    const { titulo = '¿Confirmar acción?', icono = '⚠️', labelOk = 'Confirmar', colorOk = '#e84545', peligro = false } = opts;
+    const advertencia = peligro ? `<div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>` : '';
+    const ov = _crearOverlayModal(`
+      <div style="font-size:36px;margin-bottom:10px">${icono}</div>
+      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:8px">${titulo}</div>
+      <div style="font-size:13px;color:#556;margin-bottom:20px;line-height:1.5">${msg}</div>
+      ${advertencia}
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="_ac-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
+        <button id="_ac-ok" style="padding:10px 22px;background:${colorOk};color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer">${labelOk}</button>
+      </div>`);
+    ov.querySelector('#_ac-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };
+    ov.querySelector('#_ac-ok').onclick    = () => { document.body.removeChild(ov); resolve(true); };
+    ov.querySelector('#_ac-ok').focus();
+  });
+}
+
+// appAlert(msg, {titulo, icono}) → Promise<void>
+function appAlert(msg, opts = {}) {
+  return new Promise(resolve => {
+    const { titulo = 'Aviso', icono = 'ℹ️' } = opts;
+    const ov = _crearOverlayModal(`
+      <div style="font-size:36px;margin-bottom:10px">${icono}</div>
+      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:8px">${titulo}</div>
+      <div style="font-size:13px;color:#556;margin-bottom:24px;line-height:1.5">${msg}</div>
+      <div style="display:flex;justify-content:flex-end">
+        <button id="_aa-ok" style="padding:10px 28px;background:#1a1a2e;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer">Entendido</button>
+      </div>`);
+    ov.querySelector('#_aa-ok').onclick = () => { document.body.removeChild(ov); resolve(); };
+    ov.querySelector('#_aa-ok').focus();
+  });
+}
+
+// appPrompt(pregunta, {titulo, icono, placeholder, mayusculas}) → Promise<string|null>
+function appPrompt(pregunta, opts = {}) {
+  return new Promise(resolve => {
+    const { titulo = 'Introduce un valor', icono = '✏️', placeholder = '', mayusculas = false } = opts;
+    const ov = _crearOverlayModal(`
+      <div style="font-size:32px;margin-bottom:10px">${icono}</div>
+      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:6px">${titulo}</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:14px">${pregunta}</div>
+      <input id="_ap-input" type="text" placeholder="${placeholder}" style="width:100%;box-sizing:border-box;padding:10px 13px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:600;color:#1a1a2e;outline:none;margin-bottom:18px" />
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="_ap-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
+        <button id="_ap-ok" style="padding:10px 22px;background:#1a1a2e;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer">Aceptar</button>
+      </div>`);
+    const input = ov.querySelector('#_ap-input');
+    if (mayusculas) input.addEventListener('input', () => { const p = input.selectionStart; input.value = input.value.toUpperCase(); input.setSelectionRange(p,p); });
+    const ok = () => { const v = input.value.trim(); document.body.removeChild(ov); resolve(v || null); };
+    const cancel = () => { document.body.removeChild(ov); resolve(null); };
+    ov.querySelector('#_ap-cancel').onclick = cancel;
+    ov.querySelector('#_ap-ok').onclick = ok;
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') cancel(); });
+    setTimeout(() => input.focus(), 50);
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -6486,7 +6555,8 @@ async function añadirResponsable() {
 
 async function eliminarResponsable(idx) {
   const r = responsablesCache[idx];
-  if (!r || !confirm(`¿Eliminar responsable ${r.nombre}?`)) return;
+  const ok = await appConfirm(`¿Eliminar al responsable <strong>${r.nombre}</strong>?`, { titulo: 'Eliminar responsable', icono: '🗑️', labelOk: '🗑 Sí, eliminar', peligro: true });
+  if (!ok) return;
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', headers:{'Content-Type':'text/plain'},
@@ -6816,24 +6886,32 @@ function mostrarModalITVCaducada(matricula, fechaITV) {
 
 function eliminarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
-  if (!confirm(`¿Dar de baja ${v.matricula}?\n\nEl vehículo desaparecerá del cuadrante actual pero seguirá visible en los cuadrantes históricos de fechas anteriores.`)) return;
-  GRUPOS[gi].vehiculos[vi].archivado = true;
-  GRUPOS[gi].vehiculos[vi].fecha_archivado = fechaActual;
-  renderAdminVehiculos(); renderAdminStats(); renderTabla();
-  sincronizarVehiculosConSheets();
-  registrarAccion('VEHICULO', 'Dar de baja (archivar) vehículo', v.matricula);
-  mostrarToast(`✓ ${v.matricula} dado de baja`, 'info');
+  appConfirm(`El vehículo <strong>${v.matricula}</strong> desaparecerá del cuadrante activo pero seguirá visible en históricos anteriores.`, {
+    titulo: `¿Dar de baja ${v.matricula}?`, icono: '🚫', labelOk: 'Sí, dar de baja', colorOk: '#e84545', peligro: false
+  }).then(ok => {
+    if (!ok) return;
+    GRUPOS[gi].vehiculos[vi].archivado = true;
+    GRUPOS[gi].vehiculos[vi].fecha_archivado = fechaActual;
+    renderAdminVehiculos(); renderAdminStats(); renderTabla();
+    sincronizarVehiculosConSheets();
+    registrarAccion('VEHICULO', 'Dar de baja (archivar) vehículo', v.matricula);
+    mostrarToast(`✓ ${v.matricula} dado de baja`, 'info');
+  });
 }
 
 function desarchivarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
-  if (!confirm(`¿Dar de alta ${v.matricula}?\n\nVolverá a aparecer en el cuadrante activo.`)) return;
-  GRUPOS[gi].vehiculos[vi].archivado = false;
-  GRUPOS[gi].vehiculos[vi].fecha_archivado = '';
-  renderAdminVehiculos(); renderAdminStats(); renderTabla();
-  sincronizarVehiculosConSheets();
-  registrarAccion('VEHICULO', 'Dar de alta (restaurar) vehículo', v.matricula);
-  mostrarToast(`✓ ${v.matricula} dado de alta`, 'success');
+  appConfirm(`<strong>${v.matricula}</strong> volverá a aparecer en el cuadrante activo.`, {
+    titulo: `¿Dar de alta ${v.matricula}?`, icono: '✅', labelOk: 'Sí, dar de alta', colorOk: '#16a34a'
+  }).then(ok => {
+    if (!ok) return;
+    GRUPOS[gi].vehiculos[vi].archivado = false;
+    GRUPOS[gi].vehiculos[vi].fecha_archivado = '';
+    renderAdminVehiculos(); renderAdminStats(); renderTabla();
+    sincronizarVehiculosConSheets();
+    registrarAccion('VEHICULO', 'Dar de alta (restaurar) vehículo', v.matricula);
+    mostrarToast(`✓ ${v.matricula} dado de alta`, 'success');
+  });
 }
 
 function abrirModalNuevoVehiculo() {
@@ -7593,7 +7671,8 @@ async function _docsSubir(matricula, overlay) {
 }
 
 async function _docsEliminar(publicId, matricula, btnEl) {
-  if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+  const ok = await appConfirm('El documento será eliminado permanentemente.', { titulo: '¿Eliminar documento?', icono: '🗑️', labelOk: '🗑 Sí, eliminar', peligro: true });
+  if (!ok) return;
   const overlay = document.getElementById('overlay-docs');
   btnEl.disabled = true; btnEl.textContent = '…';
   try {
@@ -12033,16 +12112,20 @@ function _rutasUbicEdit(key, field, val) {
 }
 
 function _rutasDeleteUbic(key) {
-  if (!confirm(`¿Eliminar la ubicación "${key}"? Las rutas que la usen quedarán incompletas.`)) return;
-  delete _rutasUbic[key];
-  _rutasRenderUbic();
+  appConfirm(`Las rutas que usen <strong>${key}</strong> quedarán incompletas.`, {
+    titulo: `¿Eliminar ubicación "${key}"?`, icono: '📍', labelOk: '🗑 Sí, eliminar', peligro: true
+  }).then(ok => {
+    if (!ok) return;
+    delete _rutasUbic[key];
+    _rutasRenderUbic();
+  });
 }
 
-function rutasAddUbic() {
-  const codigo = prompt('Código de la ubicación (ej: GAITE, PTA, CARTAMA):');
-  if (!codigo || !codigo.trim()) return;
+async function rutasAddUbic() {
+  const codigo = await appPrompt('Introduce el código de la nueva ubicación:', { titulo: 'Nueva ubicación', icono: '📍', placeholder: 'Ej: GAITE, PTA, CARTAMA', mayusculas: true });
+  if (!codigo) return;
   const key = codigo.trim().toUpperCase().replace(/\s+/g,'_');
-  if (_rutasUbic[key]) { alert('Ya existe esa ubicación.'); return; }
+  if (_rutasUbic[key]) { await appAlert(`Ya existe una ubicación con el código <strong>${key}</strong>.`, { titulo: 'Ubicación duplicada', icono: '⚠️' }); return; }
   _rutasUbic[key] = { dir: '', pob: '', cp: '', tel: '' };
   _rutasRenderUbic();
 }
@@ -12124,25 +12207,29 @@ function _rutasDeleteRuta(empKey, ri) {
   _rutasRenderEmp();
 }
 function _rutasDeleteEmp(empKey) {
-  if (!confirm(`¿Eliminar la empresa "${_rutasEmp[empKey]?.label || empKey}" y todas sus rutas?`)) return;
-  delete _rutasEmp[empKey];
-  _rutasRenderEmp();
+  appConfirm(`Se eliminarán la empresa y todas sus rutas asociadas.`, {
+    titulo: `¿Eliminar "${_rutasEmp[empKey]?.label || empKey}"?`, icono: '🏢', labelOk: '🗑 Sí, eliminar', peligro: true
+  }).then(ok => {
+    if (!ok) return;
+    delete _rutasEmp[empKey];
+    _rutasRenderEmp();
+  });
 }
 function _rutasAddRuta(empKey) {
   if (!_rutasEmp[empKey]) return;
   const ubics = Object.keys(_rutasUbic);
-  if (ubics.length < 2) { alert('Necesitas al menos 2 ubicaciones para crear una ruta.'); return; }
+  if (ubics.length < 2) { appAlert('Necesitas al menos 2 ubicaciones para poder crear una ruta.', { titulo: 'Sin ubicaciones suficientes', icono: '📍' }); return; }
   const origen = ubics[0], destino = ubics[1];
   const id = empKey.toLowerCase() + '-' + Date.now();
   _rutasEmp[empKey].rutas.push({ id, origen, destino, label: `${origen} → ${destino}` });
   _rutasRenderEmp();
 }
 
-function rutasAddEmpresa() {
-  const codigo = prompt('Código de la empresa (ej: JD, LD, MN):');
-  if (!codigo || !codigo.trim()) return;
+async function rutasAddEmpresa() {
+  const codigo = await appPrompt('Introduce el código de la nueva empresa:', { titulo: 'Nueva empresa', icono: '🏢', placeholder: 'Ej: JD, LD, MN', mayusculas: true });
+  if (!codigo) return;
   const key = codigo.trim().toUpperCase().replace(/\s+/g,'_');
-  if (_rutasEmp[key]) { alert('Ya existe esa empresa.'); return; }
+  if (_rutasEmp[key]) { await appAlert(`Ya existe una empresa con el código <strong>${key}</strong>.`, { titulo: 'Empresa duplicada', icono: '⚠️' }); return; }
   _rutasEmp[key] = { label: '', razon: '', nif: '', rutas: [] };
   _rutasRenderEmp();
 }
@@ -12151,11 +12238,11 @@ async function rutasGuardar() {
   // Validaciones básicas
   for (const [k, u] of Object.entries(_rutasUbic)) {
     if (!u.dir || !u.pob || !u.cp) {
-      alert(`La ubicación "${k}" tiene campos vacíos (dirección, población o CP).`); return;
+      await appAlert(`La ubicación <strong>${k}</strong> tiene campos vacíos (dirección, población o CP).`, { titulo: 'Campos incompletos', icono: '⚠️' }); return;
     }
   }
   for (const [k, e] of Object.entries(_rutasEmp)) {
-    if (!e.label) { alert(`La empresa con código "${k}" no tiene nombre.`); return; }
+    if (!e.label) { await appAlert(`La empresa con código <strong>${k}</strong> no tiene nombre.`, { titulo: 'Empresa sin nombre', icono: '⚠️' }); return; }
   }
   if (!APPS_SCRIPT_URL) { mostrarToast('⚠️ Sin URL de Apps Script configurada', 'error'); return; }
   const btnGuardar = document.querySelector('[onclick="rutasGuardar()"]');
@@ -12223,13 +12310,6 @@ async function _rutasInicializarSheets() {
   }
 }
 
-async function rutasResetDefaults() {
-  if (!confirm('¿Restablecer las rutas y empresas a los valores por defecto? Esto sobreescribirá los datos en Sheets.')) return;
-  _rutasEmp  = JSON.parse(JSON.stringify(EMPRESAS_DEFAULT));
-  _rutasUbic = JSON.parse(JSON.stringify(UBIC_DEFAULT));
-  rutasRenderAll();
-  await rutasGuardar();
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // CONFIG: DESTINATARIOS DE CORREO (incidencias y bloqueos)
@@ -12509,7 +12589,10 @@ async function eliminarLogAccion(idx) {
   if (!cont || !cont._logacData) return;
   const f = cont._logacData[idx];
   if (!f || !f.timestamp) return;
-  if (!confirm(`¿Eliminar esta entrada del log?\n\n${f.accion} · ${f.nombre||f.numUsuario}`)) return;
+  const ok = await appConfirm(`<strong>${f.accion}</strong><br><span style="color:#8899aa">${f.nombre||f.numUsuario||''}</span>`, {
+    titulo: '¿Eliminar esta entrada del log?', icono: '🗑️', labelOk: '🗑 Sí, eliminar', peligro: true
+  });
+  if (!ok) return;
 
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {

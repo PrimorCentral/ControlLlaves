@@ -577,7 +577,7 @@
     .mlr-btn:hover { background: #c63030; }
 
     /* ─── MODAL ORDEN DE TRABAJO ─── */
-    .modal-orden { background: white; border-radius: 16px; padding: 28px 26px; width: 520px; max-width: 95vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
+    .modal-orden { background: white; border-radius: 16px; padding: 28px 26px; width: 520px; max-width: 95vw; max-height: 92vh; overflow-y: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.35); display: flex; flex-direction: column; }
     .modal-orden-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
     .modal-orden-title { font-size: 16px; font-weight: 900; color: #1a1a2e; }
     .modal-orden-sub { font-size: 11px; color: #8899aa; margin-top: 3px; }
@@ -592,7 +592,15 @@
     .orden-emp-btn { flex: 1; padding: 9px; border: 1.5px solid #dde1e8; border-radius: 8px; background: white; color: #556; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
     .orden-emp-btn.active { background: #e84545; border-color: #e84545; color: white; }
     .orden-emp-btn:hover:not(.active) { border-color: #e84545; color: #e84545; }
-    .orden-rutas-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; max-height: 340px; overflow-y: auto; }
+    .orden-empresa-hint { font-size: 10px; color: #e84545; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 10px; display: none; }
+    .orden-empresa-hint.visible { display: block; }
+    .orden-rutas-wrapper { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .orden-rutas-wrapper.oculto { display: none; }
+    .orden-sin-empresa { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px 0; }
+    .orden-sin-empresa-icon { font-size: 32px; opacity: 0.3; }
+    .orden-sin-empresa-txt { font-size: 12px; color: #aab; font-weight: 600; text-align: center; }
+    .orden-rutas-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; overflow-y: auto; flex: 1; min-height: 0; }
+    .orden-rutas-bloque { display: flex; flex-direction: column; gap: 6px; flex: 1; }
     .orden-ruta-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid #dde1e8; border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none; }
     .orden-ruta-item:hover { border-color: #e84545; background: #fff5f5; }
     .orden-ruta-item.selected { border-color: #e84545; background: #fff0f0; }
@@ -1213,7 +1221,7 @@
       #modal-nueva-version .nv-box { width: 90vw; padding: 26px 18px 20px; }
       #modal-devol-pendientes .dp-box { width: 96vw; max-width: 96vw; }
       .modal-repo  { width: 96vw !important; padding: 20px 16px !important; }
-      .modal-orden { width: 96vw !important; padding: 20px 16px !important; }
+      .modal-orden { width: 96vw !important; padding: 20px 16px !important; max-height: 94vh !important; }
       .modal-admin {
         width: 99vw !important; max-width: 99vw !important;
         height: 95vh !important; max-height: 95vh !important;
@@ -2019,21 +2027,32 @@
     </div>
     <div class="orden-section-label">Empresa</div>
     <div class="orden-empresa-btns">
-      <button class="orden-emp-btn active" id="orden-emp-JD" onclick="selOrdenEmpresa('JD')">JIMENEZ &amp; DÍAZ</button>
+      <button class="orden-emp-btn" id="orden-emp-JD" onclick="selOrdenEmpresa('JD')">JIMENEZ &amp; DÍAZ</button>
       <button class="orden-emp-btn" id="orden-emp-LD" onclick="selOrdenEmpresa('LD')">LOCURA DESMEDIDA</button>
     </div>
-    <div class="orden-section-label" style="display:flex;align-items:center;gap:8px">
-      Rutas
-      <span class="orden-ruta-count" id="orden-ruta-count">0 seleccionadas</span>
+    <!-- Placeholder cuando no hay empresa seleccionada -->
+    <div class="orden-sin-empresa" id="orden-sin-empresa">
+      <div class="orden-sin-empresa-icon">🏢</div>
+      <div class="orden-sin-empresa-txt">Elige una empresa arriba<br>para ver las rutas disponibles</div>
     </div>
-    <div class="orden-sel-hint">Selecciona una o varias rutas — se imprimirán juntas en una sola hoja</div>
-    <div class="orden-rutas-lista" id="orden-rutas-lista"></div>
+
+    <!-- Rutas: sólo visible tras elegir empresa -->
+    <div class="orden-rutas-wrapper oculto" id="orden-rutas-wrapper">
+      <div class="orden-section-label" style="display:flex;align-items:center;gap:8px">
+        Rutas
+        <span class="orden-ruta-count" id="orden-ruta-count">0 seleccionadas</span>
+      </div>
+      <div class="orden-sel-hint">Selecciona una o varias rutas — se imprimirán juntas en una sola hoja</div>
+      <div class="orden-rutas-lista" id="orden-rutas-lista"></div>
+    </div>
+    <div style="flex-shrink:0">
     <div class="orden-actions">
       <button class="btn-modal-cancelar" onclick="cerrarModalOrden()">Cancelar</button>
       <button class="btn-modal-imprimir" onclick="ejecutarOrden()">🖨️ Imprimir orden</button>
     </div>
     <div style="margin-top:10px">
       <button class="btn-packing-list" onclick="abrirPackingList()">📋 IMPRIMIR PACKING LIST</button>
+    </div>
     </div>
   </div>
 </div>
@@ -5532,7 +5551,7 @@ async function abrirModalOrden(matricula, autoOpen) {
 
   // Ocultar spinner y abrir modal
   if (_cargaOrden) _cargaOrden.classList.remove('visible');
-  selOrdenEmpresa('JD');
+  resetOrdenEmpresa();
   document.getElementById('modal-orden').classList.add('open');
 
   // Si viene de autoOpen, mostrar un pequeño indicador visual
@@ -5592,11 +5611,30 @@ function imprimirPackingList() {
   iframe.contentWindow.print();
 }
 
+function resetOrdenEmpresa() {
+  _ordenEmpresaKey = null;
+  ['JD','LD'].forEach(k => {
+    const btn = document.getElementById('orden-emp-'+k);
+    if (btn) btn.classList.remove('active');
+  });
+  document.getElementById('orden-rutas-wrapper').classList.add('oculto');
+  document.getElementById('orden-sin-empresa').style.display = '';
+  document.getElementById('orden-rutas-lista').innerHTML = '';
+  const counter = document.getElementById('orden-ruta-count');
+  if (counter) counter.classList.remove('visible');
+  // Deshabilitar botón imprimir
+  const btn = document.querySelector('.btn-modal-imprimir');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.38'; btn.style.cursor = 'not-allowed'; }
+}
+
 function selOrdenEmpresa(key) {
   _ordenEmpresaKey = key;
   ['JD','LD'].forEach(k => {
     document.getElementById('orden-emp-'+k).classList.toggle('active', k===key);
   });
+  // Mostrar rutas y ocultar placeholder
+  document.getElementById('orden-sin-empresa').style.display = 'none';
+  document.getElementById('orden-rutas-wrapper').classList.remove('oculto');
   const lista = document.getElementById('orden-rutas-lista');
   lista.innerHTML = EMPRESAS[key].rutas.map(r => {
     const yaImpresa = _rutasImpresasModal.has(`${key}|${r.id}`);

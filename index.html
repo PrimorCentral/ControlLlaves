@@ -5047,10 +5047,14 @@ async function cargarCuadrante() {
     if (!_cargaCuadranteFallida) {
       actualizarCargando('Renderizando tabla…', 97);
       ocultarSplash();
-      ocultarCargando(() => {
-        renderTabla();
-        actualizarBloqueoCuadrante();
-        verificarConfig();
+      // Renderizar primero, luego esperar a que el navegador pinte, y solo entonces quitar el modal
+      renderTabla();
+      actualizarBloqueoCuadrante();
+      verificarConfig();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          ocultarCargando();
+        });
       });
     }
     _cargaCuadranteFallida = false;

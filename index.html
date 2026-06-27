@@ -4968,10 +4968,11 @@ async function cargarCuadrante() {
     // (flota/conductores con mostrarError=false: el modal de error, si hace falta,
     //  se gestiona de forma centralizada abajo para evitar condiciones de carrera
     //  cuando una de las dos termina antes que la otra)
+    // Rutas se carga en paralelo pero SIN bloquear el arranque del cuadrante
+    rutasCargarDesdeSheets();
     const [flotaOk, conductoresOk, json, jsonIncid, jsonReasig] = await Promise.all([
       cargarFlotaDesdeSheets(false),
       cargarConductoresDesdeSheets(false),
-      rutasCargarDesdeSheets(),
       fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       fetch(urlReasig, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
@@ -5047,14 +5048,10 @@ async function cargarCuadrante() {
     if (!_cargaCuadranteFallida) {
       actualizarCargando('Renderizando tabla…', 97);
       ocultarSplash();
-      // Renderizar primero, luego esperar a que el navegador pinte, y solo entonces quitar el modal
-      renderTabla();
-      actualizarBloqueoCuadrante();
-      verificarConfig();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          ocultarCargando();
-        });
+      ocultarCargando(() => {
+        renderTabla();
+        actualizarBloqueoCuadrante();
+        verificarConfig();
       });
     }
     _cargaCuadranteFallida = false;
@@ -5201,8 +5198,8 @@ function setSyncStatus(estado, msg) {
 
 function iniciarSync() {
   detenerSync();
-  // Primer sync con delay para no colisionar con el renderizado inicial
-  setTimeout(() => syncSilencioso(), 3000);
+  // Sincronizar al instante al arrancar
+  syncSilencioso();
   // Y luego cada 5 segundos
   _syncTimer = setInterval(() => syncSilencioso(), SYNC_INTERVALO);
   // Al volver a la pestaña después de estar en background → sync inmediato

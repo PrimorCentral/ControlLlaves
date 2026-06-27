@@ -5498,7 +5498,7 @@ async function abrirModalOrden(matricula, autoOpen) {
   document.getElementById('orden-matricula').textContent = matricula;
   document.getElementById('orden-operario').textContent  = d.operario;
   document.getElementById('orden-fecha').textContent     = fechaActual.split('-').reverse().join('/');
-  document.getElementById('orden-turno').textContent     = turnoActual;
+  document.getElementById('orden-turno').textContent     = turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual;
 
   // Mostrar spinner de carga inmediatamente mientras se hace el fetch
   const _cargaOrden = document.getElementById('carga-orden-overlay');
@@ -5720,7 +5720,7 @@ function imprimirOrden(matricula, operario, emp, rutas) {
             <div class="cond-campo"><div class="cond-label">Matrícula vehículo</div><div class="cond-val">${matricula}</div></div>
             <div class="cond-campo"><div class="cond-label">Ruta</div><div class="cond-val">${ruta.origen} → ${ruta.destino}</div></div>
             <div class="cond-campo"><div class="cond-label">Nº Usuario</div><div class="cond-val">${conductor ? conductor.numUsuario : '—'}</div></div>
-            <div class="cond-campo"><div class="cond-label">Turno</div><div class="cond-val">${turnoActual}</div></div>
+            <div class="cond-campo"><div class="cond-label">Turno</div><div class="cond-val">${turnoActual === 'MANANA' ? 'MAÑANA' : turnoActual}</div></div>
           </div>
         </div>
         <div class="obs-box"><div class="obs-label">Observaciones</div></div>

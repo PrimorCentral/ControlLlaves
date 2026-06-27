@@ -2546,6 +2546,11 @@
             <div class="config-menu-title">Log de Acciones</div>
             <div class="config-menu-desc">Historial de todo lo que han hecho los usuarios: login, cuadrante, incidencias, vehículos, repostajes…</div>
           </div>
+          <div class="config-menu-card" onclick="abrirConfigSeccion('rutas')">
+            <div class="config-menu-icon">🗺️</div>
+            <div class="config-menu-title">Rutas y Empresas</div>
+            <div class="config-menu-desc">Gestiona las empresas, sus rutas de reparto y las ubicaciones/almacenes disponibles.</div>
+          </div>
         </div>
 
         <!-- SECCIÓN: CONEXIÓN -->
@@ -2694,6 +2699,41 @@
             <div id="logac-resultado" style="display:flex;flex-direction:column;gap:0">
               <div style="text-align:center;padding:24px 0;color:#b0bac8;font-size:12px;font-weight:600">Pulsa «Buscar» para ver el log de acciones</div>
             </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: RUTAS Y EMPRESAS -->
+        <div class="config-section-panel" id="config-section-rutas">
+          <button class="config-back-btn" onclick="volverConfigMenu()">← Volver al menú</button>
+
+          <!-- UBICACIONES -->
+          <div class="admin-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+              <div>
+                <div class="admin-section-title" style="margin-bottom:2px">📍 Ubicaciones / Almacenes</div>
+                <div style="font-size:11px;color:#8899aa;font-weight:600">Puntos de origen/destino disponibles para las rutas</div>
+              </div>
+              <button class="btn-add-item" onclick="rutasAddUbic()" style="background:#3b5bdb">+ Añadir ubicación</button>
+            </div>
+            <div id="rutas-ubic-lista" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+
+          <!-- EMPRESAS -->
+          <div class="admin-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+              <div>
+                <div class="admin-section-title" style="margin-bottom:2px">🏢 Empresas y Rutas</div>
+                <div style="font-size:11px;color:#8899aa;font-weight:600">Cada empresa tiene su propio conjunto de rutas</div>
+              </div>
+              <button class="btn-add-item" onclick="rutasAddEmpresa()">+ Añadir empresa</button>
+            </div>
+            <div id="rutas-emp-lista" style="display:flex;flex-direction:column;gap:14px;"></div>
+          </div>
+
+          <!-- GUARDAR -->
+          <div style="display:flex;justify-content:flex-end;gap:10px;padding:4px 0 8px">
+            <button onclick="rutasResetDefaults()" style="padding:10px 20px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">↺ Restablecer por defecto</button>
+            <button onclick="rutasGuardar()" style="padding:10px 28px;background:#16a34a;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:1px;">💾 Guardar cambios</button>
           </div>
         </div>
 
@@ -3238,9 +3278,9 @@ let CONDUCTORES = [];
 const GRUPOS = [];
 
 // ════════════════════════════════════════════════════════════════════════════
-// DATOS: EMPRESAS Y RUTAS
+// DATOS: EMPRESAS Y RUTAS  (editables desde Panel Admin → Config → Rutas)
 // ════════════════════════════════════════════════════════════════════════════
-const EMPRESAS = {
+const EMPRESAS_DEFAULT = {
   JD: {
     label: 'JIMENEZ & DIAZ LOGISTICA',
     razon: 'JIMENEZ&DIAZ LOGISTICA SL',
@@ -3267,11 +3307,29 @@ const EMPRESAS = {
   },
 };
 
-const UBIC = {
+const UBIC_DEFAULT = {
   GAITE:   { dir: 'C/ ESCRITORA CARMEN MARTIN GAITE 10', pob: 'MALAGA', cp: '29196', tel: '628699621' },
   PTA:     { dir: 'C/ CHARLES DARWIN Nº 7', pob: 'MALAGA', cp: '29590', tel: '628699621' },
   CARTAMA: { dir: 'C/ MATILDE UCELAY', pob: 'CARTAMA - MALAGA', cp: '29570', tel: '628699621' },
 };
+
+function _cargarEmpresasConfig() {
+  try {
+    const raw = localStorage.getItem('primor_empresas_config');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(EMPRESAS_DEFAULT));
+}
+function _cargarUbicConfig() {
+  try {
+    const raw = localStorage.getItem('primor_ubic_config');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(UBIC_DEFAULT));
+}
+
+let EMPRESAS = _cargarEmpresasConfig();
+let UBIC = _cargarUbicConfig();
 
 // ════════════════════════════════════════════════════════════════════════════
 // COLUMNAS del cuadrante (sin operario — va aparte como dropdown)
@@ -4913,6 +4971,7 @@ async function cargarCuadrante() {
     const [flotaOk, conductoresOk, json, jsonIncid, jsonReasig] = await Promise.all([
       cargarFlotaDesdeSheets(false),
       cargarConductoresDesdeSheets(false),
+      rutasCargarDesdeSheets(),
       fetch(urlCuadrante, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       fetch(urlIncid, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
       fetch(urlReasig, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
@@ -11870,6 +11929,7 @@ function abrirConfigSeccion(id) {
     cargarConfigPassSyncStatus();
   }
   if (id === 'destinatarios') cargarDestinatariosUI();
+  if (id === 'rutas') rutasRenderAll();
   if (id === 'logacciones') {
     // Prefill con hoy
     const hoy = new Date().toISOString().substring(0,10);
@@ -11885,6 +11945,251 @@ function volverConfigMenu() {
   const menu = document.getElementById('config-menu');
   if (menu) menu.style.display = 'grid';
   document.querySelectorAll('.config-section-panel').forEach(p => p.classList.remove('active'));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CONFIG: RUTAS Y EMPRESAS
+// ════════════════════════════════════════════════════════════════════════════
+
+// Estado temporal de edición (se sincroniza con EMPRESAS/UBIC al guardar)
+let _rutasEmp  = {};
+let _rutasUbic = {};
+
+function rutasRenderAll() {
+  _rutasEmp  = JSON.parse(JSON.stringify(EMPRESAS));
+  _rutasUbic = JSON.parse(JSON.stringify(UBIC));
+  _rutasRenderUbic();
+  _rutasRenderEmp();
+}
+
+/* ── UBICACIONES ── */
+function _rutasRenderUbic() {
+  const lista = document.getElementById('rutas-ubic-lista');
+  if (!lista) return;
+  const keys = Object.keys(_rutasUbic);
+  if (!keys.length) {
+    lista.innerHTML = '<div style="font-size:12px;color:#b0bac8;padding:8px 0">No hay ubicaciones definidas</div>';
+    return;
+  }
+  lista.innerHTML = keys.map(k => {
+    const u = _rutasUbic[k];
+    return `<div style="display:grid;grid-template-columns:90px 1fr 1fr 90px 110px auto;gap:6px;align-items:center;background:#f7f8fa;border:1px solid #dde1e8;border-radius:8px;padding:8px 10px;">
+      <div style="font-size:11px;font-weight:900;color:#1a1a2e;letter-spacing:1px;">${k}</div>
+      <input value="${u.dir||''}" placeholder="Dirección" oninput="_rutasUbicEdit('${k}','dir',this.value)"
+        style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+      <input value="${u.pob||''}" placeholder="Población" oninput="_rutasUbicEdit('${k}','pob',this.value)"
+        style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+      <input value="${u.cp||''}" placeholder="C.P." oninput="_rutasUbicEdit('${k}','cp',this.value)"
+        style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+      <input value="${u.tel||''}" placeholder="Teléfono" oninput="_rutasUbicEdit('${k}','tel',this.value)"
+        style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+      <button onclick="_rutasDeleteUbic('${k}')" title="Eliminar ubicación"
+        style="padding:6px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-weight:900;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function _rutasUbicEdit(key, field, val) {
+  if (_rutasUbic[key]) _rutasUbic[key][field] = val.trim();
+}
+
+function _rutasDeleteUbic(key) {
+  if (!confirm(`¿Eliminar la ubicación "${key}"? Las rutas que la usen quedarán incompletas.`)) return;
+  delete _rutasUbic[key];
+  _rutasRenderUbic();
+}
+
+function rutasAddUbic() {
+  const codigo = prompt('Código de la ubicación (ej: GAITE, PTA, CARTAMA):');
+  if (!codigo || !codigo.trim()) return;
+  const key = codigo.trim().toUpperCase().replace(/\s+/g,'_');
+  if (_rutasUbic[key]) { alert('Ya existe esa ubicación.'); return; }
+  _rutasUbic[key] = { dir: '', pob: '', cp: '', tel: '' };
+  _rutasRenderUbic();
+}
+
+/* ── EMPRESAS ── */
+function _rutasRenderEmp() {
+  const lista = document.getElementById('rutas-emp-lista');
+  if (!lista) return;
+  const keys = Object.keys(_rutasEmp);
+  if (!keys.length) {
+    lista.innerHTML = '<div style="font-size:12px;color:#b0bac8;padding:8px 0">No hay empresas definidas</div>';
+    return;
+  }
+  lista.innerHTML = keys.map(empKey => {
+    const emp = _rutasEmp[empKey];
+    const rutasHTML = (emp.rutas||[]).map((r, ri) => {
+      const orOpts = Object.keys(_rutasUbic).map(k => `<option value="${k}" ${r.origen===k?'selected':''}>${k}</option>`).join('');
+      const dstOpts = Object.keys(_rutasUbic).map(k => `<option value="${k}" ${r.destino===k?'selected':''}>${k}</option>`).join('');
+      return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center;padding:6px 8px;background:#fff;border:1px solid #e8eaf0;border-radius:7px;">
+        <select onchange="_rutasRutaEdit('${empKey}',${ri},'origen',this.value)"
+          style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+          ${orOpts}
+        </select>
+        <select onchange="_rutasRutaEdit('${empKey}',${ri},'destino',this.value)"
+          style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+          ${dstOpts}
+        </select>
+        <input value="${r.label||''}" placeholder="Etiqueta (ej: GAITE → PTA)"
+          oninput="_rutasRutaEdit('${empKey}',${ri},'label',this.value)"
+          style="padding:6px 8px;border:1.5px solid #dde1ea;border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;outline:none;">
+        <button onclick="_rutasDeleteRuta('${empKey}',${ri})"
+          style="padding:6px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-weight:900;">✕</button>
+      </div>`;
+    }).join('');
+
+    return `<div style="border:1.5px solid #dde1e8;border-radius:10px;overflow:hidden;">
+      <!-- Cabecera empresa -->
+      <div style="background:#1a1a2e;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:11px;font-weight:900;color:rgba(255,255,255,0.4);letter-spacing:1.5px;text-transform:uppercase;min-width:32px;">${empKey}</div>
+        <input value="${emp.label||''}" placeholder="Nombre empresa" oninput="_rutasEmpEdit('${empKey}','label',this.value)"
+          style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#fff;outline:none;">
+        <input value="${emp.razon||''}" placeholder="Razón social" oninput="_rutasEmpEdit('${empKey}','razon',this.value)"
+          style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#ccd;outline:none;">
+        <input value="${emp.nif||''}" placeholder="NIF" oninput="_rutasEmpEdit('${empKey}','nif',this.value)"
+          style="width:130px;padding:6px 10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-family:Barlow,sans-serif;font-size:12px;color:#ccd;outline:none;">
+        <button onclick="_rutasDeleteEmp('${empKey}')"
+          style="padding:6px 12px;background:#dc2626;color:white;border:none;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">✕ Borrar</button>
+      </div>
+      <!-- Rutas de esta empresa -->
+      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:#fafbfc;">
+        <div style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">Rutas — Origen / Destino / Etiqueta</div>
+        ${rutasHTML || '<div style="font-size:12px;color:#b0bac8;padding:4px 0">Sin rutas</div>'}
+        <button onclick="_rutasAddRuta('${empKey}')"
+          style="margin-top:4px;padding:7px 14px;background:#e0e7ff;color:#3730a3;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;align-self:flex-start;">+ Añadir ruta</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _rutasEmpEdit(empKey, field, val) {
+  if (_rutasEmp[empKey]) _rutasEmp[empKey][field] = val.trim();
+}
+function _rutasRutaEdit(empKey, ri, field, val) {
+  if (_rutasEmp[empKey] && _rutasEmp[empKey].rutas[ri]) {
+    _rutasEmp[empKey].rutas[ri][field] = val.trim();
+    // Auto-actualizar label si cambian origen/destino y el label coincide con el patrón auto
+    if (field === 'origen' || field === 'destino') {
+      const r = _rutasEmp[empKey].rutas[ri];
+      if (!r.label || r.label.match(/^[A-Z_]+ → [A-Z_]+$/)) {
+        r.label = `${r.origen} → ${r.destino}`;
+        _rutasRenderEmp(); // re-render para actualizar el input de label
+      }
+    }
+  }
+}
+function _rutasDeleteRuta(empKey, ri) {
+  if (!_rutasEmp[empKey]) return;
+  _rutasEmp[empKey].rutas.splice(ri, 1);
+  _rutasRenderEmp();
+}
+function _rutasDeleteEmp(empKey) {
+  if (!confirm(`¿Eliminar la empresa "${_rutasEmp[empKey]?.label || empKey}" y todas sus rutas?`)) return;
+  delete _rutasEmp[empKey];
+  _rutasRenderEmp();
+}
+function _rutasAddRuta(empKey) {
+  if (!_rutasEmp[empKey]) return;
+  const ubics = Object.keys(_rutasUbic);
+  if (ubics.length < 2) { alert('Necesitas al menos 2 ubicaciones para crear una ruta.'); return; }
+  const origen = ubics[0], destino = ubics[1];
+  const id = empKey.toLowerCase() + '-' + Date.now();
+  _rutasEmp[empKey].rutas.push({ id, origen, destino, label: `${origen} → ${destino}` });
+  _rutasRenderEmp();
+}
+
+function rutasAddEmpresa() {
+  const codigo = prompt('Código de la empresa (ej: JD, LD, MN):');
+  if (!codigo || !codigo.trim()) return;
+  const key = codigo.trim().toUpperCase().replace(/\s+/g,'_');
+  if (_rutasEmp[key]) { alert('Ya existe esa empresa.'); return; }
+  _rutasEmp[key] = { label: '', razon: '', nif: '', rutas: [] };
+  _rutasRenderEmp();
+}
+
+async function rutasGuardar() {
+  // Validaciones básicas
+  for (const [k, u] of Object.entries(_rutasUbic)) {
+    if (!u.dir || !u.pob || !u.cp) {
+      alert(`La ubicación "${k}" tiene campos vacíos (dirección, población o CP).`); return;
+    }
+  }
+  for (const [k, e] of Object.entries(_rutasEmp)) {
+    if (!e.label) { alert(`La empresa con código "${k}" no tiene nombre.`); return; }
+  }
+  if (!APPS_SCRIPT_URL) { mostrarToast('⚠️ Sin URL de Apps Script configurada', 'error'); return; }
+  const btnGuardar = document.querySelector('[onclick="rutasGuardar()"]');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Guardando…'; }
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'guardarRutas', empresas: _rutasEmp, ubicaciones: _rutasUbic })
+    });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error desconocido');
+    // Actualizar variables en memoria
+    EMPRESAS = JSON.parse(JSON.stringify(_rutasEmp));
+    UBIC     = JSON.parse(JSON.stringify(_rutasUbic));
+    mostrarToast('✓ Rutas y empresas guardadas en Sheets', 'ok');
+  } catch(e) {
+    mostrarToast('❌ Error al guardar: ' + e.message, 'error');
+  } finally {
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = '💾 Guardar cambios'; }
+  }
+}
+
+async function rutasCargarDesdeSheets() {
+  if (!APPS_SCRIPT_URL) return false;
+  try {
+    const resp = await fetch(`${APPS_SCRIPT_URL}?accion=cargarRutas`, { redirect: 'follow' });
+    const json = await resp.json();
+    if (json.ok && json.empresas && json.ubicaciones
+        && Object.keys(json.empresas).length > 0) {
+      EMPRESAS = json.empresas;
+      UBIC     = json.ubicaciones;
+      return true;
+    }
+    // Hoja vacía o no existe todavía → subir los datos por defecto automáticamente
+    console.log('[Rutas] Hoja vacía o inexistente — inicializando Sheets con datos por defecto…');
+    await _rutasInicializarSheets();
+    return true;
+  } catch(e) {
+    console.warn('[Rutas] Error al cargar desde Sheets:', e);
+    return false;
+  }
+}
+
+async function _rutasInicializarSheets() {
+  // Sube EMPRESAS_DEFAULT + UBIC_DEFAULT a Sheets sin tocar EMPRESAS/UBIC en memoria
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        accion: 'guardarRutas',
+        empresas:    EMPRESAS_DEFAULT,
+        ubicaciones: UBIC_DEFAULT
+      })
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      console.log('[Rutas] Datos por defecto subidos a Sheets correctamente ✓');
+    } else {
+      console.warn('[Rutas] Error al inicializar Sheets:', json.error);
+    }
+  } catch(e) {
+    console.warn('[Rutas] No se pudo inicializar Sheets:', e);
+  }
+}
+
+async function rutasResetDefaults() {
+  if (!confirm('¿Restablecer las rutas y empresas a los valores por defecto? Esto sobreescribirá los datos en Sheets.')) return;
+  _rutasEmp  = JSON.parse(JSON.stringify(EMPRESAS_DEFAULT));
+  _rutasUbic = JSON.parse(JSON.stringify(UBIC_DEFAULT));
+  rutasRenderAll();
+  await rutasGuardar();
 }
 
 // ════════════════════════════════════════════════════════════════════════════

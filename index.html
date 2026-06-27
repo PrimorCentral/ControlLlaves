@@ -1634,6 +1634,7 @@
       vertical-align: middle; flex-shrink: 0;
     }
     .mat-badge-info.has-data { background: #16a34a; }
+    .mat-badge-info.has-data-expired { background: #dc2626; }
   </style>
 </head>
 <body>
@@ -4327,7 +4328,7 @@ function renderTabla() {
       // Columna matrícula
       html += `<td style="min-width:175px"><div class="col-mat-cell">
         <div class="estado-dot ${devuelto?'asignado':''} ${!devuelto&&asignado&&!esBloqueado?'pendiente':''}"></div>
-        <div class="mat-badge" onclick="abrirFichaVehiculo('${esc(v.matricula)}')" title="Ver ficha del vehículo">${esc(v.matricula)}<span class="mat-badge-info ${_tieneSeguro(v.matricula)?'has-data':''}">i</span></div>
+        <div class="mat-badge" onclick="abrirFichaVehiculo('${esc(v.matricula)}')" title="Ver ficha del vehículo">${esc(v.matricula)}<span class="mat-badge-info ${_seguroVencido(v.matricula)?'has-data-expired':_tieneSeguro(v.matricula)?'has-data':''}">i</span></div>
         <div class="tipo-tag">${esc(v.tipo)}${v.nota?' · '+v.nota:''}${esBloqueado?` <span class="badge-no-disponible">⛔ NO DISPONIBLE</span>`:''}${reasignado?` <span class="badge-reasig" onclick="verDetalleReasignacion('${esc(v.matricula)}')" style="cursor:pointer" title="Ver asignación anterior">↺ Reasignado</span>`:''}</div>
       </div></td>`;
 
@@ -6788,6 +6789,13 @@ function _getVehiculo(matricula) {
 function _tieneSeguro(matricula) {
   const v = _getVehiculo(matricula);
   return v && (v.seguro_aseguradora || v.seguro_nombre || v.seguro_tel || v.seguro_poliza);
+}
+function _seguroVencido(matricula) {
+  const v = _getVehiculo(matricula);
+  if (!v || !v.seguro_vencimiento) return false;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const venc = new Date(v.seguro_vencimiento); venc.setHours(0,0,0,0);
+  return venc < hoy;
 }
 // ── FICHA TÉCNICA PRO ────────────────────────────────────────────────────────
 // Google Drive — documentos gestionados via GAS

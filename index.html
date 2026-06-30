@@ -10922,12 +10922,13 @@ function exportarResumenMensualPDF() {
   if (multiPage && y > pageH - margin - totalRowH) { doc.addPage('a4','landscape'); y = margin; header(); }
   doc.setFillColor(26,26,46);
   doc.rect(margin, y, colMat + colTotal + colKm + colDia*d.diasEnMes, totalRowH, 'F');
+  const xFinDias = margin + colMat + colDia*d.diasEnMes;
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
-  doc.text('TOTAL GENERAL', margin + colMat + colDia*d.diasEnMes - 30, y + totalRowH/2 + 1.4);
+  doc.text('TOTAL GENERAL', xFinDias - 2, y + totalRowH/2 + 1.4, { align:'right' });
   doc.setTextColor(180, 150, 255);
-  doc.text(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', margin + colMat + colDia*d.diasEnMes + colTotal - 1.5, y + totalRowH/2 + 1.4, { align:'right' });
-  doc.setFontSize(7); doc.setTextColor(120,220,200);
-  doc.text(d.totalKmGeneral.toLocaleString('es-ES')+' km', margin + colMat + colDia*d.diasEnMes + colTotal + colKm - 1.5, y + totalRowH/2 + 1.4, { align:'right' });
+  fitTextRight(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', xFinDias + colTotal - 1.5, y + totalRowH/2 + 1.4, colTotal - 2.5, 8);
+  doc.setTextColor(120,220,200);
+  fitTextRight(d.totalKmGeneral.toLocaleString('es-ES')+' km', xFinDias + colTotal + colKm - 1.5, y + totalRowH/2 + 1.4, colKm - 2.5, 7);
 
   doc.save(`resumen_gasoil_${d.anioMes}.pdf`);
 }

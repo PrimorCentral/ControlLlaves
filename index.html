@@ -10614,15 +10614,27 @@ function exportarResumenMensualPDF() {
   const pageW = 297, pageH = 210, margin = 5;
   const colMat = 30, colTotal = 22;
   const colDia = Math.max(7.4, (pageW - margin*2 - colMat - colTotal) / d.diasEnMes);
-  const rowH = 5.2;
+  const bannerH = 14;
+  const startY = bannerH + 4;        // donde empieza la tabla (debajo del banner oscuro)
+  const tableHeadH = 5.4;            // alto fijo de la fila de cabecera de columnas
+  const totalRowH = 7;               // alto fijo de la fila TOTAL GENERAL
+  const nVeh = d.vehiculos.length;
   const nombreMes = new Date(d.anio, d.mes-1, 1).toLocaleDateString('es-ES', { month:'long' }).toUpperCase();
+
+  // ── Altura de fila dinámica: que TODOS los vehículos quepan en una sola página ──
+  const availH = (pageH - margin) - startY - tableHeadH - totalRowH - 2;
+  let rowH = availH / (nVeh * 2);
+  let multiPage = false;
+  if (rowH < 2.6) { rowH = 2.6; multiPage = true; }   // si hay demasiados vehículos, no bajar de un mínimo legible
+  if (rowH > 5.2) rowH = 5.2;
+  const f = rowH / 5.2; // factor de escala para fuentes y posiciones, basado en el tamaño "de referencia"
 
   // Escribe texto alineado a la derecha encogiendo el tamaño de fuente si no cabe en maxW
   function fitTextRight(txt, xRight, yPos, maxW, startSize) {
-    let size = startSize;
+    let size = Math.max(3.0, startSize);
     doc.setFontSize(size);
-    while (size > 3.6 && doc.getTextWidth(txt) > maxW) {
-      size -= 0.3;
+    while (size > 2.8 && doc.getTextWidth(txt) > maxW) {
+      size -= 0.25;
       doc.setFontSize(size);
     }
     doc.text(txt, xRight, yPos, { align: 'right' });
@@ -10640,52 +10652,51 @@ function exportarResumenMensualPDF() {
 
   function header() {
     doc.setFillColor(26,26,46);
-    doc.rect(0, 0, pageW, 14, 'F');
+    doc.rect(0, 0, pageW, bannerH, 'F');
     doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(255,255,255);
     doc.text(`CONTROL GASOIL — ${nombreMes} ${d.anio}`, margin, 9);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(180,185,200);
     doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, pageW - margin, 9, { align:'right' });
-    y = 18;
+    y = startY;
     // Cabecera de tabla
     doc.setFillColor(26,26,46);
-    doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, rowH, 'F');
+    doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, tableHeadH, 'F');
     doc.setFontSize(6); doc.setTextColor(255,255,255); doc.setFont('helvetica','bold');
-    doc.text('MATRÍCULA', margin + 2, y + 3.2);
+    doc.text('MATRÍCULA', margin + 2, y + 3.5);
     let x = margin + colMat;
     for (let i=1; i<=d.diasEnMes; i++) {
-      doc.text(String(i).padStart(2,'0'), x + colDia/2, y + 3.2, { align:'center' });
+      doc.text(String(i).padStart(2,'0'), x + colDia/2, y + 3.5, { align:'center' });
       x += colDia;
     }
-    doc.text('TOTAL', x + colTotal/2, y + 3.2, { align:'center' });
-    y += rowH;
+    doc.text('TOTAL', x + colTotal/2, y + 3.5, { align:'center' });
+    y += tableHeadH;
   }
 
   header();
 
   d.vehiculos.forEach((v, idx) => {
-    if (y > pageH - 16) { doc.addPage('a4','landscape'); y = margin; header(); }
+    if (multiPage && y > pageH - margin - (totalRowH + rowH*2 + 2)) { doc.addPage('a4','landscape'); y = margin; header(); }
     const bgGris = [238,240,245];
-    // Fila importe
     doc.setDrawColor(225,228,235);
     doc.setFillColor(...(idx % 2 === 0 ? [255,255,255] : [250,251,253]));
     doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, rowH*2, 'F');
     doc.setFillColor(...bgGris);
     doc.rect(margin, y, colMat, rowH*2, 'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(26,26,46);
-    fitTextLeft(v.matricula, margin + 2, y + 3.6, colMat - 3);
-    doc.setFont('helvetica','normal'); doc.setFontSize(5);
+    doc.setFont('helvetica','bold'); doc.setFontSize(Math.max(4.2, 6.5*f)); doc.setTextColor(26,26,46);
+    fitTextLeft(v.matricula, margin + 2, y + 3.6*f, colMat - 3);
+    doc.setFont('helvetica','normal'); doc.setFontSize(Math.max(3.4, 5*f));
     doc.setTextColor(120,128,145);
-    fitTextLeft((v.tipo||''), margin + 2, y + 7.6, colMat - 3);
+    fitTextLeft((v.tipo||''), margin + 2, y + rowH + 2.6*f, colMat - 3);
 
     let x = margin + colMat;
     v.porDia.forEach(dia => {
       doc.setTextColor(26,26,46); doc.setFont('helvetica','bold');
       if (dia.importe) {
-        fitTextRight(dia.importe.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€', x + colDia - 1, y + 3.6, colDia - 1.5, 5.8);
+        fitTextRight(dia.importe.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€', x + colDia - 1, y + 3.6*f, colDia - 1.5, Math.max(4.2,5.8*f));
       }
       doc.setTextColor(140,150,165); doc.setFont('helvetica','normal');
       if (dia.km !== null) {
-        fitTextRight(dia.km.toLocaleString('es-ES'), x + colDia - 1, y + 8.4, colDia - 1.5, 5.4);
+        fitTextRight(dia.km.toLocaleString('es-ES'), x + colDia - 1, y + rowH + 3.2*f, colDia - 1.5, Math.max(3.4,5.4*f));
       }
       doc.setDrawColor(230,233,240); doc.line(x, y, x, y + rowH*2);
       x += colDia;
@@ -10693,20 +10704,20 @@ function exportarResumenMensualPDF() {
     doc.setFillColor(...bgGris);
     doc.rect(x, y, colTotal, rowH*2, 'F');
     doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46);
-    fitTextRight(v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', x + colTotal - 1.5, y + 6.0, colTotal - 2.5, 6.8);
+    fitTextRight(v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', x + colTotal - 1.5, y + rowH + 0.8*f, colTotal - 2.5, Math.max(4.6,6.8*f));
     doc.setDrawColor(210,213,222);
     doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, rowH*2);
     y += rowH*2;
   });
 
   // Total general
-  if (y > pageH - 12) { doc.addPage('a4','landscape'); y = margin; header(); }
+  if (multiPage && y > pageH - margin - totalRowH) { doc.addPage('a4','landscape'); y = margin; header(); }
   doc.setFillColor(26,26,46);
-  doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, 7, 'F');
+  doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, totalRowH, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
-  doc.text('TOTAL GENERAL', margin + colMat + colDia*d.diasEnMes - 30, y + 4.6);
+  doc.text('TOTAL GENERAL', margin + colMat + colDia*d.diasEnMes - 30, y + totalRowH/2 + 1.4);
   doc.setTextColor(180, 150, 255);
-  doc.text(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', margin + colMat + colDia*d.diasEnMes + colTotal - 1.5, y + 4.6, { align:'right' });
+  doc.text(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', margin + colMat + colDia*d.diasEnMes + colTotal - 1.5, y + totalRowH/2 + 1.4, { align:'right' });
 
   doc.save(`resumen_gasoil_${d.anioMes}.pdf`);
 }

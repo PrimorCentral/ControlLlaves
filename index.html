@@ -10771,8 +10771,8 @@ function _renderResumenMensual() {
         <td rowspan="2" style="font-weight:900;font-size:11px;background:#eef0f5;vertical-align:middle;white-space:nowrap">${esc(v.matricula)}<div style="font-size:9px;font-weight:600;color:#8899aa">${esc(v.tipo||'')}</div></td>
         <td style="font-size:9px;font-weight:800;color:#92600a;background:#fdf6e8">€/KM</td>
         ${celdasImporte}
-        <td rowspan="2" style="text-align:right;font-weight:900;font-size:12px;color:#1a1a2e;background:#eef0f5;vertical-align:middle;white-space:nowrap">${v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
-        <td rowspan="2" style="text-align:right;font-weight:900;font-size:12px;color:#0f9d8c;background:#eafaf8;vertical-align:middle;white-space:nowrap">${v.totalKm !== null ? v.totalKm.toLocaleString('es-ES')+' km' : '—'}</td>
+        <td rowspan="2" style="text-align:center;font-weight:900;font-size:13px;color:#1a1a2e;background:#eef0f5;vertical-align:middle;white-space:nowrap">${v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+        <td rowspan="2" style="text-align:center;font-weight:900;font-size:14px;color:#0f9d8c;background:#eafaf8;vertical-align:middle;white-space:nowrap">${v.totalKm !== null ? v.totalKm.toLocaleString('es-ES')+' km' : '—'}</td>
       </tr>
       <tr style="background:${bg}">
         <td style="font-size:9px;font-weight:800;color:#556;background:#f4f6fb">KM</td>
@@ -10796,8 +10796,8 @@ function _renderResumenMensual() {
         <tfoot>
           <tr style="background:#1a1a2e;color:white;">
             <td colspan="${d.diasEnMes+2}" style="padding:9px 14px;text-align:right;font-size:12px;font-weight:800;letter-spacing:0.5px;">TOTAL GENERAL</td>
-            <td style="padding:9px 14px;text-align:right;font-size:14px;font-weight:900;color:#6c3ce8;background:#f4f0ff;">${d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
-            <td style="padding:9px 14px;text-align:right;font-size:12px;font-weight:900;color:#0f9d8c;background:#eafaf8;">${d.totalKmGeneral.toLocaleString('es-ES')} km</td>
+            <td style="padding:9px 14px;text-align:center;font-size:15px;font-weight:900;color:#6c3ce8;background:#f4f0ff;">${d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+            <td style="padding:9px 14px;text-align:center;font-size:15px;font-weight:900;color:#0f9d8c;background:#eafaf8;">${d.totalKmGeneral.toLocaleString('es-ES')} km</td>
           </tr>
         </tfoot>
       </table>
@@ -10841,6 +10841,17 @@ function exportarResumenMensualPDF() {
       doc.setFontSize(size);
     }
     doc.text(txt, xRight, yPos, { align: 'right' });
+  }
+
+  // Escribe texto centrado encogiendo el tamaño de fuente si no cabe en maxW
+  function fitTextCenter(txt, xCenter, yPos, maxW, startSize) {
+    let size = Math.max(3.0, startSize);
+    doc.setFontSize(size);
+    while (size > 2.8 && doc.getTextWidth(txt) > maxW) {
+      size -= 0.25;
+      doc.setFontSize(size);
+    }
+    doc.text(txt, xCenter, yPos, { align: 'center' });
   }
 
   // Trunca texto con "…" para que quepa en maxW (usa fuente ya seleccionada en doc)
@@ -10908,11 +10919,11 @@ function exportarResumenMensualPDF() {
     doc.setFillColor(...bgGris);
     doc.rect(x, y, colTotal, rowH*2, 'F');
     doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46);
-    fitTextRight(v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', x + colTotal - 1.5, y + rowH + 0.8*f, colTotal - 2.5, Math.max(4.6,6.8*f));
+    fitTextCenter(v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', x + colTotal/2, y + rowH + 0.8*f, colTotal - 2.5, Math.max(4.6,6.8*f));
     doc.setFillColor(234,250,248);
     doc.rect(x + colTotal, y, colKm, rowH*2, 'F');
     doc.setFont('helvetica','bold'); doc.setTextColor(15,157,140);
-    fitTextRight(v.totalKm !== null ? v.totalKm.toLocaleString('es-ES')+' km' : '—', x + colTotal + colKm - 1.5, y + rowH + 0.8*f, colKm - 2.5, Math.max(4.0,6.0*f));
+    fitTextCenter(v.totalKm !== null ? v.totalKm.toLocaleString('es-ES')+' km' : '—', x + colTotal + colKm/2, y + rowH + 0.8*f, colKm - 2.5, Math.max(5.2,7.4*f));
     doc.setDrawColor(210,213,222);
     doc.rect(margin, y, colMat + colTotal + colKm + colDia*d.diasEnMes, rowH*2);
     y += rowH*2;
@@ -10926,9 +10937,9 @@ function exportarResumenMensualPDF() {
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
   doc.text('TOTAL GENERAL', xFinDias - 2, y + totalRowH/2 + 1.4, { align:'right' });
   doc.setTextColor(180, 150, 255);
-  fitTextRight(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', xFinDias + colTotal - 1.5, y + totalRowH/2 + 1.4, colTotal - 2.5, 8);
+  fitTextCenter(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', xFinDias + colTotal/2, y + totalRowH/2 + 1.4, colTotal - 2.5, 9);
   doc.setTextColor(120,220,200);
-  fitTextRight(d.totalKmGeneral.toLocaleString('es-ES')+' km', xFinDias + colTotal + colKm - 1.5, y + totalRowH/2 + 1.4, colKm - 2.5, 7);
+  fitTextCenter(d.totalKmGeneral.toLocaleString('es-ES')+' km', xFinDias + colTotal + colKm/2, y + totalRowH/2 + 1.4, colKm - 2.5, 9);
 
   doc.save(`resumen_gasoil_${d.anioMes}.pdf`);
 }

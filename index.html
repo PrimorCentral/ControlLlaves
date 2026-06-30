@@ -3102,6 +3102,19 @@
         </div>
       </div>
 
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Hora de entrega</label>
+          <input type="time" id="manual-hora-entrega"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Hora de devolución</label>
+          <input type="time" id="manual-hora-devolucion"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;">
+        </div>
+      </div>
+
       <!-- Chofer / conductor que repostó -->
       <div style="position:relative;">
         <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Chofer / conductor</label>
@@ -10927,7 +10940,7 @@ async function abrirModalRegistroManual() {
   }
 
   // Reset de campos
-  ['manual-repo-fecha','manual-repo-km','manual-repo-tarjeta','manual-repo-ticket-ref','manual-repo-importe'].forEach(id => {
+  ['manual-repo-fecha','manual-repo-km','manual-repo-tarjeta','manual-repo-ticket-ref','manual-repo-importe','manual-hora-entrega','manual-hora-devolucion'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   ['manual-resp-entrega-input','manual-resp-recibe-input','manual-chofer-input'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -11062,6 +11075,8 @@ async function guardarRegistroManual() {
   const gasoilDespues= document.getElementById('manual-gasoil-despues').value;
   const adblueAntes  = sinAdblue ? 'N/A' : document.getElementById('manual-adblue-antes').value;
   const adblueDespues= sinAdblue ? 'N/A' : document.getElementById('manual-adblue-despues').value;
+  const horaEntrega    = document.getElementById('manual-hora-entrega').value || '00:00';
+  const horaDevolucion = document.getElementById('manual-hora-devolucion').value || horaEntrega;
 
   if (!fecha)       { mostrarToast('Indica la fecha del repostaje', 'error'); return; }
   if (!matricula)   { mostrarToast('Selecciona la matrícula', 'error'); return; }
@@ -11083,7 +11098,7 @@ async function guardarRegistroManual() {
         usuario_chofer:  chofer,
         kilometraje:     km,
         num_tarjeta:     tarjeta || 'MANUAL',
-        hora_entrega:    '00:00',
+        hora_entrega:    horaEntrega,
         gasoil_antes:    gasoilAntes,
         adblue_antes:    adblueAntes,
         resp_entrega:    respEntrega,
@@ -11111,7 +11126,7 @@ async function guardarRegistroManual() {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ accion: 'completarRepostaje', repostaje: {
         id:              repoId,
-        hora_devolucion: '00:00',
+        hora_devolucion: horaDevolucion,
         gasoil_despues:  gasoilDespues,
         adblue_despues:  adblueDespues,
         ticket_ref:      ticketRef,

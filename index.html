@@ -10712,6 +10712,7 @@ async function generarResumenMensual() {
       const porDia = Array.from({length: diasEnMes}, () => ({ importe: 0, km: null }));
       let totalImporte = 0;
       let tieneMovimiento = false;
+      let kmMin = null, kmMax = null; // odómetro mínimo y máximo del mes → km recorridos
       filas.filter(f => f.matricula === vb.matricula).forEach(f => {
         if (!f.fecha || f.fecha.length < 10) return;
         const diaNum = parseInt(f.fecha.substring(8,10), 10);
@@ -10719,16 +10720,23 @@ async function generarResumenMensual() {
         const importe = parseFloat(f.ticket_importe) || 0;
         const km = f.kilometraje !== '' && f.kilometraje !== undefined && f.kilometraje !== null ? Number(f.kilometraje) : null;
         porDia[diaNum-1].importe += importe;
-        if (km !== null) porDia[diaNum-1].km = (porDia[diaNum-1].km || 0) + km;
+        if (km !== null) {
+          porDia[diaNum-1].km = (porDia[diaNum-1].km || 0) + km;
+          if (kmMin === null || km < kmMin) kmMin = km;
+          if (kmMax === null || km > kmMax) kmMax = km;
+        }
         totalImporte += importe;
         tieneMovimiento = true;
       });
-      return { matricula: vb.matricula, tipo: vb.tipo, porDia, totalImporte, tieneMovimiento };
+      // Km recorridos en el mes = diferencia entre el odómetro mayor y menor registrado
+      const totalKm = (kmMin !== null && kmMax !== null && kmMax > kmMin) ? (kmMax - kmMin) : null;
+      return { matricula: vb.matricula, tipo: vb.tipo, porDia, totalImporte, totalKm, tieneMovimiento };
     });
 
     const totalGeneral = vehiculos.reduce((s,v) => s + v.totalImporte, 0);
+    const totalKmGeneral = vehiculos.reduce((s,v) => s + (v.totalKm || 0), 0);
 
-    _resumenMensualData = { anio, mes, diasEnMes, vehiculos, totalGeneral, anioMes };
+    _resumenMensualData = { anio, mes, diasEnMes, vehiculos, totalGeneral, totalKmGeneral, anioMes };
     _renderResumenMensual();
   } catch(e) {
     body.innerHTML = `<div style="text-align:center;color:#c0392b;font-size:13px;font-weight:700;padding:60px 0;">Error al generar el resumen: ${esc(e.message)}</div>`;
@@ -10764,6 +10772,7 @@ function _renderResumenMensual() {
         <td style="font-size:9px;font-weight:800;color:#92600a;background:#fdf6e8">€/KM</td>
         ${celdasImporte}
         <td rowspan="2" style="text-align:right;font-weight:900;font-size:12px;color:#1a1a2e;background:#eef0f5;vertical-align:middle;white-space:nowrap">${v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+        <td rowspan="2" style="text-align:right;font-weight:900;font-size:12px;color:#0f9d8c;background:#eafaf8;vertical-align:middle;white-space:nowrap">${v.totalKm !== null ? v.totalKm.toLocaleString('es-ES')+' km' : '—'}</td>
       </tr>
       <tr style="background:${bg}">
         <td style="font-size:9px;font-weight:800;color:#556;background:#f4f6fb">KM</td>
@@ -10780,6 +10789,7 @@ function _renderResumenMensual() {
             <th style="padding:8px 10px;font-size:11px;white-space:nowrap">€/KM</th>
             ${cols}
             <th style="padding:8px 10px;font-size:11px;white-space:nowrap">TOTAL</th>
+            <th style="padding:8px 10px;font-size:11px;white-space:nowrap">KM MES</th>
           </tr>
         </thead>
         <tbody>${filasHtml}</tbody>
@@ -10787,6 +10797,7 @@ function _renderResumenMensual() {
           <tr style="background:#1a1a2e;color:white;">
             <td colspan="${d.diasEnMes+2}" style="padding:9px 14px;text-align:right;font-size:12px;font-weight:800;letter-spacing:0.5px;">TOTAL GENERAL</td>
             <td style="padding:9px 14px;text-align:right;font-size:14px;font-weight:900;color:#6c3ce8;background:#f4f0ff;">${d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</td>
+            <td style="padding:9px 14px;text-align:right;font-size:12px;font-weight:900;color:#0f9d8c;background:#eafaf8;">${d.totalKmGeneral.toLocaleString('es-ES')} km</td>
           </tr>
         </tfoot>
       </table>
@@ -10804,8 +10815,8 @@ function exportarResumenMensualPDF() {
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = 297, pageH = 210, margin = 5;
-  const colMat = 30, colTotal = 22;
-  const colDia = Math.max(7.4, (pageW - margin*2 - colMat - colTotal) / d.diasEnMes);
+  const colMat = 30, colTotal = 22, colKm = 20;
+  const colDia = Math.max(7.4, (pageW - margin*2 - colMat - colTotal - colKm) / d.diasEnMes);
   const bannerH = 14;
   const startY = bannerH + 4;        // donde empieza la tabla (debajo del banner oscuro)
   const tableHeadH = 5.4;            // alto fijo de la fila de cabecera de columnas
@@ -10852,7 +10863,7 @@ function exportarResumenMensualPDF() {
     y = startY;
     // Cabecera de tabla
     doc.setFillColor(26,26,46);
-    doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, tableHeadH, 'F');
+    doc.rect(margin, y, colMat + colTotal + colKm + colDia*d.diasEnMes, tableHeadH, 'F');
     doc.setFontSize(6); doc.setTextColor(255,255,255); doc.setFont('helvetica','bold');
     doc.text('MATRÍCULA', margin + 2, y + 3.5);
     let x = margin + colMat;
@@ -10861,6 +10872,7 @@ function exportarResumenMensualPDF() {
       x += colDia;
     }
     doc.text('TOTAL', x + colTotal/2, y + 3.5, { align:'center' });
+    doc.text('KM MES', x + colTotal + colKm/2, y + 3.5, { align:'center' });
     y += tableHeadH;
   }
 
@@ -10871,7 +10883,7 @@ function exportarResumenMensualPDF() {
     const bgGris = [238,240,245];
     doc.setDrawColor(225,228,235);
     doc.setFillColor(...(idx % 2 === 0 ? [255,255,255] : [250,251,253]));
-    doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, rowH*2, 'F');
+    doc.rect(margin, y, colMat + colTotal + colKm + colDia*d.diasEnMes, rowH*2, 'F');
     doc.setFillColor(...bgGris);
     doc.rect(margin, y, colMat, rowH*2, 'F');
     doc.setFont('helvetica','bold'); doc.setFontSize(Math.max(4.2, 6.5*f)); doc.setTextColor(26,26,46);
@@ -10897,19 +10909,25 @@ function exportarResumenMensualPDF() {
     doc.rect(x, y, colTotal, rowH*2, 'F');
     doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46);
     fitTextRight(v.totalImporte.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', x + colTotal - 1.5, y + rowH + 0.8*f, colTotal - 2.5, Math.max(4.6,6.8*f));
+    doc.setFillColor(234,250,248);
+    doc.rect(x + colTotal, y, colKm, rowH*2, 'F');
+    doc.setFont('helvetica','bold'); doc.setTextColor(15,157,140);
+    fitTextRight(v.totalKm !== null ? v.totalKm.toLocaleString('es-ES')+' km' : '—', x + colTotal + colKm - 1.5, y + rowH + 0.8*f, colKm - 2.5, Math.max(4.0,6.0*f));
     doc.setDrawColor(210,213,222);
-    doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, rowH*2);
+    doc.rect(margin, y, colMat + colTotal + colKm + colDia*d.diasEnMes, rowH*2);
     y += rowH*2;
   });
 
   // Total general
   if (multiPage && y > pageH - margin - totalRowH) { doc.addPage('a4','landscape'); y = margin; header(); }
   doc.setFillColor(26,26,46);
-  doc.rect(margin, y, colMat + colTotal + colDia*d.diasEnMes, totalRowH, 'F');
+  doc.rect(margin, y, colMat + colTotal + colKm + colDia*d.diasEnMes, totalRowH, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
   doc.text('TOTAL GENERAL', margin + colMat + colDia*d.diasEnMes - 30, y + totalRowH/2 + 1.4);
   doc.setTextColor(180, 150, 255);
   doc.text(d.totalGeneral.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €', margin + colMat + colDia*d.diasEnMes + colTotal - 1.5, y + totalRowH/2 + 1.4, { align:'right' });
+  doc.setFontSize(7); doc.setTextColor(120,220,200);
+  doc.text(d.totalKmGeneral.toLocaleString('es-ES')+' km', margin + colMat + colDia*d.diasEnMes + colTotal + colKm - 1.5, y + totalRowH/2 + 1.4, { align:'right' });
 
   doc.save(`resumen_gasoil_${d.anioMes}.pdf`);
 }

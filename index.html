@@ -10816,7 +10816,7 @@ function exportarResumenMensualPDF() {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = 297, pageH = 210, margin = 5;
   const colMat = 30, colTotal = 22, colKm = 20;
-  const colDia = Math.max(7.4, (pageW - margin*2 - colMat - colTotal - colKm) / d.diasEnMes);
+  const colDia = (pageW - margin*2 - colMat - colTotal - colKm) / d.diasEnMes;
   const bannerH = 14;
   const startY = bannerH + 4;        // donde empieza la tabla (debajo del banner oscuro)
   const tableHeadH = 5.4;            // alto fijo de la fila de cabecera de columnas

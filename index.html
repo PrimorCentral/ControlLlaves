@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.9">
+  <meta name="app-version" content="3.2.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4986,63 +4986,65 @@ function pedirReasignacion(matricula) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:0;width:390px;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;overflow:hidden;">
+    <div style="background:white;border-radius:16px;padding:0;width:520px;max-width:96vw;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;overflow:hidden;">
 
       <!-- CABECERA ÁMBAR — visualmente distinta al rojo de devolución -->
-      <div style="background:#b45309;padding:20px 24px 16px;display:flex;align-items:center;gap:14px;">
-        <div style="background:rgba(255,255,255,0.18);border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">↺</div>
+      <div style="background:#b45309;padding:22px 28px 18px;display:flex;align-items:center;gap:14px;">
+        <div style="background:rgba(255,255,255,0.18);border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">↺</div>
         <div>
-          <div style="font-size:17px;font-weight:900;color:#fff;line-height:1.2;">Cambio de conductor</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.75);font-weight:600;margin-top:2px;">Vehículo: ${esc(matricula)}</div>
+          <div style="font-size:20px;font-weight:900;color:#fff;line-height:1.2;">Cambio de conductor</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.75);font-weight:600;margin-top:2px;">Vehículo: ${esc(matricula)}</div>
         </div>
       </div>
 
       <!-- CUERPO -->
-      <div style="padding:22px 24px 20px;">
+      <div style="padding:24px 28px 22px;">
 
         <!-- Conductor actual -->
-        <div style="background:#fff8f0;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-          <div style="font-size:10px;font-weight:800;color:#b45309;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;">Conductor a sustituir</div>
-          <div style="font-size:15px;font-weight:900;color:#1a1a2e;">${esc(nombre)}</div>
+        <div style="background:#fff8f0;border:1.5px solid #fcd34d;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:800;color:#b45309;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:5px;">Conductor a sustituir</div>
+          <div style="font-size:17px;font-weight:900;color:#1a1a2e;">${esc(nombre)}</div>
         </div>
 
         <!-- Aviso claro de lo que NO es esto -->
-        <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
-          <span style="font-size:18px;line-height:1.4;flex-shrink:0;">🚫</span>
+        <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:13px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:20px;line-height:1.4;flex-shrink:0;">🚫</span>
           <div>
-            <div style="font-size:12px;font-weight:900;color:#dc2626;margin-bottom:2px;">Esto NO es una devolución de llaves</div>
-            <div style="font-size:11px;color:#7f1d1d;line-height:1.5;">Solo cambia el conductor asignado al vehículo. Para registrar que las llaves han sido devueltas, usa el botón <strong>«🔑 Registrar devolución»</strong>.</div>
+            <div style="font-size:13px;font-weight:900;color:#dc2626;margin-bottom:3px;">Esto NO es una devolución de llaves</div>
+            <div style="font-size:12px;color:#7f1d1d;line-height:1.6;">Solo cambia el conductor asignado al vehículo. Para registrar que las llaves han sido devueltas, usa el botón <strong>«🔑 Registrar devolución»</strong>.</div>
           </div>
         </div>
 
-        <!-- Desvío: ¿querías cambiar de turno? -->
-        <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;">
-          <span style="font-size:22px;flex-shrink:0;">☀️🌆</span>
+        <!-- Desvío: ¿querías cambiar de turno? — solo visible si estamos en MAÑANA -->
+        ${turnoActual === 'MANANA' ? `
+        <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;">
+          <span style="font-size:24px;flex-shrink:0;">☀️🌆</span>
           <div style="flex:1;">
-            <div style="font-size:12px;font-weight:900;color:#1d4ed8;margin-bottom:3px;">¿Quieres asignar este vehículo en el turno de tarde?</div>
-            <div style="font-size:11px;color:#1e3a5f;line-height:1.5;">Reasignar NO cambia el turno. Para asignar un conductor distinto en el turno de <strong>tarde</strong>, primero cambia al cuadrante de tarde y asígnalo desde allí.</div>
+            <div style="font-size:13px;font-weight:900;color:#1d4ed8;margin-bottom:4px;">¿Quieres asignar este vehículo en el turno de tarde?</div>
+            <div style="font-size:12px;color:#1e3a5f;line-height:1.6;">Reasignar NO cambia el turno. Para asignar un conductor distinto en el turno de <strong>tarde</strong>, primero cambia al cuadrante de tarde y asígnalo desde allí.</div>
           </div>
-          <button id="btn-reasig-ir-turno" style="flex-shrink:0;padding:9px 14px;background:#1d4ed8;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">
+          <button id="btn-reasig-ir-turno" style="flex-shrink:0;padding:10px 16px;background:#1d4ed8;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">
             Ir al cuadrante →
           </button>
-        </div>
+        </div>` : ''}
 
         <!-- Info historial -->
-        <div style="font-size:11px;color:#8899aa;background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;margin-bottom:20px;">
+        <div style="font-size:12px;color:#8899aa;background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:22px;">
           ℹ️ La asignación anterior quedará registrada en el historial de reasignaciones.
         </div>
 
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button id="btn-reasig-cancel" style="padding:10px 20px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
-          <button id="btn-reasig-confirm" style="padding:10px 22px;background:#b45309;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;">
-            <span style="font-size:16px;">↺</span> Sí, cambiar conductor
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button id="btn-reasig-cancel" style="padding:11px 22px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+          <button id="btn-reasig-confirm" style="padding:11px 24px;background:#b45309;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:17px;">↺</span> Sí, cambiar conductor
           </button>
         </div>
       </div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.querySelector('#btn-reasig-cancel').onclick = () => document.body.removeChild(overlay);
-  overlay.querySelector('#btn-reasig-ir-turno').onclick = () => {
+  const btnIrTurno = overlay.querySelector('#btn-reasig-ir-turno');
+  if (btnIrTurno) btnIrTurno.onclick = () => {
     document.body.removeChild(overlay);
     abrirModalSeleccionarTurno();
   };

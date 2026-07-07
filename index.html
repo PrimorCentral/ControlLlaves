@@ -5046,7 +5046,14 @@ function pedirReasignacion(matricula) {
   const btnIrTurno = overlay.querySelector('#btn-reasig-ir-turno');
   if (btnIrTurno) btnIrTurno.onclick = () => {
     document.body.removeChild(overlay);
-    abrirModalSeleccionarTurno();
+    // Cambiar directamente al cuadrante de tarde
+    turnoActual = 'TARDE';
+    document.querySelectorAll('.turno-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.turno === 'TARDE');
+    });
+    actualizarHeader();
+    actualizarBloqueoCuadrante();
+    if (usuarioActual) cargarCuadrante();
   };
   overlay.querySelector('#btn-reasig-confirm').onclick = async () => {
     document.body.removeChild(overlay);

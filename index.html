@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.8">
+  <meta name="app-version" content="3.1.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -400,7 +400,7 @@
     }
     table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1050px; }
     thead { position: sticky; top: 0; z-index: 10; }
-    thead tr th { background: #1a1a2e; color: #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 11px 10px; text-align: center; white-space: nowrap; border-right: 1px solid #252542; }    thead tr th:last-child { border-right: none; }
+    thead tr th { background: #1a1a2e; color: #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 11px 10px; text-align: left; white-space: nowrap; border-right: 1px solid #252542; }    thead tr th:last-child { border-right: none; }
     .group-header td { background: #f4f6fb; color: #1a1a2e; font-size: 9px; font-weight: 900; letter-spacing: 2.5px; text-transform: uppercase; padding: 6px 14px; border-bottom: 1px solid #e8eaf0; border-top: 3px solid #e84545; }
     .group-header.first td { border-top: none; }
     tbody tr { border-bottom: 1px solid #f0f3f8; transition: background 0.12s; }
@@ -2663,20 +2663,6 @@
               <button class="btn-add-item" onclick="añadirDestinatario('bloqueos')">+ Añadir</button>
             </div>
           </div>
-          <div class="admin-section" style="margin-top:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-              <div class="admin-section-title" style="margin-bottom:0">🛠 Destinatarios de ITV próxima a vencer</div>
-              <button class="btn-add-item" onclick="comprobarItvAhora()" style="background:#f0a030;flex-shrink:0">🔔 Comprobar ahora</button>
-            </div>
-            <div style="background:#fff8e6;border:1px solid #ffe4a3;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:11px;color:#8b6b10;font-weight:600;">
-              Reciben un correo automático (revisión diaria) cuando a un vehículo le queda 2 meses o menus o para la ITV. El botón "Comprobar ahora" fuerza la revisión al instante.
-            </div>
-            <div id="dest-lista-itv" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
-            <div class="admin-add-form">
-              <input type="email" id="dest-itv-nuevo" placeholder="correo@primor.eu" onkeydown="if(event.key==='Enter') añadirDestinatario('itv')">
-              <button class="btn-add-item" onclick="añadirDestinatario('itv')">+ Añadir</button>
-            </div>
-          </div>
           <div id="dest-sync-status" style="font-size:11px;color:#8899aa;display:flex;align-items:center;gap:6px">
             <span id="dest-sync-icon">⏳</span>
             <span id="dest-sync-text">Cargando destinatarios…</span>
@@ -3716,6 +3702,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('modal-seleccionar-turno').classList.add('open');
   });
 
+  // Función reutilizable para abrir el modal de selección de turno (usada también desde reasignación)
+  window.abrirModalSeleccionarTurno = function() {
+    const label = document.getElementById('modal-selturno-fecha-label');
+    if (label) label.textContent = '¿Qué cuadrante quieres visualizar?';
+    document.getElementById('modal-seleccionar-turno').classList.add('open');
+  };
+
   // Función que se llama al elegir turno en el modal
   window.elegirTurnoEnModal = function(turno) {
     document.getElementById('modal-seleccionar-turno').classList.remove('open');
@@ -3738,7 +3731,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Turno automático según hora ──────────────────────────────────────────
   // MAÑANA: siempre disponible   |   TARDE disponible desde 11:00 (2h antes)
 const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // minutos desde medianoche
-const esTarde = horaActual >= (13 * 60 + 1) && horaActual <= (23 * 60 + 59);
+const esTarde = horaActual >= (12 * 60 + 30) && horaActual <= (23 * 60 + 59);
 turnoActual = esTarde ? 'TARDE' : 'MANANA';
 document.querySelectorAll('.turno-btn').forEach(b => {
   b.classList.toggle('active', b.dataset.turno === turnoActual);
@@ -5022,6 +5015,18 @@ function pedirReasignacion(matricula) {
           </div>
         </div>
 
+        <!-- Desvío: ¿querías cambiar de turno? -->
+        <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;">
+          <span style="font-size:22px;flex-shrink:0;">☀️🌆</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:900;color:#1d4ed8;margin-bottom:3px;">¿Quieres asignar este vehículo en el turno de tarde?</div>
+            <div style="font-size:11px;color:#1e3a5f;line-height:1.5;">Reasignar NO cambia el turno. Para asignar un conductor distinto en el turno de <strong>tarde</strong>, primero cambia al cuadrante de tarde y asígnalo desde allí.</div>
+          </div>
+          <button id="btn-reasig-ir-turno" style="flex-shrink:0;padding:9px 14px;background:#1d4ed8;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">
+            Ir al cuadrante →
+          </button>
+        </div>
+
         <!-- Info historial -->
         <div style="font-size:11px;color:#8899aa;background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;margin-bottom:20px;">
           ℹ️ La asignación anterior quedará registrada en el historial de reasignaciones.
@@ -5037,6 +5042,10 @@ function pedirReasignacion(matricula) {
     </div>`;
   document.body.appendChild(overlay);
   overlay.querySelector('#btn-reasig-cancel').onclick = () => document.body.removeChild(overlay);
+  overlay.querySelector('#btn-reasig-ir-turno').onclick = () => {
+    document.body.removeChild(overlay);
+    abrirModalSeleccionarTurno();
+  };
   overlay.querySelector('#btn-reasig-confirm').onclick = async () => {
     document.body.removeChild(overlay);
     const operarioAnterior = d.operario || '';
@@ -13095,7 +13104,7 @@ async function _rutasInicializarSheets() {
 // ════════════════════════════════════════════════════════════════════════════
 // CONFIG: DESTINATARIOS DE CORREO (incidencias y bloqueos)
 // ════════════════════════════════════════════════════════════════════════════
-let destinatariosCache = { incidencias: [], bloqueos: [], itv: [] };
+let destinatariosCache = { incidencias: [], bloqueos: [] };
 
 async function cargarDestinatariosUI() {
   actualizarEstadoDestSync('cargando');
@@ -13106,7 +13115,6 @@ async function cargarDestinatariosUI() {
     if (json.ok) {
       destinatariosCache.incidencias = json.incidencias || [];
       destinatariosCache.bloqueos    = json.bloqueos    || [];
-      destinatariosCache.itv         = json.itv         || [];
       renderDestinatariosListas();
       actualizarEstadoDestSync('ok');
     } else {
@@ -13131,10 +13139,8 @@ function renderDestinatariosListas() {
   };
   const elIncid = document.getElementById('dest-lista-incidencias');
   const elBloq  = document.getElementById('dest-lista-bloqueos');
-  const elItv   = document.getElementById('dest-lista-itv');
   if (elIncid) elIncid.innerHTML = renderLista(destinatariosCache.incidencias, 'incidencias');
   if (elBloq)  elBloq.innerHTML  = renderLista(destinatariosCache.bloqueos, 'bloqueos');
-  if (elItv)   elItv.innerHTML   = renderLista(destinatariosCache.itv, 'itv');
 }
 
 function _emailValido(email) {
@@ -13142,7 +13148,7 @@ function _emailValido(email) {
 }
 
 async function añadirDestinatario(tipo) {
-  const inputId = tipo === 'incidencias' ? 'dest-incid-nuevo' : (tipo === 'bloqueos' ? 'dest-bloq-nuevo' : 'dest-itv-nuevo');
+  const inputId = tipo === 'incidencias' ? 'dest-incid-nuevo' : 'dest-bloq-nuevo';
   const input   = document.getElementById(inputId);
   const email   = (input ? input.value : '').trim().toLowerCase();
   if (!email)              { mostrarToast('Introduce un correo', 'error'); return; }
@@ -13173,8 +13179,7 @@ async function persistirDestinatarios() {
     if (json.ok) {
       const nInc = (destinatariosCache.incidencias||[]).length;
       const nBloq = (destinatariosCache.bloqueos||[]).length;
-      const nItv = (destinatariosCache.itv||[]).length;
-      registrarAccion('ADMIN', 'Cambiar destinatarios de correo', `Incidencias: ${nInc} · Bloqueos: ${nBloq} · ITV: ${nItv}`);
+      registrarAccion('ADMIN', 'Cambiar destinatarios de correo', `Incidencias: ${nInc} · Bloqueos: ${nBloq}`);
       mostrarToast('✓ Destinatarios guardados en Sheets', 'success');
       actualizarEstadoDestSync('ok');
     } else {
@@ -13184,31 +13189,6 @@ async function persistirDestinatarios() {
   } catch(e) {
     mostrarToast('Error de conexión al guardar', 'error');
     actualizarEstadoDestSync('error', 'Sin conexión con Sheets');
-  }
-}
-
-async function comprobarItvAhora() {
-  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
-  if ((destinatariosCache.itv||[]).length === 0) {
-    mostrarToast('Añade al menos un destinatario de ITV antes de comprobar', 'error');
-    return;
-  }
-  mostrarToast('Comprobando ITV de la flota…', 'info');
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ accion: 'revisarItvProximos' })
-    });
-    const json = await resp.json();
-    if (json.ok) {
-      const n = json.avisados || 0;
-      mostrarToast(n > 0 ? `✓ Correo enviado: ${n} vehículo(s) con ITV próxima` : 'Ningún vehículo nuevo con ITV próxima a vencer', 'success');
-      registrarAccion('ADMIN', 'Comprobar ITV manualmente', `Avisados: ${n}`);
-    } else {
-      mostrarToast('Error al comprobar ITV: ' + (json.error || ''), 'error');
-    }
-  } catch(e) {
-    mostrarToast('Error de conexión al comprobar ITV', 'error');
   }
 }
 

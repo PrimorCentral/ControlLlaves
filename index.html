@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.1.7">
+  <meta name="app-version" content="3.1.8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2661,6 +2661,20 @@
             <div class="admin-add-form">
               <input type="email" id="dest-bloq-nuevo" placeholder="correo@primor.eu" onkeydown="if(event.key==='Enter') añadirDestinatario('bloqueos')">
               <button class="btn-add-item" onclick="añadirDestinatario('bloqueos')">+ Añadir</button>
+            </div>
+          </div>
+          <div class="admin-section" style="margin-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="admin-section-title" style="margin-bottom:0">🛠 Destinatarios de ITV próxima a vencer</div>
+              <button class="btn-add-item" onclick="comprobarItvAhora()" style="background:#f0a030;flex-shrink:0">🔔 Comprobar ahora</button>
+            </div>
+            <div style="background:#fff8e6;border:1px solid #ffe4a3;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:11px;color:#8b6b10;font-weight:600;">
+              Reciben un correo automático (revisión diaria) cuando a un vehículo le queda mes y medio (45 días) o menos para la ITV. El botón "Comprobar ahora" fuerza la revisión al instante.
+            </div>
+            <div id="dest-lista-itv" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+            <div class="admin-add-form">
+              <input type="email" id="dest-itv-nuevo" placeholder="correo@primor.eu" onkeydown="if(event.key==='Enter') añadirDestinatario('itv')">
+              <button class="btn-add-item" onclick="añadirDestinatario('itv')">+ Añadir</button>
             </div>
           </div>
           <div id="dest-sync-status" style="font-size:11px;color:#8899aa;display:flex;align-items:center;gap:6px">
@@ -13081,7 +13095,7 @@ async function _rutasInicializarSheets() {
 // ════════════════════════════════════════════════════════════════════════════
 // CONFIG: DESTINATARIOS DE CORREO (incidencias y bloqueos)
 // ════════════════════════════════════════════════════════════════════════════
-let destinatariosCache = { incidencias: [], bloqueos: [] };
+let destinatariosCache = { incidencias: [], bloqueos: [], itv: [] };
 
 async function cargarDestinatariosUI() {
   actualizarEstadoDestSync('cargando');
@@ -13092,6 +13106,7 @@ async function cargarDestinatariosUI() {
     if (json.ok) {
       destinatariosCache.incidencias = json.incidencias || [];
       destinatariosCache.bloqueos    = json.bloqueos    || [];
+      destinatariosCache.itv         = json.itv         || [];
       renderDestinatariosListas();
       actualizarEstadoDestSync('ok');
     } else {
@@ -13116,8 +13131,10 @@ function renderDestinatariosListas() {
   };
   const elIncid = document.getElementById('dest-lista-incidencias');
   const elBloq  = document.getElementById('dest-lista-bloqueos');
+  const elItv   = document.getElementById('dest-lista-itv');
   if (elIncid) elIncid.innerHTML = renderLista(destinatariosCache.incidencias, 'incidencias');
   if (elBloq)  elBloq.innerHTML  = renderLista(destinatariosCache.bloqueos, 'bloqueos');
+  if (elItv)   elItv.innerHTML   = renderLista(destinatariosCache.itv, 'itv');
 }
 
 function _emailValido(email) {
@@ -13125,7 +13142,7 @@ function _emailValido(email) {
 }
 
 async function añadirDestinatario(tipo) {
-  const inputId = tipo === 'incidencias' ? 'dest-incid-nuevo' : 'dest-bloq-nuevo';
+  const inputId = tipo === 'incidencias' ? 'dest-incid-nuevo' : (tipo === 'bloqueos' ? 'dest-bloq-nuevo' : 'dest-itv-nuevo');
   const input   = document.getElementById(inputId);
   const email   = (input ? input.value : '').trim().toLowerCase();
   if (!email)              { mostrarToast('Introduce un correo', 'error'); return; }
@@ -13156,7 +13173,8 @@ async function persistirDestinatarios() {
     if (json.ok) {
       const nInc = (destinatariosCache.incidencias||[]).length;
       const nBloq = (destinatariosCache.bloqueos||[]).length;
-      registrarAccion('ADMIN', 'Cambiar destinatarios de correo', `Incidencias: ${nInc} · Bloqueos: ${nBloq}`);
+      const nItv = (destinatariosCache.itv||[]).length;
+      registrarAccion('ADMIN', 'Cambiar destinatarios de correo', `Incidencias: ${nInc} · Bloqueos: ${nBloq} · ITV: ${nItv}`);
       mostrarToast('✓ Destinatarios guardados en Sheets', 'success');
       actualizarEstadoDestSync('ok');
     } else {
@@ -13166,6 +13184,31 @@ async function persistirDestinatarios() {
   } catch(e) {
     mostrarToast('Error de conexión al guardar', 'error');
     actualizarEstadoDestSync('error', 'Sin conexión con Sheets');
+  }
+}
+
+async function comprobarItvAhora() {
+  if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
+  if ((destinatariosCache.itv||[]).length === 0) {
+    mostrarToast('Añade al menos un destinatario de ITV antes de comprobar', 'error');
+    return;
+  }
+  mostrarToast('Comprobando ITV de la flota…', 'info');
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'revisarItvProximos' })
+    });
+    const json = await resp.json();
+    if (json.ok) {
+      const n = json.avisados || 0;
+      mostrarToast(n > 0 ? `✓ Correo enviado: ${n} vehículo(s) con ITV próxima` : 'Ningún vehículo nuevo con ITV próxima a vencer', 'success');
+      registrarAccion('ADMIN', 'Comprobar ITV manualmente', `Avisados: ${n}`);
+    } else {
+      mostrarToast('Error al comprobar ITV: ' + (json.error || ''), 'error');
+    }
+  } catch(e) {
+    mostrarToast('Error de conexión al comprobar ITV', 'error');
   }
 }
 

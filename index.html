@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.2.1">
+  <meta name="app-version" content="3.2.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -1078,6 +1078,21 @@
     }
     .err-btn-reintentar:active { transform: scale(0.97); }
 
+    /* ─── MODAL SISTEMA OCUPADO (lock del servidor) ─── */
+    #modal-sistema-ocupado {
+      display: none; position: fixed; inset: 0; z-index: 10000;
+      background: rgba(10,12,30,0.78); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    #modal-sistema-ocupado.visible { display: flex; }
+    #modal-sistema-ocupado .err-box {
+      background: #1a1a2e; border: 1px solid #2e2e50; border-radius: 20px;
+      padding: 32px 34px; display: flex; flex-direction: column;
+      align-items: center; gap: 14px; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      min-width: 280px; max-width: 90vw; text-align: center;
+      animation: carga-in 0.2s ease-out;
+    }
+
     /* ─── MODAL GENERANDO ORDEN ─── */
     #modal-generando-orden {
       display: none; position: fixed; inset: 0; z-index: 9500;
@@ -1698,6 +1713,16 @@
     <div class="err-titulo" id="err-carga-titulo">No se pudieron cargar los datos</div>
     <div class="err-detalle" id="err-carga-detalle">Comprueba tu conexión a Internet e inténtalo de nuevo.</div>
     <button class="err-btn-reintentar" id="err-carga-btn" onclick="reintentarCargaError()">↻ Reintentar</button>
+  </div>
+</div>
+
+<!-- MODAL SISTEMA OCUPADO — lock del servidor -->
+<div id="modal-sistema-ocupado">
+  <div class="err-box">
+    <div class="err-icono">⏳</div>
+    <div class="err-titulo">Sistema ocupado</div>
+    <div class="err-detalle">Otro usuario está guardando datos ahora mismo. Espera unos segundos e inténtalo de nuevo.</div>
+    <button class="err-btn-reintentar" onclick="cerrarModalOcupado()">Entendido</button>
   </div>
 </div>
 
@@ -3497,6 +3522,33 @@ const ADMIN_PASS_HASH_DEFAULT = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8
 // SIEMPRE usar la URL del servidor — no depender de localStorage
 let APPS_SCRIPT_URL = APPS_SCRIPT_URL_DEFAULT;
 localStorage.setItem('llaves_script_url', APPS_SCRIPT_URL_DEFAULT); // sincronizar por si acaso
+
+// ── Interceptor: detecta respuestas "ocupado" del backend (LockService) ──
+// No cambia el comportamiento de ninguna llamada existente: solo mira una
+// copia de la respuesta y muestra el modal si corresponde.
+(function instalarDetectorOcupado() {
+  const fetchOriginal = window.fetch;
+  window.fetch = function(...args) {
+    return fetchOriginal.apply(this, args).then(resp => {
+      try {
+        const esNuestraApi = typeof args[0] === 'string' && args[0].startsWith(APPS_SCRIPT_URL);
+        if (esNuestraApi) {
+          resp.clone().json().then(json => {
+            if (json && json.ocupado) mostrarModalOcupado();
+          }).catch(() => {});
+        }
+      } catch(e) {}
+      return resp;
+    });
+  };
+})();
+
+function mostrarModalOcupado() {
+  document.getElementById('modal-sistema-ocupado').classList.add('visible');
+}
+function cerrarModalOcupado() {
+  document.getElementById('modal-sistema-ocupado').classList.remove('visible');
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // SELLOS (base64 de las imágenes originales de orden_trabajo.html)

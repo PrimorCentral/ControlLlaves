@@ -5803,7 +5803,7 @@ async function cargarFlotaDesdeSheets(mostrarError = true) {
       json.flota.forEach(v => {
         let g = GRUPOS.find(g => g.nombre === v.grupo);
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
-        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado===true, fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
       });
       if (mostrarError) ocultarErrorCarga();
       return true;
@@ -5821,7 +5821,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {

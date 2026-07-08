@@ -4554,6 +4554,9 @@ function abrirModalBloqueoRapido() {
         document.body.removeChild(overlay);
         renderTabla();
         mostrarToast(`⛔ ${mat} bloqueado`, 'error');
+        if (json.emailError) {
+          appAlert(`El vehículo se ha bloqueado correctamente, pero no se pudo enviar el correo de aviso.<br><br><span style="color:#8899aa;font-size:12px">${json.emailError}</span>`, { titulo: 'Fallo al enviar correo electrónico', icono: '✉️⚠️' });
+        }
       } else {
         mostrarToast('Error al bloquear: ' + (json.error||''), 'error');
         btnOk.textContent = '⛔ Bloquear'; btnOk.disabled = false;
@@ -7096,6 +7099,9 @@ function abrirModalBloqueo(gi, vi) {
         renderAdminVehiculos(); renderAdminStats(); renderTabla();
         registrarAccion('VEHICULO', 'Bloquear vehículo', `${v.matricula} · ${motivo.substring(0,80)}`);
         mostrarToast(`⛔ ${v.matricula} bloqueado`, 'error');
+        if (json.emailError) {
+          appAlert(`El vehículo se ha bloqueado correctamente, pero no se pudo enviar el correo de aviso.<br><br><span style="color:#8899aa;font-size:12px">${json.emailError}</span>`, { titulo: 'Fallo al enviar correo electrónico', icono: '✉️⚠️' });
+        }
       } else {
         mostrarToast('Error al bloquear: ' + (json.error||''), 'error');
       }
@@ -10567,7 +10573,7 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
   if (!APPS_SCRIPT_URL) return;
   try {
     const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
-    await fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', redirect: 'follow',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
@@ -10584,6 +10590,10 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
         }
       })
     });
+    const json = await resp.json();
+    if (json && json.emailError) {
+      appAlert(`La incidencia se ha guardado correctamente, pero no se pudo enviar el correo de aviso.<br><br><span style="color:#8899aa;font-size:12px">${json.emailError}</span>`, { titulo: 'Fallo al enviar correo electrónico', icono: '✉️⚠️' });
+    }
     if (bloquear) {
       registrarAccion('INCIDENCIA', 'Registrar incidencia + Bloquear vehículo', `${matricula} · ${descripcion.substring(0,80)}`);
     } else {

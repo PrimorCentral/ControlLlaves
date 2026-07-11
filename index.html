@@ -1795,6 +1795,15 @@
     <div id="sb-fecha-texto" style="
       font-size: 11px; font-weight: 700; color: #e8eaf2; letter-spacing: 0.2px; line-height: 1.3;
     ">—</div>
+
+    <!-- Selector de fecha/turno integrado en la misma tarjeta -->
+    <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:8px;padding-top:9px;display:flex;flex-direction:column;gap:7px;">
+      <input type="date" id="fecha-input" style="width:100%;padding:7px 9px;background:#242440;border:1.5px solid #3a3a5a;border-radius:7px;color:#f5f5f5;font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;outline:none;">
+      <div class="turno-btns">
+        <button class="turno-btn active" data-turno="MANANA" onclick="seleccionarTurno(this)">☀️ Mañana</button>
+        <button class="turno-btn" data-turno="TARDE" onclick="seleccionarTurno(this)">🌆 Tarde</button>
+      </div>
+    </div>
   </div>
 
   <div class="user-pill" id="user-pill" style="display:none">
@@ -1825,19 +1834,6 @@
   </div>
 </div>
 
-  <div class="sb-label">Jornada</div>
-  <div class="field-sb">
-    <label>Fecha</label>
-    <input type="date" id="fecha-input">
-  </div>
-  <div class="field-sb">
-    <label>Turno</label>
-    <div class="turno-btns">
-      <button class="turno-btn active" data-turno="MANANA" onclick="seleccionarTurno(this)">☀️ Mañana</button>
-      <button class="turno-btn" data-turno="TARDE" onclick="seleccionarTurno(this)">🌆 Tarde</button>
-    </div>
-  </div>
-
   <div class="divider"></div>
 
   <div class="sb-label">Estado</div>
@@ -1852,6 +1848,9 @@
     <div class="sb-stat"><div class="sb-stat-val green" id="stat-asignados">0</div><div class="sb-stat-label">Asignados</div></div>
     <div class="sb-stat"><div class="sb-stat-val" id="stat-total">0</div><div class="sb-stat-label">Total</div></div>
   </div>
+  <div style="height:5px;background:#484848;border-radius:4px;overflow:hidden;margin:-6px 0 12px;">
+    <div id="sb-stats-bar" style="width:0%;height:100%;background:#2ecc71;border-radius:4px;transition:width 0.3s;"></div>
+  </div>
   <div class="save-indicator" id="save-indicator"><span>—</span></div>
   <div id="sync-status" style="font-size:9px;color:#445;font-weight:600;margin-top:3px;min-height:14px;display:flex;align-items:center;gap:4px;"></div>
 
@@ -1863,12 +1862,12 @@
       <span class="bsq-icon">↺</span>
       <span class="bsq-label">Recargar</span>
     </button>
-    <button class="btn-icon-sq btn-sq-secondary" onclick="imprimirCuadrante()">
+    <button class="btn-icon-sq btn-sq-primary" onclick="imprimirCuadrante()">
       <span class="bsq-icon">🖨️</span>
       <span class="bsq-label">Imprimir cuadrante</span>
     </button>
   </div>
-  <button class="btn-action btn-secondary" onclick="abrirModalIncidenciasPendientes()" style="border-color:#7a4a0a;color:#f5a623;">⚠️ Incidencias pendientes</button>
+  <button class="btn-action btn-secondary" onclick="abrirModalIncidenciasPendientes()" style="border-color:#e84545;color:#e84545;">⚠️ Incidencias pendientes</button>
 
   <!-- RELOJ EN TIEMPO REAL -->
   <div class="sb-clock" style="margin-top:auto;">
@@ -4658,6 +4657,8 @@ function renderTabla() {
   }));
   document.getElementById('stat-asignados').textContent = asignados;
   document.getElementById('stat-total').textContent = total;
+  const bar1 = document.getElementById('sb-stats-bar');
+  if (bar1) bar1.style.width = (total > 0 ? Math.round(asignados / total * 100) : 0) + '%';
 
   const esHoy = esFechaHoy();
   let html = `<table><thead><tr>
@@ -5319,6 +5320,9 @@ function actualizarStats() {
     if (d.operario && d.operario.trim()) asignados++;
   }));
   document.getElementById('stat-asignados').textContent = asignados;
+  const totalActual = parseInt(document.getElementById('stat-total').textContent, 10) || 0;
+  const bar2 = document.getElementById('sb-stats-bar');
+  if (bar2) bar2.style.width = (totalActual > 0 ? Math.round(asignados / totalActual * 100) : 0) + '%';
 }
 
 function programarGuardado() {

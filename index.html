@@ -1765,7 +1765,7 @@
       <div class="logo-text">GESTIÓN<br>DE FLOTA</div>
       <div class="logo-sub">Cuadrante diario</div>
     </div>
-    <button id="btn-panel-admin" onclick="abrirLoginAdmin()" title="Panel Admin" style="display:none;background:transparent;border:none;font-size:18px;cursor:pointer;opacity:0.4;transition:opacity 0.2s;padding:2px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">🔐</button>
+    <button id="btn-panel-admin" onclick="abrirLoginAdmin()" title="Panel Admin" aria-label="Panel de administración" style="display:none;background:transparent;border:none;font-size:18px;cursor:pointer;opacity:0.65;transition:opacity 0.2s;padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">🔐</button>
   </div>
 
   <!-- Pastilla turno/fecha en sidebar -->
@@ -1814,8 +1814,8 @@
       <div class="session-countdown" id="session-countdown"></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;">
-      <button class="btn-logout" onclick="cerrarSesionManual()" title="Cerrar sesión">⏏</button>
-      <button class="btn-logout" onclick="abrirModalCambioClave()" title="Cambiar clave de acceso">🔑</button>
+      <button class="btn-logout" onclick="cerrarSesionManual()" title="Cerrar sesión" aria-label="Cerrar sesión">⏏</button>
+      <button class="btn-logout" onclick="abrirModalCambioClave()" title="Cambiar clave de acceso" aria-label="Cambiar clave de acceso">🔑</button>
     </div>
   </div>
 
@@ -1837,19 +1837,23 @@
   <div class="divider"></div>
 
   <div class="sb-label">Estado</div>
-  <div class="status-pill">
-    <div class="status-dot warn" id="status-dot"></div>
-    <div class="status-text">
-      <strong id="status-title">Sin conectar</strong>
-      <span id="status-sub">Conectando…</span>
+  <div style="background:#3a3a3a;border:1px solid #4a4a4a;border-radius:10px;padding:10px 10px 11px;margin-bottom:12px;">
+    <div class="status-pill" style="background:transparent;padding:0;margin-bottom:9px;">
+      <div class="status-dot warn" id="status-dot"></div>
+      <div class="status-text">
+        <strong id="status-title">Sin conectar</strong>
+        <span id="status-sub">Conectando…</span>
+      </div>
     </div>
-  </div>
-  <div class="sb-stats">
-    <div class="sb-stat"><div class="sb-stat-val green" id="stat-asignados">0</div><div class="sb-stat-label">Asignados</div></div>
-    <div class="sb-stat"><div class="sb-stat-val" id="stat-total">0</div><div class="sb-stat-label">Total</div></div>
-  </div>
-  <div style="height:5px;background:#484848;border-radius:4px;overflow:hidden;margin:-6px 0 12px;">
-    <div id="sb-stats-bar" style="width:0%;height:100%;background:#2ecc71;border-radius:4px;transition:width 0.3s;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:9px;">
+      <div class="sb-stats" style="margin-bottom:6px;">
+        <div class="sb-stat" style="background:#484848;"><div class="sb-stat-val green" id="stat-asignados">0</div><div class="sb-stat-label">Asignados</div></div>
+        <div class="sb-stat" style="background:#484848;"><div class="sb-stat-val" id="stat-total">0</div><div class="sb-stat-label">Total</div></div>
+      </div>
+      <div style="height:5px;background:#585858;border-radius:4px;overflow:hidden;">
+        <div id="sb-stats-bar" style="width:0%;height:100%;background:#2ecc71;border-radius:4px;transition:width 0.3s;"></div>
+      </div>
+    </div>
   </div>
   <div class="save-indicator" id="save-indicator"><span>—</span></div>
   <div id="sync-status" style="font-size:9px;color:#445;font-weight:600;margin-top:3px;min-height:14px;display:flex;align-items:center;gap:4px;"></div>

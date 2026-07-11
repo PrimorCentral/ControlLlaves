@@ -1837,27 +1837,17 @@
 
   <div class="divider"></div>
 
-  <div class="sb-label">Estado</div>
+  <div class="sb-label">Vehículos</div>
   <div style="background:#3a3a3a;border:1px solid #4a4a4a;border-radius:10px;padding:10px 10px 11px;margin-bottom:12px;">
-    <div class="status-pill" style="background:transparent;padding:0;margin-bottom:9px;">
-      <div class="status-dot warn" id="status-dot"></div>
-      <div class="status-text">
-        <strong id="status-title">Sin conectar</strong>
-        <span id="status-sub">Conectando…</span>
-      </div>
+    <div class="sb-stats" style="margin-bottom:6px;">
+      <div class="sb-stat" style="background:#484848;"><div class="sb-stat-val green" id="stat-asignados">0</div><div class="sb-stat-label">Asignados</div></div>
+      <div class="sb-stat" style="background:#484848;"><div class="sb-stat-val" id="stat-total">0</div><div class="sb-stat-label">Total</div></div>
     </div>
-    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:9px;">
-      <div class="sb-stats" style="margin-bottom:6px;">
-        <div class="sb-stat" style="background:#484848;"><div class="sb-stat-val green" id="stat-asignados">0</div><div class="sb-stat-label">Asignados</div></div>
-        <div class="sb-stat" style="background:#484848;"><div class="sb-stat-val" id="stat-total">0</div><div class="sb-stat-label">Total</div></div>
-      </div>
-      <div style="height:5px;background:#585858;border-radius:4px;overflow:hidden;">
-        <div id="sb-stats-bar" style="width:0%;height:100%;background:#2ecc71;border-radius:4px;transition:width 0.3s;"></div>
-      </div>
+    <div style="height:5px;background:#585858;border-radius:4px;overflow:hidden;">
+      <div id="sb-stats-bar" style="width:0%;height:100%;background:#2ecc71;border-radius:4px;transition:width 0.3s;"></div>
     </div>
   </div>
   <div class="save-indicator" id="save-indicator"><span>—</span></div>
-  <div id="sync-status" style="font-size:9px;color:#445;font-weight:600;margin-top:3px;min-height:14px;display:flex;align-items:center;gap:4px;"></div>
 
   <div class="divider"></div>
 
@@ -5601,7 +5591,22 @@ function setSaveIndicator(type, msg) {
 // ════════════════════════════════════════════════════════════════════════════
 let _syncTimer       = null;
 let _syncEnCurso     = false;
+let _syncEnError     = false; // evita repetir el toast mientras el fallo persiste
 const SYNC_INTERVALO = 15000; // 15 segundos — tiempo real
+
+function notificarSyncError(msg) {
+  if (!_syncEnError) {
+    _syncEnError = true;
+    mostrarToast('⚠️ ' + msg, 'error');
+  }
+}
+
+function notificarSyncRecuperado() {
+  if (_syncEnError) {
+    _syncEnError = false;
+    mostrarToast('✓ Conexión restablecida', 'success');
+  }
+}
 
 function setSyncStatus(estado, msg) {
   const el = document.getElementById('sync-status');
@@ -5680,9 +5685,9 @@ async function syncSilencioso() {
 
     const url = `${APPS_SCRIPT_URL}?accion=cargar&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
     const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(7000) });
-    if (!resp.ok) { setSyncStatus('error', 'Error de conexión'); return; }
+    if (!resp.ok) { setSyncStatus('error', 'Error de conexión'); notificarSyncError('Error de conexión con el servidor'); return; }
     const json = await resp.json();
-    if (!json.ok || !json.filas) { setSyncStatus('error', 'Error de respuesta'); return; }
+    if (!json.ok || !json.filas) { setSyncStatus('error', 'Error de respuesta'); notificarSyncError('Error al sincronizar los datos'); return; }
 
     let hayNovedades = false;
     const campos = ['operario','resp_entrega','resp_recibe','hora_entrega',
@@ -5734,8 +5739,10 @@ async function syncSilencioso() {
 
     const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setSyncStatus('ok', `Sync ${hora}`);
+    notificarSyncRecuperado();
   } catch(e) {
     setSyncStatus('error', 'Sin conexión');
+    notificarSyncError('Sin conexión con el servidor');
   } finally {
     _syncEnCurso = false;
   }

@@ -2170,7 +2170,10 @@
       <div class="admin-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div class="admin-section-title" style="margin-bottom:0">🚛 Flota de vehículos</div>
-          <button class="btn-add-item" onclick="abrirModalNuevoVehiculo()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">+ Añadir vehículo</button>
+          <div style="display:flex;gap:8px;">
+            <button onclick="exportarFlotaPDF()" style="background:#e84545;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;">📄 Exportar PDF</button>
+            <button class="btn-add-item" onclick="abrirModalNuevoVehiculo()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">+ Añadir vehículo</button>
+          </div>
         </div>
         <div class="admin-list" id="admin-lista-vehiculos"></div>
         <div class="nota-restriccion" style="margin-top:12px;">⚠️ Los vehículos <strong>Restringido</strong> solo podrán asignarse a personas autorizadas. Los vehículos en <strong>Alquiler</strong> son los que tienen proveedor distinto a PROPIEDAD (PINVECO, DFM, etc.).</div>
@@ -8360,6 +8363,206 @@ function exportarConductoresPDF() {
   const nombre = `conductores_${hoy.toISOString().slice(0, 10)}.pdf`;
   doc.save(nombre);
   mostrarToast('PDF generado correctamente', 'success');
+}
+
+function exportarFlotaPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const PW = 297, PH = 210;
+  const ML = 14, MR = 14, MT = 14;
+  const CW = PW - ML - MR;
+  let y = MT;
+
+  // Paleta
+  const ROJO   = [232, 69, 69];
+  const OSCURO = [26, 26, 46];
+  const GRIS   = [248, 249, 252];
+  const GRISL  = [225, 228, 235];
+  const TEXTO  = [80, 90, 110];
+  const BLANCO = [255, 255, 255];
+  const VERDE  = [22, 163, 74];
+  const AMBAR  = [217, 119, 6];
+
+  // ── Cabecera ─────────────────────────────────────────────────────────────
+  doc.setFillColor(...ROJO);
+  doc.rect(0, 0, PW, 26, 'F');
+  doc.setFillColor(...OSCURO);
+  doc.rect(0, 26, PW, 3, 'F');
+
+  doc.setTextColor(...BLANCO);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('GESTION DE FLOTA · PRIMOR', ML, 11);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('LISTADO DE VEHICULOS ACTIVOS POR NAVE', ML, 18);
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const fechaStr = hoy.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+  const horaStr  = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  doc.setFontSize(8);
+  doc.text(`Generado: ${fechaStr} a las ${horaStr}`, PW - MR, 18, { align: 'right' });
+
+  y = 36;
+
+  // ── Stats (igual que el panel de administración en pantalla) ───────────────
+  let total = 0, restringidos = 0, alquiler = 0, bloqueados = 0, itvAlerta = 0;
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+    if (v.archivado) return;
+    total++;
+    if (v.restringido) restringidos++;
+    if (v.bloqueado) bloqueados++;
+    const nota = (v.nota||'').trim().toUpperCase();
+    if (nota !== 'PROPIEDAD') alquiler++;
+    if (v.itv_fin) {
+      const fin = new Date(v.itv_fin + 'T00:00:00');
+      const dias = Math.ceil((fin - hoy) / 86400000);
+      if (dias <= 60) itvAlerta++;
+    }
+  }));
+
+  const statW = (CW - 12) / 4;
+  const statsData = [
+    { label: 'VEHICULOS ACTIVOS', val: String(total) },
+    { label: 'EN ALQUILER',       val: String(alquiler) },
+    { label: 'BLOQUEADOS',        val: String(bloqueados) },
+    { label: 'ITV PROXIMAS ≤60D', val: String(itvAlerta) },
+  ];
+  statsData.forEach((s, i) => {
+    const sx = ML + i * (statW + 4);
+    doc.setFillColor(...GRIS);
+    doc.roundedRect(sx, y, statW, 14, 2, 2, 'F');
+    doc.setDrawColor(...GRISL);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(sx, y, statW, 14, 2, 2, 'S');
+    doc.setTextColor(...ROJO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(s.val, sx + statW / 2, y + 7, { align: 'center' });
+    doc.setTextColor(...TEXTO);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(s.label, sx + statW / 2, y + 12, { align: 'center' });
+  });
+  y += 20;
+
+  // ── Columnas ──────────────────────────────────────────────────────────────
+  const cols = [
+    { label: 'MATRICULA',        x: ML,       w: 42 },
+    { label: 'TIPO',             x: ML + 43,  w: 55 },
+    { label: 'PROVEEDOR / NOTA', x: ML + 99,  w: 45 },
+    { label: 'ESTADO',           x: ML + 145, w: 42 },
+    { label: 'ITV',              x: ML + 188, w: CW - 188 },
+  ];
+  const ROW_H   = 8;
+  const THEAD_H = 7;
+
+  function dibujarCabeceraTabla() {
+    doc.setFillColor(...GRISL);
+    doc.rect(ML, y, CW, THEAD_H, 'F');
+    doc.setTextColor(...OSCURO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    cols.forEach(col => doc.text(col.label, col.x + 2, y + 5));
+    y += THEAD_H;
+  }
+
+  // ── Datos por nave (solo vehículos activos, sin dar de baja) ────────────────
+  GRUPOS.forEach(grupo => {
+    const activos = grupo.vehiculos.filter(v => !v.archivado);
+    if (!activos.length) return;
+
+    if (y + THEAD_H + ROW_H * 2 + 12 > PH - 14) {
+      doc.addPage();
+      y = MT;
+    }
+
+    doc.setFillColor(...OSCURO);
+    doc.rect(ML, y, CW, 8, 'F');
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`NAVE: ${(grupo.nombre||'').toUpperCase()}`, ML + 4, y + 5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`${activos.length} vehiculo${activos.length !== 1 ? 's' : ''}`, PW - MR - 2, y + 5.5, { align: 'right' });
+    y += 10;
+
+    dibujarCabeceraTabla();
+
+    activos.forEach((v, ri) => {
+      if (y + ROW_H > PH - 14) {
+        doc.addPage();
+        y = MT;
+        dibujarCabeceraTabla();
+      }
+
+      if (ri % 2 === 0) {
+        doc.setFillColor(252, 252, 254);
+        doc.rect(ML, y, CW, ROW_H, 'F');
+      }
+      doc.setDrawColor(...GRISL);
+      doc.setLineWidth(0.2);
+      doc.line(ML, y + ROW_H, ML + CW, y + ROW_H);
+
+      // Estado + color
+      let estadoTxt, estadoColor;
+      if (v.bloqueado)        { estadoTxt = '🔒 Bloqueado';   estadoColor = ROJO; }
+      else if (v.restringido) { estadoTxt = 'Restringido';    estadoColor = AMBAR; }
+      else                    { estadoTxt = 'En vigor';       estadoColor = VERDE; }
+
+      // ITV texto
+      let itvTxt = 'Sin fecha';
+      if (v.itv_fin) {
+        const fin = new Date(v.itv_fin + 'T00:00:00');
+        const dias = Math.ceil((fin - hoy) / 86400000);
+        const fechaFmt = fmtFechaITV(v.itv_fin);
+        if (dias <= 0)       itvTxt = `Caducada · ${fechaFmt}`;
+        else if (dias <= 60) itvTxt = `${dias}d · ${fechaFmt}`;
+        else                 itvTxt = fechaFmt;
+      }
+
+      doc.setTextColor(...OSCURO);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(v.matricula || '—', cols[0].x + 2, y + 5.5, { maxWidth: cols[0].w - 3 });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...TEXTO);
+      doc.text(v.tipo || '—',              cols[1].x + 2, y + 5.5, { maxWidth: cols[1].w - 3 });
+      doc.text(v.nota || '—',              cols[2].x + 2, y + 5.5, { maxWidth: cols[2].w - 3 });
+
+      doc.setTextColor(...estadoColor);
+      doc.setFont('helvetica', 'bold');
+      doc.text(estadoTxt, cols[3].x + 2, y + 5.5, { maxWidth: cols[3].w - 3 });
+
+      doc.setTextColor(...TEXTO);
+      doc.setFont('helvetica', 'normal');
+      doc.text(itvTxt, cols[4].x + 2, y + 5.5, { maxWidth: cols[4].w - 3 });
+
+      y += ROW_H;
+    });
+
+    y += 8;
+  });
+
+  // ── Pie en todas las páginas ──────────────────────────────────────────────
+  const totalPags = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPags; p++) {
+    doc.setPage(p);
+    doc.setFillColor(...OSCURO);
+    doc.rect(0, PH - 9, PW, 9, 'F');
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('Gestion de Flota · Primor — Documento generado automaticamente', ML, PH - 3.5);
+    doc.text(`Pagina ${p} de ${totalPags}`, PW - MR, PH - 3.5, { align: 'right' });
+  }
+
+  const nombre = `flota_${hoy.toISOString().slice(0, 10)}.pdf`;
+  doc.save(nombre);
+  mostrarToast('PDF de flota generado correctamente', 'success');
 }
 
 function abrirModalNuevoConductor() {

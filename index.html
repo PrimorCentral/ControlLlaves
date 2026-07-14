@@ -5109,14 +5109,9 @@ function pedirReasignacion(matricula) {
   const btnIrTurno = overlay.querySelector('#btn-reasig-ir-turno');
   if (btnIrTurno) btnIrTurno.onclick = () => {
     document.body.removeChild(overlay);
-    // Cambiar directamente al cuadrante de tarde
-    turnoActual = 'TARDE';
-    document.querySelectorAll('.turno-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.turno === 'TARDE');
-    });
-    actualizarHeader();
-    actualizarBloqueoCuadrante();
-    if (usuarioActual) cargarCuadrante();
+    // Reutilizar seleccionarTurno() para respetar el bloqueo horario del turno de tarde
+    const btnTarde = document.querySelector('.turno-btn[data-turno="TARDE"]');
+    if (btnTarde) seleccionarTurno(btnTarde);
   };
   overlay.querySelector('#btn-reasig-confirm').onclick = async () => {
     document.body.removeChild(overlay);
@@ -7320,7 +7315,7 @@ function _seguroVencido(matricula) {
 
 const FICHA_DOC_CATEGORIAS = [
   { id: 'ficha_tecnica',       label: 'Ficha técnica',         icon: '📄' },
-  { id: 'permiso_circulacion', label: 'Permiso de circulación',icon: '🪪' },
+  { id: 'permiso_circulacion', label: 'Permiso de circulación',icon: '🎟️' },
   { id: 'informe_itv',         label: 'Informe ITV',           icon: '🔧' },
   { id: 'poliza_seguro',       label: 'Póliza de seguro',      icon: '🛡️' },
   { id: 'otros',               label: 'Otros',                 icon: '📎' },

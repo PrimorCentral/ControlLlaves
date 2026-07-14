@@ -1667,6 +1667,20 @@
     }
     .mat-badge-info.has-data { background: #16a34a; }
     .mat-badge-info.has-data-expired { background: #dc2626; }
+    .mat-badge-info.has-alerta-aviso {
+      background: #f59e0b; font-size: 10px; animation: badge-pulse-aviso 1.6s ease-in-out infinite;
+    }
+    .mat-badge-info.has-alerta-expirado {
+      background: #dc2626; font-size: 10px; animation: badge-pulse-expirado 1.2s ease-in-out infinite;
+    }
+    @keyframes badge-pulse-aviso {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.55); }
+      50%      { box-shadow: 0 0 0 4px rgba(245,158,11,0); }
+    }
+    @keyframes badge-pulse-expirado {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.6); }
+      50%      { box-shadow: 0 0 0 4px rgba(220,38,38,0); }
+    }
   </style>
 </head>
 <body>
@@ -4697,7 +4711,7 @@ function renderTabla() {
       // Columna matrícula
       html += `<td style="min-width:175px"><div class="col-mat-cell">
         <div class="estado-dot ${devuelto?'asignado':''} ${!devuelto&&asignado&&!esBloqueado?'pendiente':''}"></div>
-        <div class="mat-badge" onclick="abrirFichaVehiculo('${esc(v.matricula)}')" title="Ver ficha del vehículo">${esc(v.matricula)}<span class="mat-badge-info ${_seguroVencido(v.matricula)?'has-data-expired':_tieneSeguro(v.matricula)?'has-data':''}">i</span></div>
+        <div class="mat-badge" onclick="abrirFichaVehiculo('${esc(v.matricula)}')" title="Ver ficha del vehículo">${esc(v.matricula)}${_matBadgeInfoHtml(v.matricula)}</div>
         <div class="tipo-tag">${esc(v.tipo)}${v.nota?' · '+v.nota:''}${esBloqueado?` <span class="badge-no-disponible">⛔ NO DISPONIBLE</span>`:''}${reasignado?` <span class="badge-reasig" onclick="verDetalleReasignacion('${esc(v.matricula)}')" style="cursor:pointer" title="Ver asignación anterior">↺ Reasignado</span>`:''}</div>
       </div></td>`;
 
@@ -7309,6 +7323,35 @@ function _seguroVencido(matricula) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const venc = new Date(v.seguro_vencimiento); venc.setHours(0,0,0,0);
   return venc < hoy;
+}
+// Estado combinado (seguro + ITV) para el icono junto a la matrícula:
+// 'expirado' → algo ya caducado · 'aviso' → algo vence en ≤30 días · 'ok' → hay datos, todo en regla · 'none' → sin datos
+function _matBadgeEstado(matricula) {
+  const v = _getVehiculo(matricula);
+  if (!v) return 'none';
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let expirado = false, aviso = false;
+
+  if (v.seguro_vencimiento) {
+    const dias = Math.ceil((new Date(v.seguro_vencimiento + 'T00:00:00') - hoy) / 86400000);
+    if (dias <= 0) expirado = true; else if (dias <= 30) aviso = true;
+  }
+  if (v.itv_fin) {
+    const dias = Math.ceil((new Date(v.itv_fin + 'T00:00:00') - hoy) / 86400000);
+    if (dias <= 0) expirado = true; else if (dias <= 30) aviso = true;
+  }
+
+  if (expirado) return 'expirado';
+  if (aviso) return 'aviso';
+  if (_tieneSeguro(matricula) || v.itv_fin) return 'ok';
+  return 'none';
+}
+function _matBadgeInfoHtml(matricula) {
+  const estado = _matBadgeEstado(matricula);
+  if (estado === 'expirado') return `<span class="mat-badge-info has-alerta-expirado" title="Seguro o ITV caducados">!</span>`;
+  if (estado === 'aviso')    return `<span class="mat-badge-info has-alerta-aviso" title="Seguro o ITV vencen en menos de 30 días">!</span>`;
+  if (estado === 'ok')       return `<span class="mat-badge-info has-data" title="Ver ficha del vehículo">i</span>`;
+  return `<span class="mat-badge-info" title="Ver ficha del vehículo">i</span>`;
 }
 // ── FICHA TÉCNICA PRO ────────────────────────────────────────────────────────
 // Google Drive — documentos gestionados via GAS

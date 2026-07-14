@@ -140,7 +140,7 @@
     .save-indicator.saving { color: #f39c12; }
     .save-indicator.saved { color: #2ecc71; }
     .save-indicator.error { color: #e84545; }
-    .user-pill { background: #484848; border: 1px solid #5a5a5a; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .user-pill { background: #484848; border: 1px solid #5a5a5a; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; }
     .user-pill-icon { font-size: 16px; }
     .user-pill-name { font-size: 11px; font-weight: 800; color: #ffffff; line-height: 1.2; }
     .user-pill-sub { font-size: 9px; color: #ccc; font-weight: 600; }
@@ -1783,6 +1783,21 @@
     <button id="btn-panel-admin" onclick="abrirLoginAdmin()" title="Panel Admin" aria-label="Panel de administración" style="display:none;background:transparent;border:none;font-size:18px;cursor:pointer;opacity:0.65;transition:opacity 0.2s;padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">⚙️</button>
   </div>
 
+  <div class="user-pill" id="user-pill" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="user-pill-icon">👤</div>
+      <div style="flex:1;min-width:0;">
+        <div class="user-pill-name" id="user-pill-name">—</div>
+        <div class="user-pill-sub" id="user-pill-sub">—</div>
+        <div class="session-countdown" id="session-countdown"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:9px;">
+      <button class="btn-logout" style="flex:1;padding:7px 6px;font-size:11px;" onclick="cerrarSesionManual()" aria-label="Cerrar sesión">🚪 Salir</button>
+      <button class="btn-logout" style="flex:1;padding:7px 6px;font-size:11px;" onclick="abrirModalCambioClave()" aria-label="Cambiar clave de acceso">🔑 Clave</button>
+    </div>
+  </div>
+
   <!-- Pastilla turno/fecha en sidebar -->
   <div id="sb-turno-info" style="
     background: linear-gradient(135deg, #1e1e38 0%, #252545 100%);
@@ -1798,12 +1813,12 @@
 
     <!-- Turno badge -->
     <div id="sb-turno-badge" style="
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 10px; font-weight: 900; letter-spacing: 1.5px;
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 14px; font-weight: 900; letter-spacing: 1px;
       text-transform: uppercase; color: #f97316;
     ">
-      <span id="sb-turno-dot" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;animation:blink 2s infinite;"></span>
-      <span id="sb-turno-texto">TARDE</span>
+      <span id="sb-turno-dot" style="width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;"></span>
+      <span id="sb-turno-texto">TURNO DE: TARDE</span>
     </div>
 
     <!-- Fecha grande -->
@@ -1818,19 +1833,6 @@
         <button class="turno-btn active" data-turno="MANANA" onclick="seleccionarTurno(this)">☀️ Mañana</button>
         <button class="turno-btn" data-turno="TARDE" onclick="seleccionarTurno(this)">🌆 Tarde</button>
       </div>
-    </div>
-  </div>
-
-  <div class="user-pill" id="user-pill" style="display:none">
-    <div class="user-pill-icon">👤</div>
-    <div style="flex:1">
-      <div class="user-pill-name" id="user-pill-name">—</div>
-      <div class="user-pill-sub" id="user-pill-sub">—</div>
-      <div class="session-countdown" id="session-countdown"></div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px;">
-      <button class="btn-logout" onclick="cerrarSesionManual()" title="Cerrar sesión" aria-label="Cerrar sesión">⏏</button>
-      <button class="btn-logout" onclick="abrirModalCambioClave()" title="Cambiar clave de acceso" aria-label="Cambiar clave de acceso">🔑</button>
     </div>
   </div>
 
@@ -4160,7 +4162,7 @@ function actualizarHeader() {
   const esTarde  = turnoActual !== 'MANANA';
   const turnoLabel = esTarde ? 'TARDE' : 'MAÑANA';
   const color      = esTarde ? '#f97316' : '#f59e0b';
-  if (sbTexto)  sbTexto.textContent = turnoLabel;
+  if (sbTexto)  sbTexto.textContent = 'TURNO DE: ' + turnoLabel;
   if (sbBadge)  sbBadge.style.color = color;
   const sbDot    = document.getElementById('sb-turno-dot');
   const sbAcento = document.getElementById('sb-acento');

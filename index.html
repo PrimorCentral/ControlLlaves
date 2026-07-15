@@ -8426,7 +8426,7 @@ function exportarFlotaPDF() {
     { label: 'VEHICULOS ACTIVOS', val: String(total) },
     { label: 'EN ALQUILER',       val: String(alquiler) },
     { label: 'BLOQUEADOS',        val: String(bloqueados) },
-    { label: 'ITV PROXIMAS ≤60D', val: String(itvAlerta) },
+    { label: 'ITV PROXIMAS (60D)', val: String(itvAlerta) },
   ];
   statsData.forEach((s, i) => {
     const sx = ML + i * (statW + 4);
@@ -8507,7 +8507,7 @@ function exportarFlotaPDF() {
 
       // Estado + color
       let estadoTxt, estadoColor;
-      if (v.bloqueado)        { estadoTxt = '🔒 Bloqueado';   estadoColor = ROJO; }
+      if (v.bloqueado)        { estadoTxt = 'Bloqueado';       estadoColor = ROJO; }
       else if (v.restringido) { estadoTxt = 'Restringido';    estadoColor = AMBAR; }
       else                    { estadoTxt = 'En vigor';       estadoColor = VERDE; }
 

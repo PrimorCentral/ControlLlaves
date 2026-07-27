@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.2.6">
+  <meta name="app-version" content="3.2.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4432,10 +4432,38 @@ async function _procesarSeleccionOperario(mat, nombre) {
     return;
   }
 
-  // ── Bloquear si el vehículo tiene la llave sin recepcionar del turno anterior ──
+  // ── Feedback inmediato: que quede claro que el clic sí se ha registrado ────
+  // mientras se comprueba en el servidor si el vehículo tiene llaves pendientes.
+  const inputEl = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
+  const wrapEl  = inputEl ? inputEl.closest('.operario-search-wrap') : null;
+  const iconoEl = wrapEl ? wrapEl.querySelector('.operario-search-icon') : null;
+  const iconoOriginal = iconoEl ? iconoEl.innerHTML : '';
+
+  if (inputEl) {
+    inputEl.value = nombre;
+    inputEl.disabled = true;
+    inputEl.style.opacity = '0.55';
+    inputEl.style.cursor = 'wait';
+  }
+  if (iconoEl) {
+    iconoEl.innerHTML = '<span class="spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;vertical-align:middle;"></span>';
+  }
+
+  const restaurarFeedback = () => {
+    if (inputEl) {
+      inputEl.disabled = false;
+      inputEl.style.opacity = '';
+      inputEl.style.cursor = '';
+    }
+    if (iconoEl) iconoEl.innerHTML = iconoOriginal;
+  };
+
+  // ── Bloquear si el vehículo tiene alguna llave sin recepcionar de un turno anterior ──
   const ocupacion = await verificarVehiculoOcupado(mat);
-  if (ocupacion && ocupacion.ocupado) {
-    mostrarModalVehiculoOcupado(mat, nombre, ocupacion.info, () => _continuarProcesoAsignacion(mat, nombre));
+  restaurarFeedback();
+
+  if (ocupacion && ocupacion.vehiculoOcupado) {
+    mostrarModalVehiculoOcupado(mat, nombre, ocupacion.info, ocupacion.pendientesRestantes, () => _procesarSeleccionOperario(mat, nombre));
     return;
   }
 
@@ -4474,7 +4502,7 @@ function _continuarProcesoAsignacion(mat, nombre) {
 // TARDE si estamos en MANANA). Consulta siempre al servidor porque esa fila
 // no está cargada en el cuadrante que se ve en pantalla (es de otro turno).
 async function verificarVehiculoOcupado(mat) {
-  if (!APPS_SCRIPT_URL || !fechaActual || !turnoActual) return { ok: true, ocupado: false };
+  if (!APPS_SCRIPT_URL || !fechaActual || !turnoActual) return { ok: true, vehiculoOcupado: false };
   try {
     const url = `${APPS_SCRIPT_URL}?accion=verificarOcupacion&matricula=${encodeURIComponent(mat)}&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
     const resp = await fetch(url, { redirect: 'follow' });
@@ -4482,11 +4510,11 @@ async function verificarVehiculoOcupado(mat) {
     return json;
   } catch(e) {
     // Sin conexión: no bloqueamos la asignación por un fallo de red
-    return { ok: false, ocupado: false };
+    return { ok: false, vehiculoOcupado: false };
   }
 }
 
-function mostrarModalVehiculoOcupado(mat, nombre, info, onResuelto) {
+function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onResuelto) {
   const restaurarInput = () => {
     const inp = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
     if (inp) inp.value = getDato(mat).operario || '';
@@ -4495,6 +4523,7 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, onResuelto) {
   const turnoLabel = info.turno === 'MANANA' ? 'Mañana' : 'Tarde';
   const fechaLabel = (info.fecha || '').split('-').reverse().join('/');
   const ahoraHHMM  = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const hayMas     = pendientesRestantes > 1;
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
@@ -4509,6 +4538,7 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, onResuelto) {
           en el turno <strong style="color:#1a1a2e;">${turnoLabel}</strong> del <strong style="color:#1a1a2e;">${fechaLabel}</strong>,
           a las <strong style="color:#1a1a2e;">${esc(info.hora_entrega || '—')}</strong>, y aún no consta la devolución de llaves.
         </div>
+        ${hayMas ? `<div style="font-size:11px;color:#b07040;font-weight:700;margin-top:8px;">⚠️ Hay ${pendientesRestantes} devoluciones acumuladas sin registrar de este vehículo. Se te pedirán una a una, empezando por la más antigua.</div>` : ''}
       </div>
       <div style="font-size:12px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;margin-bottom:8px;text-align:left;">Registrar devolución de llaves ahora</div>
       <input type="time" id="voc-hora-devolucion" value="${ahoraHHMM}"

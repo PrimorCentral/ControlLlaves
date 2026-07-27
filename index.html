@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.2.8">
+  <meta name="app-version" content="3.2.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -9585,6 +9585,23 @@ function resaltarCampoErrorKm(id) {
   setTimeout(() => { input.style.borderColor = '#dde1ea'; input.style.boxShadow = 'none'; }, 2500);
 }
 
+// Modal centrado (no toast) para avisar de un kilometraje no válido
+function mostrarModalErrorKm(mensaje) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:6000;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:34px 30px;width:380px;max-width:92vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:44px;margin-bottom:14px;">⚠️</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:10px;">Kilometraje no válido</div>
+      <div style="font-size:13px;color:#5a6478;line-height:1.6;margin-bottom:24px;">${esc(mensaje)}</div>
+      <button id="btn-cerrar-modal-km" style="background:#e84545;color:#fff;border:none;border-radius:10px;padding:11px 30px;font-size:13px;font-weight:800;font-family:Barlow,sans-serif;cursor:pointer;">Entendido</button>
+    </div>`;
+  document.body.appendChild(modal);
+  const cerrar = () => { if (document.body.contains(modal)) document.body.removeChild(modal); };
+  modal.querySelector('#btn-cerrar-modal-km').addEventListener('click', cerrar);
+  modal.addEventListener('click', (e) => { if (e.target === modal) cerrar(); });
+}
+
 async function enviarRegistroRepostaje() {
   if (!usuarioActual) return;
 
@@ -9664,9 +9681,11 @@ async function enviarRegistroRepostaje() {
       mostrarToast(`⛽ Tarjeta GASOIL entregada para ${matricula} — ${hora}`, 'success');
     } else {
       document.body.removeChild(modalProgreso);
-      mostrarToast('⚠️ No se pudo registrar el repostaje: ' + (json.error||'error'), 'error');
       if ((json.error||'').toLowerCase().includes('kilometraje')) {
         resaltarCampoErrorKm('repo-km');
+        mostrarModalErrorKm(json.error);
+      } else {
+        mostrarToast('⚠️ No se pudo registrar el repostaje: ' + (json.error||'error'), 'error');
       }
     }
   } catch (e) {
@@ -11725,9 +11744,11 @@ async function guardarRegistroManual() {
     registrarAccion('REPOSTAJE', 'Registro manual de repostaje (ticket antiguo)', `${matricula} · ${fecha} · ${importe}€`);
     mostrarToast(`✓ Registro manual guardado para ${matricula} (${fecha})`, 'success');
   } catch(e) {
-    mostrarToast('⚠️ Error: ' + e.message, 'error');
     if ((e.message||'').toLowerCase().includes('kilometraje')) {
       resaltarCampoErrorKm('manual-repo-km');
+      mostrarModalErrorKm(e.message);
+    } else {
+      mostrarToast('⚠️ Error: ' + e.message, 'error');
     }
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = txtOriginal; }

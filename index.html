@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.2.8">
+  <meta name="app-version" content="3.2.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -2940,9 +2940,11 @@
       <!-- Kilometraje -->
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px;">
         <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;">Kilometraje</label>
-        <input type="number" id="repo-km" placeholder="Ej: 125.400" min="0"
+        <input type="text" inputmode="numeric" id="repo-km" placeholder="Ej: 125400" maxlength="7"
           style="padding:11px 12px;border:1.5px solid #dde1ea;border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;color:#1a1a2e;outline:none;transition:border-color .2s,box-shadow .2s;"
+          oninput="soloDigitosKm(this)"
           onfocus="this.style.borderColor='#e8a23d';this.style.boxShadow='0 0 0 3px rgba(232,162,61,0.1)'" onblur="this.style.borderColor='#dde1ea';this.style.boxShadow='none'">
+        <span style="font-size:10px;color:#8899aa;">Solo números, sin puntos ni comas (ej: 125400 = 125.400 km)</span>
       </div>
 
       <!-- Sección: Antes de repostar -->
@@ -3147,8 +3149,9 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div>
           <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Kilometraje</label>
-          <input type="number" id="manual-repo-km" placeholder="Ej. 123456" min="0"
-            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;">
+          <input type="text" inputmode="numeric" id="manual-repo-km" placeholder="Ej. 123456" maxlength="7"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;outline:none;"
+            oninput="soloDigitosKm(this)">
         </div>
         <div>
           <label style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Nº tarjeta / ref.</label>
@@ -9571,6 +9574,13 @@ function onCambioMatriculaRepostaje() {
   if (d && d.operario && d.operario.trim() && !choferInput.value.trim()) {
     choferInput.value = d.operario;
   }
+}
+
+// Fuerza a que el campo de kilometraje solo admita dígitos (sin puntos, comas ni otros caracteres)
+// para evitar que se interprete un punto de miles como decimal.
+function soloDigitosKm(input) {
+  const limpio = input.value.replace(/[^0-9]/g, '');
+  if (limpio !== input.value) input.value = limpio;
 }
 
 // Resalta en rojo un campo de kilometraje cuando el backend rechaza el valor introducido

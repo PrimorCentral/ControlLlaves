@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.2.5">
+  <meta name="app-version" content="3.2.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4425,13 +4425,24 @@ function mostrarAvisoYaAsignado(mat, nombre, otraMat) {
   overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
 }
 
-function _procesarSeleccionOperario(mat, nombre) {
+async function _procesarSeleccionOperario(mat, nombre) {
   if (!nombre || !nombre.trim()) {
     setDato(mat, 'operario', '');
     actualizarStats(); renderTabla(); programarGuardado();
     return;
   }
 
+  // ── Bloquear si el vehículo tiene la llave sin recepcionar del turno anterior ──
+  const ocupacion = await verificarVehiculoOcupado(mat);
+  if (ocupacion && ocupacion.ocupado) {
+    mostrarModalVehiculoOcupado(mat, nombre, ocupacion.info, () => _continuarProcesoAsignacion(mat, nombre));
+    return;
+  }
+
+  _continuarProcesoAsignacion(mat, nombre);
+}
+
+function _continuarProcesoAsignacion(mat, nombre) {
   // ── Bloquear si el operario ya está asignado a OTRO vehículo activo ────────
   const otraMat = _matriculaYaAsignada(nombre, mat);
   if (otraMat) {
@@ -4456,6 +4467,109 @@ function _procesarSeleccionOperario(mat, nombre) {
   }
 
   _abrirConfirmarAsignacion(mat, nombre);
+}
+
+// ── Comprueba si el vehículo `mat` sigue con la llave sin recepcionar del ──
+// turno inmediatamente anterior (el de hoy si estamos en TARDE, o el de ayer
+// TARDE si estamos en MANANA). Consulta siempre al servidor porque esa fila
+// no está cargada en el cuadrante que se ve en pantalla (es de otro turno).
+async function verificarVehiculoOcupado(mat) {
+  if (!APPS_SCRIPT_URL || !fechaActual || !turnoActual) return { ok: true, ocupado: false };
+  try {
+    const url = `${APPS_SCRIPT_URL}?accion=verificarOcupacion&matricula=${encodeURIComponent(mat)}&fecha=${encodeURIComponent(fechaActual)}&turno=${encodeURIComponent(turnoActual)}`;
+    const resp = await fetch(url, { redirect: 'follow' });
+    const json = await resp.json();
+    return json;
+  } catch(e) {
+    // Sin conexión: no bloqueamos la asignación por un fallo de red
+    return { ok: false, ocupado: false };
+  }
+}
+
+function mostrarModalVehiculoOcupado(mat, nombre, info, onResuelto) {
+  const restaurarInput = () => {
+    const inp = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
+    if (inp) inp.value = getDato(mat).operario || '';
+  };
+
+  const turnoLabel = info.turno === 'MANANA' ? 'Mañana' : 'Tarde';
+  const fechaLabel = (info.fecha || '').split('-').reverse().join('/');
+  const ahoraHHMM  = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">🔑</div>
+      <div style="font-size:17px;font-weight:900;color:#c62020;margin-bottom:8px;">VEHÍCULO SIN RECEPCIONAR</div>
+      <div style="font-size:13px;font-weight:700;color:#1a1a2e;background:#ffe4e4;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:14px;">${esc(mat)}</div>
+      <div style="text-align:left;background:#f4f5f8;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+        <div style="font-size:12.5px;color:#445;line-height:1.6;">
+          Este vehículo se entregó a <strong style="color:#1a1a2e;">${esc(info.operario || '—')}</strong>
+          en el turno <strong style="color:#1a1a2e;">${turnoLabel}</strong> del <strong style="color:#1a1a2e;">${fechaLabel}</strong>,
+          a las <strong style="color:#1a1a2e;">${esc(info.hora_entrega || '—')}</strong>, y aún no consta la devolución de llaves.
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;margin-bottom:8px;text-align:left;">Registrar devolución de llaves ahora</div>
+      <input type="time" id="voc-hora-devolucion" value="${ahoraHHMM}"
+        style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:18px;text-align:center;">
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button id="btn-voc-cancel" style="flex:1;padding:11px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="btn-voc-ok" style="flex:1;padding:11px;background:#c62020;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Registrar devolución</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-voc-cancel').onclick = () => {
+    document.body.removeChild(overlay);
+    restaurarInput();
+  };
+
+  overlay.querySelector('#btn-voc-ok').onclick = async () => {
+    const btn = overlay.querySelector('#btn-voc-ok');
+    const horaDevolucion = document.getElementById('voc-hora-devolucion').value;
+    if (!horaDevolucion) {
+      mostrarToast('Introduce la hora de devolución', 'error');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳ Guardando…';
+    try {
+      const fila = {
+        fecha:           info.fecha,
+        turno:           info.turno,
+        matricula:       mat,
+        tipo:            info.tipo || '',
+        operario:        info.operario     || '',
+        resp_entrega:    info.resp_entrega || '',
+        resp_recibe:     usuarioActual ? usuarioActual.nombre : '',
+        hora_entrega:    info.hora_entrega || '',
+        hora_devolucion: horaDevolucion,
+        num_tarjeta:     info.num_tarjeta  || '',
+        itv:             info.itv          || '',
+        incidencias:     info.incidencias  || '',
+      };
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
+        body: JSON.stringify({ accion: 'guardarFila', fila }),
+      });
+      const json = await resp.json();
+      if (!json.ok) throw new Error(json.error || 'Error al guardar');
+
+      registrarAccion('CUADRANTE', 'Recepción de llaves (turno anterior)',
+        `${mat} · turno ${info.turno} · ${info.fecha} · conductor: ${info.operario}`);
+
+      document.body.removeChild(overlay);
+      mostrarToast(`✓ Llaves de ${mat} recepcionadas`, 'success');
+      onResuelto();
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = '✓ Registrar devolución';
+      mostrarToast('No se pudo registrar la devolución. Inténtalo de nuevo.', 'error');
+    }
+  };
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); restaurarInput(); } });
 }
 
 function mostrarInfoBloqueo(mat, motivo, bloqueado_por) {

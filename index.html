@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.2.9">
+  <meta name="app-version" content="3.3.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3344,8 +3344,27 @@
         onmouseover="this.style.borderColor='#e84545';this.style.color='#e84545'" onmouseout="this.style.borderColor='#2a2a4a';this.style.color='#6b7a94'">✕</button>
     </div>
 
+    <!-- FILTROS -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:16px 26px 0;flex-shrink:0;">
+      <input type="text" id="incid-pend-filtro-matricula" placeholder="🔎 Matrícula…"
+        style="padding:8px 12px;border:1.5px solid #e8eaf0;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;width:150px;"
+        onkeydown="if(event.key==='Enter') cargarIncidenciasPendientesModal()">
+      <input type="date" id="incid-pend-filtro-desde"
+        style="padding:8px 10px;border:1.5px solid #e8eaf0;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;">
+      <span style="font-size:11px;color:#8899aa;font-weight:700;">a</span>
+      <input type="date" id="incid-pend-filtro-hasta"
+        style="padding:8px 10px;border:1.5px solid #e8eaf0;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;">
+      <button onclick="cargarIncidenciasPendientesModal()"
+        style="padding:8px 16px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🔍 Filtrar</button>
+      <button onclick="limpiarFiltroIncidenciasPendientesModal()"
+        style="padding:8px 14px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">✕ Limpiar</button>
+      <div style="flex:1"></div>
+      <button id="btn-toggle-incid-resueltas" onclick="toggleIncidenciasResueltasModal()"
+        style="padding:8px 16px;background:#eafaf1;color:#1a6635;border:1.5px solid #a9dfbf;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">📋 Ver incidencias resueltas</button>
+    </div>
+
     <!-- LISTA -->
-    <div id="incidencias-pendientes-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0;padding:20px 26px;">
+    <div id="incidencias-pendientes-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0;padding:16px 26px 20px;">
       <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>
     </div>
 
@@ -9799,11 +9818,27 @@ async function actualizarBotonIncidenciasPendientes() {
   } catch(e) { /* si falla, se deja el último estado conocido */ }
 }
 
+let incidPendModalState = { verResueltas: false };
+
 function abrirModalIncidenciasPendientes() {
   if (!usuarioActual) {
     mostrarToast('Debes iniciar sesión para ver las incidencias pendientes', 'error');
     return;
   }
+  incidPendModalState.verResueltas = false;
+  const btnToggle = document.getElementById('btn-toggle-incid-resueltas');
+  if (btnToggle) {
+    btnToggle.textContent = '📋 Ver incidencias resueltas';
+    btnToggle.style.background = '#eafaf1';
+    btnToggle.style.color = '#1a6635';
+    btnToggle.style.borderColor = '#a9dfbf';
+  }
+  const fMat = document.getElementById('incid-pend-filtro-matricula');
+  const fDesde = document.getElementById('incid-pend-filtro-desde');
+  const fHasta = document.getElementById('incid-pend-filtro-hasta');
+  if (fMat) fMat.value = '';
+  if (fDesde) fDesde.value = '';
+  if (fHasta) fHasta.value = '';
   document.getElementById('modal-incidencias-pendientes').classList.add('open');
   cargarIncidenciasPendientesModal();
 }
@@ -9812,24 +9847,71 @@ function cerrarModalIncidenciasPendientes() {
   document.getElementById('modal-incidencias-pendientes').classList.remove('open');
 }
 
+function limpiarFiltroIncidenciasPendientesModal() {
+  const fMat = document.getElementById('incid-pend-filtro-matricula');
+  const fDesde = document.getElementById('incid-pend-filtro-desde');
+  const fHasta = document.getElementById('incid-pend-filtro-hasta');
+  if (fMat) fMat.value = '';
+  if (fDesde) fDesde.value = '';
+  if (fHasta) fHasta.value = '';
+  cargarIncidenciasPendientesModal();
+}
+
+function toggleIncidenciasResueltasModal() {
+  incidPendModalState.verResueltas = !incidPendModalState.verResueltas;
+  const btn = document.getElementById('btn-toggle-incid-resueltas');
+  if (btn) {
+    if (incidPendModalState.verResueltas) {
+      btn.textContent = '⬅ Ver pendientes';
+      btn.style.background = '#eef0f5';
+      btn.style.color = '#1a1a2e';
+      btn.style.borderColor = '#d5d9e2';
+    } else {
+      btn.textContent = '📋 Ver incidencias resueltas';
+      btn.style.background = '#eafaf1';
+      btn.style.color = '#1a6635';
+      btn.style.borderColor = '#a9dfbf';
+    }
+  }
+  cargarIncidenciasPendientesModal();
+}
+
 async function cargarIncidenciasPendientesModal() {
   const lista = document.getElementById('incidencias-pendientes-lista');
   lista.innerHTML = `<div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>`;
+
+  const matricula = (document.getElementById('incid-pend-filtro-matricula')?.value || '').trim();
+  const desde     = document.getElementById('incid-pend-filtro-desde')?.value || '';
+  const hasta     = document.getElementById('incid-pend-filtro-hasta')?.value || '';
+
   try {
-    const resp = await fetch(APPS_SCRIPT_URL + '?accion=cargarIncidencias&_t=' + Date.now(), { redirect: 'follow', cache: 'no-store' });
+    let url = `${APPS_SCRIPT_URL}?accion=cargarIncidencias&_t=${Date.now()}`;
+    if (desde)     url += `&desde=${encodeURIComponent(desde)}`;
+    if (hasta)     url += `&hasta=${encodeURIComponent(hasta)}`;
+    if (matricula) url += `&matricula=${encodeURIComponent(matricula)}`;
+
+    const resp = await fetch(url, { redirect: 'follow', cache: 'no-store' });
     const json = await resp.json();
-    const pendientes = (json.ok ? (json.filas||[]) : []).filter(f => (f.estado||'').toUpperCase() !== 'COMPLETADO');
-    renderListaIncidenciasPendientes(pendientes);
+    const todas = json.ok ? (json.filas||[]) : [];
+    const filtradas = incidPendModalState.verResueltas
+      ? todas.filter(f => (f.estado||'').toUpperCase() === 'COMPLETADO')
+      : todas.filter(f => (f.estado||'').toUpperCase() !== 'COMPLETADO');
+    renderListaIncidenciasPendientes(filtradas, incidPendModalState.verResueltas);
   } catch (e) {
-    lista.innerHTML = `<div style="text-align:center;padding:40px;color:#e84545;font-size:13px">⚠️ Error al cargar las incidencias pendientes</div>`;
+    lista.innerHTML = `<div style="text-align:center;padding:40px;color:#e84545;font-size:13px">⚠️ Error al cargar las incidencias</div>`;
   }
 }
 
-function renderListaIncidenciasPendientes(filas) {
+function renderListaIncidenciasPendientes(filas, modoResueltas) {
   const lista = document.getElementById('incidencias-pendientes-lista');
 
   if (!filas.length) {
-    lista.innerHTML = `
+    lista.innerHTML = modoResueltas ? `
+      <div style="text-align:center;padding:50px 20px;color:#8899aa">
+        <div style="font-size:36px;margin-bottom:12px">📋</div>
+        <div style="font-size:15px;font-weight:800;color:#1a1a2e">Sin incidencias resueltas</div>
+        <div style="font-size:12px;margin-top:6px">No hay incidencias que coincidan con el filtro.</div>
+      </div>` : `
       <div style="text-align:center;padding:50px 20px;color:#8899aa">
         <div style="font-size:36px;margin-bottom:12px">✅</div>
         <div style="font-size:15px;font-weight:800;color:#1a1a2e">Sin incidencias pendientes</div>
@@ -9840,6 +9922,10 @@ function renderListaIncidenciasPendientes(filas) {
 
   filas.sort((a, b) => (b.timestamp||'').localeCompare(a.timestamp||''));
 
+  const colExtra = modoResueltas
+    ? `<th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Resuelto por</th>`
+    : '';
+
   lista.innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead>
@@ -9847,17 +9933,22 @@ function renderListaIncidenciasPendientes(filas) {
           <th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Fecha</th>
           <th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Matrícula</th>
           <th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Observaciones</th>
+          ${colExtra}
         </tr>
       </thead>
       <tbody>
         ${filas.map(f => {
           let fechaLabel = f.fecha || '—';
           try { fechaLabel = new Date(f.fecha).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
+          const celdaExtra = modoResueltas
+            ? `<td style="padding:8px;color:#556;border-bottom:1px solid #f4f5f8;white-space:nowrap;">${esc(f.resuelto_por||'—')}</td>`
+            : '';
           return `
           <tr>
             <td style="padding:8px;color:#556;border-bottom:1px solid #f4f5f8;white-space:nowrap;">${esc(fechaLabel)}</td>
             <td style="padding:8px;border-bottom:1px solid #f4f5f8;white-space:nowrap;"><strong style="color:#1a1a2e">${esc(f.matricula||'—')}</strong></td>
             <td style="padding:8px;color:#334;border-bottom:1px solid #f4f5f8;line-height:1.5;word-break:break-word;">${esc(f.descripcion||'—')}</td>
+            ${celdaExtra}
           </tr>`;
         }).join('')}
       </tbody>

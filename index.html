@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.3.1">
+  <meta name="app-version" content="3.3.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3330,14 +3330,14 @@
 
 <!-- MODAL: INCIDENCIAS PENDIENTES -->
 <div class="modal-overlay" id="modal-incidencias-pendientes">
-  <div style="background:white;border-radius:20px;width:1200px;max-width:96vw;max-height:90vh;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;display:flex;flex-direction:column;">
+  <div style="background:white;border-radius:20px;width:1360px;max-width:97vw;max-height:94vh;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;display:flex;flex-direction:column;">
 
     <!-- CABECERA -->
     <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;">
       <div style="width:44px;height:44px;background:#e84545;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⚠️</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.5px;">INCIDENCIAS PENDIENTES</div>
-        <div style="font-size:11px;color:#6b7a94;margin-top:2px;">Incidencias de flota que aún no se han resuelto</div>
+        <div id="incid-pend-subtitulo" style="font-size:11px;color:#6b7a94;margin-top:2px;">Incidencias de flota que aún no se han resuelto</div>
       </div>
       <button onclick="cerrarModalIncidenciasPendientes()"
         style="width:30px;height:30px;border-radius:8px;border:1.5px solid #2a2a4a;background:transparent;color:#6b7a94;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;line-height:1;"
@@ -3364,7 +3364,7 @@
     </div>
 
     <!-- LISTA -->
-    <div id="incidencias-pendientes-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0;padding:16px 26px 20px;">
+    <div id="incidencias-pendientes-lista" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0;padding:16px 26px 20px;">
       <div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>
     </div>
 
@@ -9839,6 +9839,8 @@ function abrirModalIncidenciasPendientes() {
   if (fMat) fMat.value = '';
   if (fDesde) fDesde.value = '';
   if (fHasta) fHasta.value = '';
+  const subt = document.getElementById('incid-pend-subtitulo');
+  if (subt) subt.textContent = 'Incidencias de flota que aún no se han resuelto';
   document.getElementById('modal-incidencias-pendientes').classList.add('open');
   cargarIncidenciasPendientesModal();
 }
@@ -9876,6 +9878,17 @@ function toggleIncidenciasResueltasModal() {
   cargarIncidenciasPendientesModal();
 }
 
+let incidPendModalFilas = [];
+
+function buscarVehiculoPorMatricula(matricula) {
+  if (!matricula || typeof GRUPOS === 'undefined') return null;
+  for (const g of GRUPOS) {
+    const v = (g.vehiculos || []).find(v => v.matricula === matricula);
+    if (v) return v;
+  }
+  return null;
+}
+
 async function cargarIncidenciasPendientesModal() {
   const lista = document.getElementById('incidencias-pendientes-lista');
   lista.innerHTML = `<div style="text-align:center;padding:40px;color:#8899aa;font-size:13px">⏳ Cargando datos un momento por favor…</div>`;
@@ -9904,6 +9917,16 @@ async function cargarIncidenciasPendientesModal() {
 
 function renderListaIncidenciasPendientes(filas, modoResueltas) {
   const lista = document.getElementById('incidencias-pendientes-lista');
+  const subt  = document.getElementById('incid-pend-subtitulo');
+
+  filas.sort((a, b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+  incidPendModalFilas = filas;
+
+  if (subt) {
+    subt.textContent = modoResueltas
+      ? `${filas.length} incidencia${filas.length===1?'':'s'} resuelta${filas.length===1?'':'s'}`
+      : `${filas.length} incidencia${filas.length===1?'':'s'} pendiente${filas.length===1?'':'s'} de resolver`;
+  }
 
   if (!filas.length) {
     lista.innerHTML = modoResueltas ? `
@@ -9920,39 +9943,133 @@ function renderListaIncidenciasPendientes(filas, modoResueltas) {
     return;
   }
 
-  filas.sort((a, b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
 
-  const colExtra = modoResueltas
-    ? `<th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Resuelto por</th>`
-    : '';
+  lista.innerHTML = filas.map((f, idx) => {
+    let fechaLabel = f.fecha || '—';
+    try { fechaLabel = new Date(f.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
 
-  lista.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead>
-        <tr style="text-align:left;">
-          <th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Fecha</th>
-          <th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Matrícula</th>
-          <th style="padding:6px 8px;color:#8899aa;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1.5px solid #eef0f5;">Observaciones</th>
-          ${colExtra}
-        </tr>
-      </thead>
-      <tbody>
-        ${filas.map(f => {
-          let fechaLabel = f.fecha || '—';
-          try { fechaLabel = new Date(f.fecha).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
-          const celdaExtra = modoResueltas
-            ? `<td style="padding:8px;color:#556;border-bottom:1px solid #f4f5f8;white-space:nowrap;">${esc(f.resuelto_por||'—')}</td>`
-            : '';
-          return `
-          <tr>
-            <td style="padding:8px;color:#556;border-bottom:1px solid #f4f5f8;white-space:nowrap;">${esc(fechaLabel)}</td>
-            <td style="padding:8px;border-bottom:1px solid #f4f5f8;white-space:nowrap;"><strong style="color:#1a1a2e">${esc(f.matricula||'—')}</strong></td>
-            <td style="padding:8px;color:#334;border-bottom:1px solid #f4f5f8;line-height:1.5;word-break:break-word;">${esc(f.descripcion||'—')}</td>
-            ${celdaExtra}
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`;
+    const vehiculo = buscarVehiculoPorMatricula(f.matricula);
+    const tipoPill = vehiculo && vehiculo.tipo
+      ? `<span style="background:#eef0f5;color:#556;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700;white-space:nowrap;">${esc(vehiculo.tipo)}</span>`
+      : '';
+
+    let badgeAntig = '', cardBorder = '#e8eaf0', cardBg = '#ffffff';
+    if (!modoResueltas) {
+      let dias = null;
+      try { dias = Math.floor((hoy - new Date(f.fecha + 'T00:00:00')) / 86400000); } catch(e){}
+      if (dias !== null && !isNaN(dias)) {
+        let color = '#1a6635', bg = '#eafaf1', bd = '#a9dfbf', txt = dias <= 0 ? 'Hoy' : `Hace ${dias} día${dias===1?'':'s'}`;
+        if (dias >= 1 && dias <= 3) { color = '#b07040'; bg = '#fff8f0'; bd = '#fde8d0'; }
+        if (dias > 3) { color = '#b91c1c'; bg = '#fff0f0'; bd = '#fecaca'; cardBorder = '#fecaca'; }
+        badgeAntig = `<span style="background:${bg};color:${color};border:1.5px solid ${bd};border-radius:7px;padding:3px 10px;font-size:10.5px;font-weight:800;white-space:nowrap;">${txt}</span>`;
+      }
+    }
+
+    const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
+
+    let footer;
+    if (modoResueltas) {
+      let fechaResLabel = '—';
+      try { fechaResLabel = new Date(f.fecha_resolucion).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
+      footer = `
+        <div style="font-size:11px;color:#8899aa;margin-top:10px;">
+          ✅ Resuelto por <strong style="color:#1a6635">${esc(f.resuelto_por||'—')}</strong> · ${fechaResLabel}
+        </div>
+        ${f.comentario_resolucion ? `
+        <div style="margin-top:8px;padding:9px 12px;background:#f4f6fb;border:1px solid #e3e8f5;border-radius:9px;font-size:11.5px;color:#334;line-height:1.5;">
+          <strong style="color:#556">Comentario de resolución:</strong> ${esc(f.comentario_resolucion)}
+        </div>` : ''}`;
+    } else {
+      footer = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:11px;color:#8899aa;">Registrada por: <strong style="color:#556">${esc(f.responsable||'—')}</strong></div>
+          <button id="btn-resolver-${idx}" onclick="mostrarFormResolverModal(${idx})"
+            style="padding:7px 16px;background:#eafaf1;color:#1a6635;border:1.5px solid #a9dfbf;border-radius:8px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;white-space:nowrap;">✓ Resolver</button>
+        </div>
+        <div id="form-resolver-${idx}" style="display:none;margin-top:10px;padding:12px;background:#f9faff;border:1.5px solid #e3e8f5;border-radius:10px;">
+          <textarea id="comentario-resolver-${idx}" rows="2" placeholder="Comentario opcional al resolver la incidencia…"
+            style="width:100%;border:1.5px solid #e0e4ee;border-radius:8px;padding:8px 10px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;resize:vertical;box-sizing:border-box;"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+            <button onclick="ocultarFormResolverModal(${idx})"
+              style="padding:7px 14px;background:#f4f5f8;color:#556;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;">Cancelar</button>
+            <button id="btn-confirmar-resolver-${idx}" onclick="confirmarResolverModal(${idx})"
+              style="padding:7px 16px;background:#2ecc71;color:white;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;">✓ Confirmar resolución</button>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div style="border:1.5px solid ${cardBorder};background:${cardBg};border-radius:13px;padding:14px 16px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="background:#1a1a2e;color:#fff;border-radius:7px;padding:3px 11px;font-size:12.5px;font-weight:900;letter-spacing:0.3px;">${esc(f.matricula||'—')}</span>
+            ${tipoPill}
+            <span style="font-size:11px;color:#8899aa;font-weight:600;">${esc(fechaLabel)} · Turno ${esc(turnoLabel)}</span>
+          </div>
+          ${badgeAntig}
+        </div>
+        <div style="margin-top:10px;font-size:13px;color:#334;line-height:1.55;word-break:break-word;">${esc(f.descripcion||'—')}</div>
+        ${footer}
+      </div>`;
+  }).join('');
+}
+
+function mostrarFormResolverModal(idx) {
+  const form = document.getElementById(`form-resolver-${idx}`);
+  const btn  = document.getElementById(`btn-resolver-${idx}`);
+  if (form) form.style.display = 'block';
+  if (btn)  btn.style.display  = 'none';
+}
+
+function ocultarFormResolverModal(idx) {
+  const form = document.getElementById(`form-resolver-${idx}`);
+  const btn  = document.getElementById(`btn-resolver-${idx}`);
+  if (form) form.style.display = 'none';
+  if (btn)  btn.style.display  = 'inline-block';
+}
+
+async function confirmarResolverModal(idx) {
+  const inc = incidPendModalFilas[idx];
+  if (!inc || !APPS_SCRIPT_URL) return;
+
+  const comentario = (document.getElementById(`comentario-resolver-${idx}`)?.value || '').trim();
+  const btnConfirmar = document.getElementById(`btn-confirmar-resolver-${idx}`);
+  if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Guardando…'; }
+
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        accion: 'resolverIncidencia',
+        timestamp: inc.timestamp,
+        matricula: inc.matricula,
+        resueltoPor: usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—',
+        comentario: comentario
+      })
+    });
+    const json = await resp.json();
+    if (!json.ok) throw new Error(json.error || 'Error en Sheets');
+
+    // Sincronizar con la caché del panel admin si está cargada
+    if (typeof incidenciasCache !== 'undefined' && incidenciasCache.length) {
+      const i2 = incidenciasCache.findIndex(x => x.timestamp === inc.timestamp && x.matricula === inc.matricula);
+      if (i2 >= 0) {
+        incidenciasCache[i2].estado = 'COMPLETADO';
+        incidenciasCache[i2].resuelto_por = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
+        incidenciasCache[i2].comentario_resolucion = comentario;
+      }
+    }
+
+    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta`, 'success');
+    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}`);
+    actualizarBotonIncidenciasPendientes();
+    cargarIncidenciasPendientesModal();
+  } catch (e) {
+    mostrarToast('Error al resolver la incidencia: ' + e.message, 'error');
+    if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Confirmar resolución'; }
+  }
 }
 
 // ── Devolución directa desde badge del cuadrante ────────────────────────────

@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.3.2">
+  <meta name="app-version" content="3.4.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -20,6 +20,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Cliente Supabase (sustituye a Google Apps Script como backend) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- PDF.js — visor de documentos embebido -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module" id="pdfjs-script"></script>
   <script>
@@ -3575,23 +3577,956 @@ const ADMIN_PASS_HASH_DEFAULT = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8
 let APPS_SCRIPT_URL = APPS_SCRIPT_URL_DEFAULT;
 localStorage.setItem('llaves_script_url', APPS_SCRIPT_URL_DEFAULT); // sincronizar por si acaso
 
-// ── Interceptor: detecta respuestas "ocupado" del backend (LockService) ──
-// No cambia el comportamiento de ninguna llamada existente: solo mira una
-// copia de la respuesta y muestra el modal si corresponde.
-(function instalarDetectorOcupado() {
-  const fetchOriginal = window.fetch;
-  window.fetch = function(...args) {
-    return fetchOriginal.apply(this, args).then(resp => {
-      try {
-        const esNuestraApi = typeof args[0] === 'string' && args[0].startsWith(APPS_SCRIPT_URL);
-        if (esNuestraApi) {
-          resp.clone().json().then(json => {
-            if (json && json.ocupado) mostrarModalOcupado();
-          }).catch(() => {});
+// ════════════════════════════════════════════════════════════════════════════
+// SUPABASE — sustituye a Google Apps Script como backend
+// ════════════════════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://wigmejjmavnxhteapkxy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CXFXXjJqtQiCWYnwIVFEJw_PcTM77gF'; // ⚠️ pendiente de completar
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Traductor de peticiones: convierte cada `accion=...` que tu código ya
+// sabe pedir en una consulta equivalente a Supabase, y devuelve el JSON con
+// la MISMA forma que devolvía Apps Script. Así no hace falta tocar ninguna
+// de las funciones que ya llaman a fetch(APPS_SCRIPT_URL, ...).
+// Se amplía accion a accion según se van migrando endpoints.
+// ════════════════════════════════════════════════════════════════════════════
+async function manejarPeticionSupabase(urlStr, options) {
+  options = options || {};
+  let accion = '';
+  let params = {};
+
+  if (options.method === 'POST' && options.body) {
+    try { params = JSON.parse(options.body); } catch(e) { params = {}; }
+    accion = params.accion || '';
+  } else {
+    const u = new URL(urlStr);
+    u.searchParams.forEach((v, k) => { params[k] = v; });
+    accion = params.accion || '';
+  }
+
+  switch (accion) {
+
+    case 'ping': {
+      const { error } = await sb.from('app_config').select('clave').limit(1);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'loginResponsable': {
+      const { data, error } = await sb.from('responsables')
+        .select('*')
+        .eq('num_usuario', params.numUsuario)
+        .eq('hash_clave', params.hashClave)
+        .maybeSingle();
+      if (error) return { ok: false, error: error.message };
+      if (!data) return { ok: false, error: 'Usuario o clave incorrectos' };
+      return {
+        ok: true,
+        responsable: {
+          numUsuario: data.num_usuario,
+          nombre: data.nombre,
+          rol: data.rol || '',
+          admin: data.admin ? 'SI' : 'NO'
         }
-      } catch(e) {}
-      return resp;
-    });
+      };
+    }
+
+    case 'cargarFlota': {
+      const { data, error } = await sb.from('vehiculos').select('*').order('orden', { ascending: true, nullsFirst: false });
+      if (error) return { ok: false, error: error.message };
+      const flota = (data || []).map(v => ({
+        grupo: v.grupo || '',
+        matricula: v.matricula,
+        tipo: v.tipo || '',
+        nota: v.nota || '',
+        orden: v.orden ?? null,
+        restringido: v.restringido ? 'SI' : '',
+        itv_fin: v.itv_fin || '',
+        itv_aviso_enviado: v.itv_aviso_enviado || '',
+        archivado: !!v.archivado,
+        fecha_archivado: v.fecha_archivado || '',
+        bloqueado: !!v.bloqueado,
+        motivo_bloqueo: v.motivo_bloqueo || '',
+        bloqueado_por: v.bloqueado_por || '',
+        seguro_aseguradora: v.seguro_aseguradora || '',
+        seguro_nombre: v.seguro_nombre || '',
+        seguro_cif: v.seguro_cif || '',
+        seguro_poliza: v.seguro_poliza || '',
+        seguro_vencimiento: v.seguro_vencimiento || '',
+        seguro_tel: v.seguro_tel || ''
+      }));
+      return { ok: true, flota };
+    }
+
+    case 'cargarConductores': {
+      const { data, error } = await sb.from('conductores').select('*');
+      if (error) return { ok: false, error: error.message };
+      const conductores = (data || []).map(c => ({
+        numUsuario: c.num_usuario,
+        nombre: c.nombre,
+        dni: c.dni || '',
+        sociedad: c.sociedad || '',
+        nave: c.nave || ''
+      }));
+      return { ok: true, conductores };
+    }
+
+    case 'cargar': {
+      const { data, error } = await sb.from('registros')
+        .select('*')
+        .eq('fecha', params.fecha)
+        .eq('turno', params.turno)
+        .or('reasignado.is.null,reasignado.eq.false');
+      if (error) return { ok: false, error: error.message };
+      // Postgres devuelve las columnas `time` como HH:MM:SS — recortamos a HH:MM
+      const filas = (data || []).map(f => ({
+        ...f,
+        hora_entrega:    (f.hora_entrega    || '').slice(0, 5),
+        hora_devolucion: (f.hora_devolucion || '').slice(0, 5)
+      }));
+      return { ok: true, filas };
+    }
+
+    case 'cargarIncidencias': {
+      let q = sb.from('incidencias').select('*');
+      if (params.desde) q = q.gte('fecha', params.desde);
+      if (params.hasta) q = q.lte('fecha', params.hasta);
+      if (params.matricula) q = q.eq('matricula', params.matricula);
+      const { data, error } = await q;
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, filas: data || [] };
+    }
+
+    case 'cargarReasignaciones': {
+      let q = sb.from('reasignaciones').select('*')
+        .gte('fecha', params.desde)
+        .lte('fecha', params.hasta);
+      if (params.matricula) q = q.eq('matricula', params.matricula);
+      const { data, error } = await q;
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, filas: data || [] };
+    }
+
+    case 'guardarFila': {
+      const f = params.fila || {};
+      if (!f.matricula || !f.fecha || !f.turno) {
+        return { ok: false, error: 'Faltan datos obligatorios (fecha, turno o matrícula)' };
+      }
+      const payload = {
+        fecha:           f.fecha,
+        turno:           f.turno,
+        matricula:       f.matricula,
+        tipo:            f.tipo            || '',
+        operario:        f.operario        || '',
+        resp_entrega:    f.resp_entrega    || '',
+        resp_recibe:     f.resp_recibe     || '',
+        hora_entrega:    f.hora_entrega    || null,
+        hora_devolucion: f.hora_devolucion || null,
+        num_tarjeta:     f.num_tarjeta     || '',
+        itv:             f.itv             || '',
+        incidencias:     f.incidencias     || ''
+      };
+      // Solo tocamos la fila "activa" (no una fila congelada por una reasignación)
+      const { data: actualizadas, error: errUpd } = await sb.from('registros')
+        .update(payload)
+        .eq('fecha', f.fecha).eq('turno', f.turno).eq('matricula', f.matricula)
+        .or('reasignado.is.null,reasignado.eq.false')
+        .select('id');
+      if (errUpd) return { ok: false, error: errUpd.message };
+      if (!actualizadas || !actualizadas.length) {
+        const { error: errIns } = await sb.from('registros').insert(payload);
+        if (errIns) return { ok: false, error: errIns.message };
+      }
+      return { ok: true };
+    }
+
+    case 'eliminarFila': {
+      const f = params.fila || {};
+      // Borra TODAS las filas de esa fecha/turno/matrícula, incluidas las congeladas por reasignación
+      const { error } = await sb.from('registros').delete()
+        .eq('fecha', f.fecha).eq('turno', f.turno).eq('matricula', f.matricula);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'eliminarLog': {
+      // Borra una única entrada del Log de Órdenes (fila del listado, no por filtro)
+      if (!params.timestamp) return { ok: false, error: 'Falta timestamp' };
+      const { error } = await sb.from('log_ordenes').delete()
+        .eq('timestamp', params.timestamp);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'eliminarLogPorFiltro': {
+      // Borra las entradas del Log de Órdenes (rutas marcadas como "ya impresas")
+      // para esta matrícula/turno/fecha. Se usa al borrar una fila del Historial
+      // y también al reasignar un vehículo, para que el nuevo conductor no
+      // herede el estado "impresa" de las rutas del conductor anterior.
+      const { error } = await sb.from('log_ordenes').delete()
+        .eq('fecha', params.fecha).eq('turno', params.turno).eq('matricula', params.matricula);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    // ── LOG DE ACCIONES (auditoría del panel admin) ─────────────────────
+    case 'registrarAccion': {
+      const e = params.entrada || {};
+      const { error } = await sb.from('log_acciones').insert({
+        timestamp:   e.timestamp || new Date().toISOString(),
+        fecha:       e.fecha     || null,
+        hora:        e.hora      || null,
+        num_usuario: e.numUsuario || '',
+        nombre:      e.nombre     || '',
+        categoria:   e.categoria  || '',
+        accion:      e.accion     || '',
+        detalle:     e.detalle    || ''
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'cargarLogAcciones': {
+      let q = sb.from('log_acciones').select('*')
+        .order('timestamp', { ascending: false });
+      if (params.desde)     q = q.gte('fecha', params.desde);
+      if (params.hasta)     q = q.lte('fecha', params.hasta);
+      if (params.categoria) q = q.eq('categoria', params.categoria);
+      const { data, error } = await q;
+      if (error) return { ok: false, error: error.message };
+      let filas = (data || []).map(f => ({
+        timestamp:  f.timestamp,
+        fecha:      f.fecha,
+        hora:       f.hora,
+        numUsuario: f.num_usuario,
+        nombre:     f.nombre,
+        categoria:  f.categoria,
+        accion:     f.accion,
+        detalle:    f.detalle
+      }));
+      if (params.filtroUsuario) {
+        const fu = String(params.filtroUsuario).trim().toUpperCase();
+        filas = filas.filter(f =>
+          (f.nombre || '').toUpperCase().includes(fu) ||
+          (f.numUsuario || '').toString().toUpperCase().includes(fu)
+        );
+      }
+      return { ok: true, filas };
+    }
+
+    case 'eliminarLogAccion': {
+      if (!params.timestamp) return { ok: false, error: 'Falta timestamp' };
+      const { error } = await sb.from('log_acciones').delete()
+        .eq('timestamp', params.timestamp);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'bloquearVehiculo': {
+      const { error } = await sb.from('vehiculos').update({
+        bloqueado:      true,
+        motivo_bloqueo: params.motivo        || '',
+        bloqueado_por:  params.bloqueado_por || ''
+      }).eq('matricula', params.matricula);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'desbloquearVehiculo': {
+      const { error } = await sb.from('vehiculos').update({
+        bloqueado:      false,
+        motivo_bloqueo: '',
+        bloqueado_por:  ''
+      }).eq('matricula', params.matricula);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'registrarReasignacion': {
+      const r = params.reasignacion || {};
+      const { error } = await sb.from('reasignaciones').insert({
+        timestamp:          r.timestamp || new Date().toISOString(),
+        fecha:              r.fecha,
+        turno:              r.turno,
+        matricula:          r.matricula,
+        operario:           r.operario           || '',
+        resp_entrega:       r.resp_entrega       || '',
+        resp_recibe:        r.resp_recibe        || '',
+        hora_entrega:       r.hora_entrega        || null,
+        hora_reasignacion:  r.hora_reasignacion   || null,
+        num_usuario:        r.numUsuario          || '',
+        nombre_responsable: r.nombreResponsable   || ''
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'guardarSnapshotReasignacion': {
+      const f = params.fila || {};
+      const { error } = await sb.from('registros').insert({
+        fecha:           f.fecha,
+        turno:           f.turno,
+        matricula:       f.matricula,
+        tipo:            f.tipo            || '',
+        operario:        f.operario        || '',
+        resp_entrega:    f.resp_entrega    || '',
+        resp_recibe:     f.resp_recibe     || '',
+        hora_entrega:    f.hora_entrega    || null,
+        hora_devolucion: f.hora_devolucion || null,
+        num_tarjeta:     f.num_tarjeta     || '',
+        itv:             f.itv             || '',
+        incidencias:     f.incidencias     || '',
+        reasignado:      true
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'eliminarReasignacion': {
+      const { data: reasig, error: errSel } = await sb.from('reasignaciones')
+        .select('*').eq('timestamp', params.timestamp).maybeSingle();
+      if (errSel) return { ok: false, error: errSel.message };
+
+      const { error: errDel } = await sb.from('reasignaciones').delete().eq('timestamp', params.timestamp);
+      if (errDel) return { ok: false, error: errDel.message };
+
+      // Borra también la fila congelada correspondiente en registros (si la encontramos)
+      if (reasig) {
+        await sb.from('registros').delete()
+          .eq('fecha', reasig.fecha).eq('turno', reasig.turno).eq('matricula', reasig.matricula)
+          .eq('operario', reasig.operario).eq('reasignado', true);
+      }
+      return { ok: true };
+    }
+
+    case 'guardarFlota': {
+      const flota = params.flota || [];
+      for (const v of flota) {
+        const { error } = await sb.from('vehiculos').update({
+          grupo:        v.grupo || '',
+          tipo:         v.tipo  || '',
+          nota:         v.nota  || '',
+          orden:        (v.orden === '' || v.orden === undefined) ? null : v.orden,
+          restringido:  String(v.restringido || '').trim().toUpperCase() === 'SI',
+          itv_fin:      v.itv_fin || null
+        }).eq('matricula', v.matricula);
+        if (error) return { ok: false, error: error.message };
+      }
+      return { ok: true };
+    }
+
+    case 'guardarConductores': {
+      const conductores = params.conductores || [];
+      for (const c of conductores) {
+        const { error } = await sb.from('conductores').upsert({
+          num_usuario: c.numUsuario,
+          nombre:      c.nombre  || '',
+          dni:         c.dni     || '',
+          sociedad:    c.sociedad|| '',
+          nave:        c.nave    || ''
+        }, { onConflict: 'num_usuario' });
+        if (error) return { ok: false, error: error.message };
+      }
+      return { ok: true };
+    }
+
+    case 'verificarOcupacion': {
+      const { data, error } = await sb.from('registros')
+        .select('*')
+        .eq('matricula', params.matricula)
+        .not('hora_entrega', 'is', null)
+        .is('hora_devolucion', null)
+        .order('fecha', { ascending: true })
+        .order('turno', { ascending: true });
+      if (error) return { ok: false, vehiculoOcupado: false, error: error.message };
+
+      // Excluir la propia fila que se está editando ahora mismo (mismo turno/fecha)
+      const pendientes = (data || []).filter(f => !(f.fecha === params.fecha && f.turno === params.turno));
+      if (!pendientes.length) return { ok: true, vehiculoOcupado: false };
+
+      const masAntiguo = pendientes[0];
+      return {
+        ok: true,
+        vehiculoOcupado: true,
+        pendientesRestantes: pendientes.length,
+        info: {
+          fecha:        masAntiguo.fecha,
+          turno:        masAntiguo.turno,
+          tipo:         masAntiguo.tipo         || '',
+          operario:     masAntiguo.operario     || '',
+          resp_entrega: masAntiguo.resp_entrega || '',
+          hora_entrega: (masAntiguo.hora_entrega || '').slice(0, 5),
+          num_tarjeta:  masAntiguo.num_tarjeta   || '',
+          itv:          masAntiguo.itv           || '',
+          incidencias:  masAntiguo.incidencias   || ''
+        }
+      };
+    }
+
+    case 'cargarLog': {
+      let q = sb.from('log_ordenes').select('*');
+      if (params.desde) q = q.gte('fecha', params.desde);
+      if (params.hasta) q = q.lte('fecha', params.hasta);
+      q = q.order('timestamp', { ascending: false });
+      const { data, error } = await q;
+      if (error) return { ok: false, error: error.message };
+      let filas = (data || []).map(f => ({
+        timestamp:         f.timestamp,
+        numUsuario:        f.num_usuario,
+        nombreResponsable: f.nombre_responsable,
+        matricula:         f.matricula,
+        operario:          f.operario,
+        empresa:           f.empresa,
+        ruta:              f.ruta,
+        turno:             f.turno,
+        fecha:             f.fecha
+      }));
+      if (params.filtroUsuario) {
+        const fu = String(params.filtroUsuario).trim().toUpperCase();
+        filas = filas.filter(f =>
+          (f.nombreResponsable || '').toUpperCase().includes(fu) ||
+          (f.numUsuario || '').toString().toUpperCase().includes(fu)
+        );
+      }
+      return { ok: true, filas };
+    }
+
+    case 'registrarLog': {
+      const l = params.log || {};
+      const { error } = await sb.from('log_ordenes').insert({
+        timestamp:          l.timestamp || new Date().toISOString(),
+        num_usuario:        l.numUsuario        || '',
+        nombre_responsable: l.nombreResponsable || '',
+        matricula:          l.matricula || '',
+        operario:           l.operario  || '',
+        empresa:            l.empresa   || '',
+        ruta:               l.ruta      || '',
+        turno:              l.turno     || '',
+        fecha:              l.fecha     || null
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'registrarIncidencia': {
+      const inc = params.incidencia || {};
+      const { error } = await sb.from('incidencias').insert({
+        timestamp:   inc.timestamp || new Date().toISOString(),
+        fecha:       inc.fecha,
+        turno:       inc.turno,
+        matricula:   inc.matricula,
+        descripcion: inc.descripcion || '',
+        responsable: inc.responsable || '',
+        estado:      inc.estado || 'PENDIENTE'
+      });
+      if (error) return { ok: false, error: error.message };
+
+      // Si se pidió bloquear el vehículo, actualizamos también su ficha
+      if (params.bloquearVehiculo) {
+        const { error: errVeh } = await sb.from('vehiculos').update({
+          bloqueado:      true,
+          motivo_bloqueo: inc.descripcion || '',
+          bloqueado_por:  inc.responsable || ''
+        }).eq('matricula', inc.matricula);
+        if (errVeh) return { ok: false, error: errVeh.message };
+      }
+      return { ok: true };
+    }
+
+    case 'resolverIncidencia': {
+      const { error } = await sb.from('incidencias').update({
+        estado:                'COMPLETADO',
+        resuelto_por:           params.resueltoPor || '',
+        fecha_resolucion:       new Date().toISOString(),
+        comentario_resolucion:  params.comentario || ''
+      })
+        .eq('timestamp', params.timestamp)
+        .eq('matricula', params.matricula);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'eliminarIncidencia': {
+      const { error } = await sb.from('incidencias').delete()
+        .eq('timestamp', params.timestamp)
+        .eq('matricula', params.matricula);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    // ── REPOSTAJES ──────────────────────────────────────────────────────
+    case 'cargarRepostajesPendientes': {
+      const { data, error } = await sb.from('repostajes')
+        .select('*')
+        .eq('estado', 'PENDIENTE')
+        .order('id', { ascending: true });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, filas: data || [] };
+    }
+
+    case 'cargarRepostajes': {
+      let q = sb.from('repostajes').select('*')
+        .order('fecha', { ascending: false })
+        .order('id', { ascending: false });
+      if (params.desde)     q = q.gte('fecha', params.desde);
+      if (params.hasta)     q = q.lte('fecha', params.hasta);
+      if (params.matricula) q = q.eq('matricula', params.matricula);
+      const { data, error } = await q;
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, filas: data || [] };
+    }
+
+    case 'registrarRepostaje': {
+      const r = params.repostaje || {};
+      if (!r.matricula || !r.usuario_chofer || !r.num_tarjeta || !r.hora_entrega) {
+        return { ok: false, error: 'Faltan datos obligatorios del repostaje' };
+      }
+
+      // Validación de kilometraje: no puede ser menor que el último registrado
+      // para este vehículo, ni suponer un salto de más de 800 km respecto al anterior.
+      if (r.kilometraje !== '' && r.kilometraje !== undefined && r.kilometraje !== null) {
+        const kmNuevo = Number(r.kilometraje);
+        if (!isNaN(kmNuevo)) {
+          const { data: ultimos, error: errUlt } = await sb.from('repostajes')
+            .select('kilometraje')
+            .eq('matricula', r.matricula)
+            .not('kilometraje', 'is', null)
+            .order('id', { ascending: false })
+            .limit(1);
+          if (!errUlt && ultimos && ultimos.length) {
+            const kmAnterior = Number(ultimos[0].kilometraje);
+            if (!isNaN(kmAnterior)) {
+              if (kmNuevo < kmAnterior) {
+                return { ok: false, error: `El kilometraje (${kmNuevo}) es menor que el último registrado para este vehículo (${kmAnterior} km)` };
+              }
+              if (kmNuevo - kmAnterior > 800) {
+                return { ok: false, error: `El kilometraje (${kmNuevo}) supone un salto de más de 800 km respecto al último registrado (${kmAnterior} km). Revisa el dato.` };
+              }
+            }
+          }
+        }
+      }
+
+      const payload = {
+        fecha:          r.fecha || null,
+        matricula:      r.matricula,
+        usuario_chofer: r.usuario_chofer || '',
+        kilometraje:    (r.kilometraje !== undefined && r.kilometraje !== '') ? r.kilometraje : null,
+        num_tarjeta:    r.num_tarjeta || '',
+        hora_entrega:   r.hora_entrega || null,
+        gasoil_antes:   r.gasoil_antes !== undefined ? String(r.gasoil_antes) : '',
+        adblue_antes:   r.adblue_antes !== undefined ? String(r.adblue_antes) : '',
+        resp_entrega:   r.resp_entrega || '',
+        estado:         'PENDIENTE'
+      };
+      const { data, error } = await sb.from('repostajes').insert(payload).select('id').single();
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, id: data.id };
+    }
+
+    case 'completarRepostaje': {
+      const r = params.repostaje || {};
+      if (!r.id) return { ok: false, error: 'Falta el id del repostaje' };
+      const payload = {
+        hora_devolucion: r.hora_devolucion || null,
+        gasoil_despues:  r.gasoil_despues !== undefined ? String(r.gasoil_despues) : '',
+        adblue_despues:  r.adblue_despues !== undefined ? String(r.adblue_despues) : '',
+        ticket_ref:      r.ticket_ref || '',
+        ticket_importe:  (r.ticket_importe !== undefined && r.ticket_importe !== '') ? r.ticket_importe : null,
+        resp_recibe:     r.resp_recibe || '',
+        estado:          'COMPLETADO'
+      };
+      const { error } = await sb.from('repostajes').update(payload).eq('id', r.id);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'eliminarRepostaje': {
+      if (!params.id) return { ok: false, error: 'Falta el id del repostaje' };
+      const { error } = await sb.from('repostajes').delete().eq('id', params.id);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'cargarConfigAdmin': {
+      const { data, error } = await sb.from('app_config')
+        .select('valor').eq('clave', 'adminHash').maybeSingle();
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, adminHash: data ? data.valor : null };
+    }
+
+    case 'guardarConfigAdmin': {
+      await sb.from('app_config').delete().eq('clave', 'adminHash');
+      const { error } = await sb.from('app_config').insert({ clave: 'adminHash', valor: params.adminHash });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'cargarConfigHash': {
+      const { data, error } = await sb.from('app_config')
+        .select('valor').eq('clave', 'configHash').maybeSingle();
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, configHash: data ? data.valor : null };
+    }
+
+    case 'guardarConfigHash': {
+      await sb.from('app_config').delete().eq('clave', 'configHash');
+      const { error } = await sb.from('app_config').insert({ clave: 'configHash', valor: params.configHash });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'cargarRutas': {
+      // Empresas, ubicaciones y rutas viven en sus propias tablas — ya NO se
+      // guarda nada en app_config para esto.
+      const [resUbic, resEmp, resRutas] = await Promise.all([
+        sb.from('ubicaciones').select('*'),
+        sb.from('empresas').select('*'),
+        sb.from('rutas').select('*')
+      ]);
+      if (resUbic.error)  return { ok: false, error: resUbic.error.message };
+      if (resEmp.error)   return { ok: false, error: resEmp.error.message };
+      if (resRutas.error) return { ok: false, error: resRutas.error.message };
+
+      const ubicaciones = {};
+      (resUbic.data || []).forEach(u => {
+        ubicaciones[u.codigo] = {
+          dir: u.direccion || '',
+          pob: u.poblacion || '',
+          cp:  u.cp        || '',
+          tel: u.telefono  || ''
+        };
+      });
+
+      const empresas = {};
+      (resEmp.data || []).forEach(e => {
+        empresas[e.codigo] = {
+          label: e.label || '',
+          razon: e.razon || '',
+          nif:   e.nif   || '',
+          rutas: []
+        };
+      });
+      (resRutas.data || []).forEach(r => {
+        if (empresas[r.empresa_codigo]) {
+          empresas[r.empresa_codigo].rutas.push({
+            id: r.id, origen: r.origen, destino: r.destino, label: r.label || ''
+          });
+        }
+      });
+
+      return { ok: true, empresas, ubicaciones };
+    }
+
+    case 'guardarRutas': {
+      const empresasIn    = params.empresas    || {};
+      const ubicacionesIn = params.ubicaciones || {};
+
+      // El frontend manda siempre el estado completo → reemplazamos todo lo
+      // existente en las 3 tablas. Rutas primero (tiene FK hacia empresas).
+      // (rutas.id es uuid: usamos un filtro "id distinto de all-zero" para
+      // poder borrar todas las filas sin pasarle una cadena vacía a una
+      // columna uuid, que daría error de tipo)
+      const { error: errDelRutas } = await sb.from('rutas')
+        .delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (errDelRutas) return { ok: false, error: errDelRutas.message };
+
+      const { error: errDelEmp } = await sb.from('empresas').delete().neq('codigo', '');
+      if (errDelEmp) return { ok: false, error: errDelEmp.message };
+
+      const { error: errDelUbic } = await sb.from('ubicaciones').delete().neq('codigo', '');
+      if (errDelUbic) return { ok: false, error: errDelUbic.message };
+
+      const filasUbic = Object.entries(ubicacionesIn).map(([codigo, u]) => ({
+        codigo, direccion: u.dir || '', poblacion: u.pob || '', cp: u.cp || '', telefono: u.tel || ''
+      }));
+      if (filasUbic.length) {
+        const { error } = await sb.from('ubicaciones').insert(filasUbic);
+        if (error) return { ok: false, error: error.message };
+      }
+
+      const filasEmp = Object.entries(empresasIn).map(([codigo, e]) => ({
+        codigo, label: e.label || '', razon: e.razon || '', nif: e.nif || ''
+      }));
+      if (filasEmp.length) {
+        const { error } = await sb.from('empresas').insert(filasEmp);
+        if (error) return { ok: false, error: error.message };
+      }
+
+      // rutas.id es uuid autogenerado por la BD — no mandamos el id que
+      // tuviera la ruta en memoria (tipo 'jd-g-p'), dejamos que Postgres
+      // genere uno nuevo con cada guardado.
+      const filasRutas = [];
+      Object.entries(empresasIn).forEach(([empKey, e]) => {
+        (e.rutas || []).forEach(r => {
+          filasRutas.push({
+            empresa_codigo: empKey, origen: r.origen, destino: r.destino, label: r.label || ''
+          });
+        });
+      });
+      if (filasRutas.length) {
+        const { error } = await sb.from('rutas').insert(filasRutas);
+        if (error) return { ok: false, error: error.message };
+      }
+
+      // Limpieza: borra el resto residual del blob antiguo en app_config, si existía.
+      await sb.from('app_config').delete().eq('clave', 'rutas');
+
+      return { ok: true };
+    }
+
+    case 'cargarDestinatarios': {
+      const { data, error } = await sb.from('destinatarios_email').select('*');
+      if (error) return { ok: false, error: error.message };
+      const resultado = { incidencias: [], bloqueos: [], itv: [] };
+      (data || []).forEach(f => {
+        if (resultado[f.tipo]) resultado[f.tipo].push(f.email);
+      });
+      return { ok: true, ...resultado };
+    }
+
+    case 'guardarDestinatarios': {
+      const d = params.destinatarios || {};
+      const filas = [];
+      (d.incidencias || []).forEach(email => filas.push({ tipo: 'incidencias', email }));
+      (d.bloqueos    || []).forEach(email => filas.push({ tipo: 'bloqueos',    email }));
+      (d.itv         || []).forEach(email => filas.push({ tipo: 'itv',         email }));
+
+      // El frontend manda siempre las 3 listas completas → reemplazamos todo lo existente
+      const { error: errDel } = await sb.from('destinatarios_email')
+        .delete().in('tipo', ['incidencias', 'bloqueos', 'itv']);
+      if (errDel) return { ok: false, error: errDel.message };
+
+      if (filas.length) {
+        const { error: errIns } = await sb.from('destinatarios_email').insert(filas);
+        if (errIns) return { ok: false, error: errIns.message };
+      }
+      return { ok: true };
+    }
+
+    // ── PRESENCIA (usuarios activos) ────────────────────────────────────
+    case 'registrarPresencia': {
+      if (!params.numUsuario) return { ok: false, error: 'Falta numUsuario' };
+      await sb.from('presencia').delete().eq('num_usuario', params.numUsuario);
+      const { error } = await sb.from('presencia').insert({
+        num_usuario: params.numUsuario,
+        nombre:      params.nombre  || '',
+        rol:         params.rol     || 'Responsable',
+        version:     params.version || '',
+        ultima_vez:  new Date().toISOString()
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'registrarDesconexion': {
+      if (!params.numUsuario) return { ok: false, error: 'Falta numUsuario' };
+      const { error } = await sb.from('presencia').delete().eq('num_usuario', params.numUsuario);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'cargarPresencia': {
+      // Se considera "activo" a quien haya mandado un heartbeat en los últimos 3 minutos
+      // (el heartbeat del cliente se envía cada 60s)
+      const cutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      const { data, error } = await sb.from('presencia')
+        .select('*')
+        .gte('ultima_vez', cutoff)
+        .order('ultima_vez', { ascending: false });
+      if (error) return { ok: false, error: error.message };
+      const ahoraMs = Date.now();
+      const usuarios = (data || []).map(p => {
+        const ts = new Date(p.ultima_vez).getTime();
+        const segundos = Math.max(0, Math.round((ahoraMs - ts) / 1000));
+        let hace;
+        if (segundos < 60) hace = `${segundos}s`;
+        else if (segundos < 3600) hace = `${Math.round(segundos / 60)} min`;
+        else hace = `${Math.round(segundos / 3600)} h`;
+        return {
+          numUsuario: p.num_usuario,
+          nombre:     p.nombre,
+          rol:        p.rol,
+          version:    p.version,
+          segundos,
+          hace,
+          ultimaVez:  new Date(p.ultima_vez).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+        };
+      });
+      return { ok: true, usuarios };
+    }
+
+    // ── DEVOLUCIONES PENDIENTES DEL TURNO ANTERIOR ──────────────────────
+    case 'devolPendientes': {
+      if (!params.responsable || !params.hoy) return { ok: true, pendientes: [] };
+      const { data, error } = await sb.from('registros')
+        .select('*')
+        .eq('resp_entrega', params.responsable)
+        .lt('fecha', params.hoy)
+        .not('operario', 'is', null)
+        .neq('operario', '')
+        .or('hora_devolucion.is.null,hora_devolucion.eq.')
+        .or('reasignado.is.null,reasignado.eq.false');
+      if (error) return { ok: false, error: error.message };
+      const pendientes = (data || []).map(f => ({
+        ...f,
+        hora_entrega:    (f.hora_entrega    || '').slice(0, 5),
+        hora_devolucion: (f.hora_devolucion || '').slice(0, 5)
+      }));
+      return { ok: true, pendientes };
+    }
+
+    case 'cargarResponsables': {
+      const { data, error } = await sb.from('responsables').select('*').order('nombre');
+      if (error) return { ok: false, error: error.message };
+      const responsables = (data || []).map(r => ({
+        numUsuario: r.num_usuario,
+        nombre:     r.nombre,
+        rol:        r.rol || '',
+        admin:      r.admin ? 'SI' : ''
+      }));
+      return { ok: true, responsables };
+    }
+
+    case 'añadirResponsable': {
+      const r = params.responsable || {};
+      if (!r.numUsuario || !r.nombre || !r.hashClave) {
+        return { ok: false, error: 'Faltan datos obligatorios' };
+      }
+      const { error } = await sb.from('responsables').insert({
+        num_usuario: r.numUsuario,
+        nombre:      r.nombre,
+        hash_clave:  r.hashClave,
+        rol:         r.rol || '',
+        admin:       String(r.admin || '').trim().toUpperCase() === 'SI'
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'eliminarResponsable': {
+      const { error } = await sb.from('responsables').delete().eq('num_usuario', params.numUsuario);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'cambiarClave': {
+      const { error } = await sb.from('responsables')
+        .update({ hash_clave: params.hashNueva })
+        .eq('num_usuario', params.numUsuario);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'historial': {
+      let q = sb.from('registros').select('*');
+      if (params.desde) q = q.gte('fecha', params.desde);
+      if (params.hasta) q = q.lte('fecha', params.hasta);
+      q = q.order('fecha', { ascending: false }).order('turno', { ascending: true });
+      if (params.turno) {
+        // El selector manda "MAÑANA" con Ñ, pero en la BD se guarda sin tilde
+        const turnoNorm = params.turno.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+        q = q.eq('turno', turnoNorm);
+      }
+      if (params.matricula) q = q.eq('matricula', params.matricula);
+      const { data, error } = await q;
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, filas: data || [] };
+    }
+
+    // ── DIAGNÓSTICO / SALUD DEL SISTEMA ─────────────────────────────────
+    // Sustituye al antiguo chequeo de hojas de Google Sheets: para cada
+    // tabla de Supabase, comprueba si existe, cuántas filas tiene y cuántas
+    // columnas (a partir de una fila de muestra).
+    case 'diagnosticoHojas': {
+      const tablas = [
+        { hoja: 'vehiculos',           nombre: 'Vehículos' },
+        { hoja: 'conductores',         nombre: 'Conductores' },
+        { hoja: 'registros',           nombre: 'Registros (cuadrante)' },
+        { hoja: 'incidencias',         nombre: 'Incidencias' },
+        { hoja: 'reasignaciones',      nombre: 'Reasignaciones' },
+        { hoja: 'responsables',        nombre: 'Responsables' },
+        { hoja: 'log_ordenes',         nombre: 'Log de Órdenes' },
+        { hoja: 'log_acciones',        nombre: 'Log de Acciones' },
+        { hoja: 'destinatarios_email', nombre: 'Destinatarios de email' },
+        { hoja: 'repostajes',          nombre: 'Repostajes' },
+        { hoja: 'empresas',            nombre: 'Empresas' },
+        { hoja: 'ubicaciones',         nombre: 'Ubicaciones' },
+        { hoja: 'rutas',               nombre: 'Rutas' },
+        { hoja: 'app_config',          nombre: 'Configuración de la app' },
+      ];
+
+      const hojas = await Promise.all(tablas.map(async t => {
+        try {
+          const { count, error } = await sb.from(t.hoja).select('*', { count: 'exact', head: true });
+          if (error) return { ...t, existe: false, filas: 0, columnas: 0 };
+          let columnas = 0;
+          if (count > 0) {
+            const { data: muestra } = await sb.from(t.hoja).select('*').limit(1);
+            if (muestra && muestra[0]) columnas = Object.keys(muestra[0]).length;
+          }
+          return { ...t, existe: true, filas: count || 0, columnas };
+        } catch (e) {
+          return { ...t, existe: false, filas: 0, columnas: 0 };
+        }
+      }));
+
+      return { ok: true, hojas, timestamp: new Date().toISOString() };
+    }
+
+    default:
+      // Todavía no migrado — se irá completando accion a accion.
+      console.warn('Acción de Supabase aún no implementada:', accion, params);
+      return { ok: false, error: 'Acción no implementada todavía: ' + accion };
+  }
+}
+
+// ── Interceptor de fetch: cualquier llamada a APPS_SCRIPT_URL se desvía a
+// Supabase en vez de salir a la red, EXCEPTO las acciones de la lista blanca
+// (gestión de documentos), que siguen yendo de verdad al Apps Script real
+// mientras no migremos también los ficheros a Supabase Storage.
+// El resto de fetch (CDNs, etc.) sigue funcionando exactamente igual que antes.
+const ACCIONES_APPS_SCRIPT = new Set([
+  'subirDocumento', 'cargarDocumentos', 'eliminarDocumento', 'proxyDoc'
+]);
+
+function _extraerAccionDePeticion(urlStr, options) {
+  try {
+    if (options && options.method === 'POST' && options.body) {
+      const p = JSON.parse(options.body);
+      return p.accion || '';
+    }
+    const u = new URL(urlStr);
+    return u.searchParams.get('accion') || '';
+  } catch (e) { return ''; }
+}
+
+(function instalarTraductorSupabase() {
+  const fetchOriginal = window.fetch;
+  window.fetch = async function(...args) {
+    const esNuestraApi = typeof args[0] === 'string' && args[0].startsWith(APPS_SCRIPT_URL);
+    if (!esNuestraApi) return fetchOriginal.apply(this, args);
+
+    const accion = _extraerAccionDePeticion(args[0], args[1] || {});
+    if (ACCIONES_APPS_SCRIPT.has(accion)) {
+      // Se deja pasar de verdad a Google Apps Script (documentos / Drive)
+      return fetchOriginal.apply(this, args);
+    }
+
+    try {
+      const data = await manejarPeticionSupabase(args[0], args[1] || {});
+      if (data && data.ocupado) mostrarModalOcupado();
+      return new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.error('Error en traductor Supabase:', e);
+      return new Response(JSON.stringify({ ok: false, error: e.message || 'Error de conexión con Supabase' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
   };
 })();
 
@@ -3624,57 +4559,13 @@ const GRUPOS = [];
 
 // ════════════════════════════════════════════════════════════════════════════
 // DATOS: EMPRESAS Y RUTAS  (editables desde Panel Admin → Config → Rutas)
+// Se cargan SIEMPRE desde Supabase (tablas `empresas`, `rutas`, `ubicaciones`).
+// No hay datos por defecto ni copia en localStorage: hasta que termine la
+// carga inicial (rutasCargarDesdeSheets, ver más abajo) estos objetos están
+// vacíos.
 // ════════════════════════════════════════════════════════════════════════════
-const EMPRESAS_DEFAULT = {
-  JD: {
-    label: 'JIMENEZ & DIAZ LOGISTICA',
-    razon: 'JIMENEZ&DIAZ LOGISTICA SL',
-    nif: 'B-93,406,767',
-    rutas: [
-      { id:'jd-g-p', origen:'GAITE', destino:'PTA', label:'GAITE → PTA' },
-      { id:'jd-p-g', origen:'PTA', destino:'GAITE', label:'PTA → GAITE' },
-      { id:'jd-g-c', origen:'GAITE', destino:'CARTAMA', label:'GAITE → CÁRTAMA' },
-      { id:'jd-c-g', origen:'CARTAMA', destino:'GAITE', label:'CÁRTAMA → GAITE' },
-      { id:'jd-p-c', origen:'PTA', destino:'CARTAMA', label:'PTA → CÁRTAMA' },
-      { id:'jd-c-p', origen:'CARTAMA', destino:'PTA', label:'CÁRTAMA → PTA' },
-    ],
-  },
-  LD: {
-    label: 'LOCURA DESMEDIDA',
-    razon: 'LOCURA DESMEDIDA S.L',
-    nif: 'B55407175',
-    rutas: [
-      { id:'ld-p-g', origen:'PTA', destino:'GAITE', label:'PTA → GAITE' },
-      { id:'ld-g-p', origen:'GAITE', destino:'PTA', label:'GAITE → PTA' },
-      { id:'ld-p-c', origen:'PTA', destino:'CARTAMA', label:'PTA → CÁRTAMA' },
-      { id:'ld-c-g', origen:'CARTAMA', destino:'GAITE', label:'CÁRTAMA → GAITE' },
-    ],
-  },
-};
-
-const UBIC_DEFAULT = {
-  GAITE:   { dir: 'C/ ESCRITORA CARMEN MARTIN GAITE 10', pob: 'MALAGA', cp: '29196', tel: '628699621' },
-  PTA:     { dir: 'C/ CHARLES DARWIN Nº 7', pob: 'MALAGA', cp: '29590', tel: '628699621' },
-  CARTAMA: { dir: 'C/ MATILDE UCELAY', pob: 'CARTAMA - MALAGA', cp: '29570', tel: '628699621' },
-};
-
-function _cargarEmpresasConfig() {
-  try {
-    const raw = localStorage.getItem('primor_empresas_config');
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return JSON.parse(JSON.stringify(EMPRESAS_DEFAULT));
-}
-function _cargarUbicConfig() {
-  try {
-    const raw = localStorage.getItem('primor_ubic_config');
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return JSON.parse(JSON.stringify(UBIC_DEFAULT));
-}
-
-let EMPRESAS = _cargarEmpresasConfig();
-let UBIC = _cargarUbicConfig();
+let EMPRESAS = {};
+let UBIC = {};
 
 // ════════════════════════════════════════════════════════════════════════════
 // COLUMNAS del cuadrante (sin operario — va aparte como dropdown)
@@ -5355,6 +6246,29 @@ function pedirReasignacion(matricula) {
         await guardarSnapshotReasignacion(snapshot);
       }
 
+      // 2b) Borrar el Log de Órdenes (rutas "ya impresas") de este vehículo/turno/fecha.
+      //     Si no se hace, el nuevo conductor hereda las órdenes marcadas como impresas
+      //     del conductor anterior y la app sigue mostrando la orden de trabajo vieja.
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            accion: 'eliminarLogPorFiltro',
+            matricula, fecha: fechaActual, turno: turnoActual
+          })
+        });
+      } catch(e) { console.warn('No se pudo limpiar el log de órdenes al reasignar:', e); }
+      // Limpiar también el estado local para que el botón "Orden" se ponga
+      // en pendiente al instante, sin esperar al sync periódico
+      const _impKeyReasig = `${matricula.trim().toUpperCase()}|${turnoActual.toUpperCase()}|${fechaActual}`;
+      _ordenesImpresas.delete(_impKeyReasig);
+      document.querySelectorAll(`.btn-print-row[data-mat="${CSS.escape(matricula.trim().toUpperCase())}"]`).forEach(b => {
+        b.classList.remove('impresa');
+        b.classList.remove('pendiente');
+        b.title = 'Imprimir orden de trabajo';
+      });
+
       // 3) Limpiar datos activos en memoria (la fila activa queda vacía para el nuevo conductor)
       setDato(matricula, '_reasignado', 'SI');
       setDato(matricula, '_operarioAnterior', operarioAnterior);
@@ -6021,7 +6935,7 @@ async function cargarFlotaDesdeSheets(mostrarError = true) {
       json.flota.forEach(v => {
         let g = GRUPOS.find(g => g.nombre === v.grupo);
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
-        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado===true, fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? null), restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado===true, fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
       });
       if (mostrarError) ocultarErrorCarga();
       return true;
@@ -6039,7 +6953,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? ''), restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -7106,6 +8020,20 @@ async function eliminarResponsable(idx) {
 // ════════════════════════════════════════════════════════════════════════════
 // GESTIÓN VEHÍCULOS
 // ════════════════════════════════════════════════════════════════════════════
+function moverVehiculoOrden(gi, vi, direccion) {
+  const arr = GRUPOS[gi].vehiculos;
+  const nvi = vi + direccion;
+  if (nvi < 0 || nvi >= arr.length) return;
+  // Intercambiamos el valor de 'orden' entre los dos vehículos afectados
+  const ordenA = arr[vi].orden, ordenB = arr[nvi].orden;
+  arr[vi].orden  = ordenB;
+  arr[nvi].orden = ordenA;
+  // Y su posición en el array, para que se refleje al instante
+  [arr[vi], arr[nvi]] = [arr[nvi], arr[vi]];
+  renderAdminVehiculos();
+  sincronizarVehiculosConSheets();
+}
+
 function renderAdminVehiculos() {
   const lista = document.getElementById('admin-lista-vehiculos');
   let html = '';
@@ -7206,6 +8134,8 @@ function renderAdminVehiculos() {
           ${v.bloqueado ? `<span style="font-size:9px;color:#b91c1c;font-weight:700;background:#fee2e2;border-radius:4px;padding:2px 8px;border:1px solid #fecaca;">Motivo: ${esc(v.motivo_bloqueo||'—')} · ${esc(v.bloqueado_por||'—')}</span>` : ''}
         </div>
         <div class="admin-item-actions">
+          <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},-1)" title="Subir orden" ${vi===0?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬆️</button>
+          <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},1)" title="Bajar orden" ${vi===grupo.vehiculos.length-1?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬇️</button>
           <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV">📋 ITV</button>
           <button class="btn-item-action" onclick="editarSeguro(${gi},${vi})" title="Datos del seguro" style="background:#eef2ff;color:#3b5bdb;border-color:#c5d0ff;">🛡️ Seguro</button>
           <button class="btn-item-action" onclick="abrirGestorDocumentos('${esc(v.matricula)}')" title="Gestionar documentos" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;">📂 Docs</button>
@@ -10751,6 +11681,10 @@ async function cargarUsuariosActivos() {
 }
 
 function cambiarTab(tab) {
+  if (tab !== 'config' && typeof _rutasSinGuardar !== 'undefined' && _rutasSinGuardar) {
+    _rutasPuedeSalirSinGuardar().then(puede => { if (puede) cambiarTab(tab); });
+    return;
+  }
   ['vehiculos','conductores','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
@@ -12976,97 +13910,11 @@ function forzarActualizacion() {
   #modal-requiere-instalacion .btn-ya-instalado:hover { border-color: #aab4c8; color: #3a3a4a; }
 </style>
 
-<div id="modal-requiere-instalacion">
-  <div class="ri-box">
-    <div class="ri-icon">📲</div>
-    <div class="ri-title">Instala la aplicación</div>
-    <div class="ri-desc">
-      Gestión de Flota Primor debe utilizarse como aplicación instalada,
-      no desde el navegador. Instálala para continuar.
-    </div>
-
-    <div class="ri-pasos" id="ri-pasos-chrome">
-      <b>En Chrome / Edge (PC):</b><br>
-      1. Pulsa el icono <b>⊕ instalar</b> que aparece en la barra de direcciones (a la derecha).<br>
-      2. Pulsa <b>Instalar</b> en el cuadro que aparece.<br>
-      3. Abre la app desde el icono creado en tu escritorio / menú de inicio.
-    </div>
-
-    <div class="ri-pasos" id="ri-pasos-android" style="display:none;">
-      <b>En Android (Chrome):</b><br>
-      1. Pulsa el botón rojo <b>"Instalar aplicación"</b> de abajo.<br>
-      2. Confirma pulsando <b>Instalar</b>.<br>
-      3. Abre la app desde el icono que aparece en tu pantalla de inicio.
-    </div>
-
-    <div class="ri-pasos" id="ri-pasos-ios" style="display:none;">
-      <b>En iPhone / iPad (Safari):</b><br>
-      1. Pulsa el icono <b>Compartir</b> (cuadrado con flecha hacia arriba).<br>
-      2. Selecciona <b>"Añadir a pantalla de inicio"</b>.<br>
-      3. Pulsa <b>Añadir</b> y abre la app desde el icono creado.
-    </div>
-
-    <button class="btn-instalar" id="btn-instalar-app">⬇️ Instalar aplicación</button>
-    <button class="btn-ya-instalado" id="btn-ya-instalado">Ya la he instalado · Recargar</button>
-  </div>
-</div>
-
-<script>
-(function () {
-  function appEstaInstalada() {
-    return window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true            // iOS
-        || document.referrer.startsWith('android-app://'); // TWA Android
-  }
-
-  var modal = document.getElementById('modal-requiere-instalacion');
-
-  if (appEstaInstalada()) {
-    return; // todo correcto, no hacemos nada
-  }
-
-  // Mostrar instrucciones según plataforma
-  var ua = navigator.userAgent;
-  var esIOS = /iPad|iPhone|iPod/.test(ua);
-  var esAndroid = /Android/.test(ua);
-
-  document.getElementById('ri-pasos-chrome').style.display  = (!esIOS && !esAndroid) ? 'block' : 'none';
-  document.getElementById('ri-pasos-android').style.display = esAndroid ? 'block' : 'none';
-  document.getElementById('ri-pasos-ios').style.display     = esIOS ? 'block' : 'none';
-
-  modal.classList.add('visible');
-
-  // Bloquear scroll/interacción del fondo
-  document.body.style.overflow = 'hidden';
-
-  // Capturar el evento de instalación (Chrome/Edge/Android)
-  var deferredPrompt = null;
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('btn-instalar-app').style.display = 'block';
-  });
-
-  document.getElementById('btn-instalar-app').addEventListener('click', function () {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(function (choice) {
-      if (choice.outcome === 'accepted') {
-        setTimeout(function () { window.location.reload(); }, 1000);
-      }
-    });
-  });
-
-  document.getElementById('btn-ya-instalado').addEventListener('click', function () {
-    window.location.reload();
-  });
-
-  // Si la instalación se completa por otra vía, recargamos solos
-  window.addEventListener('appinstalled', function () {
-    setTimeout(function () { window.location.reload(); }, 800);
-  });
-})();
-</script>
+<!-- Modal "requiere instalación" desactivado temporalmente para pruebas en navegador -->
+<!--
+<div id="modal-requiere-instalacion"> ... </div>
+<script> ... appEstaInstalada() ... </script>
+-->
 
 
 <!-- ═══════════════════════════════════════════════════════
@@ -13520,13 +14368,16 @@ function cambiarTabConfig() {
 // Al cerrar el panel admin, resetear el desbloqueo de Config
 const _origCerrarAdmin = window.cerrarAdmin;
 window.cerrarAdmin = function() {
-  _configDesbloqueado = false;
-  // Restaurar pantalla de bloqueo
-  const lockScreen = document.getElementById('config-lock-screen');
-  const content    = document.getElementById('config-content');
-  if (lockScreen) lockScreen.style.display = 'flex';
-  if (content)    content.style.display    = 'none';
-  if (typeof _origCerrarAdmin === 'function') _origCerrarAdmin();
+  _rutasPuedeSalirSinGuardar().then(puede => {
+    if (!puede) return;
+    _configDesbloqueado = false;
+    // Restaurar pantalla de bloqueo
+    const lockScreen = document.getElementById('config-lock-screen');
+    const content    = document.getElementById('config-content');
+    if (lockScreen) lockScreen.style.display = 'flex';
+    if (content)    content.style.display    = 'none';
+    if (typeof _origCerrarAdmin === 'function') _origCerrarAdmin();
+  });
 };
 
 // ── Cambiar contraseña de Config ──
@@ -13620,10 +14471,26 @@ function abrirConfigSeccion(id) {
   }
 }
 
+/** Si hay cambios de Rutas/Empresas/Ubicaciones sin guardar, pregunta antes de
+ *  descartarlos. Devuelve true si se puede continuar (no había cambios, o el
+ *  usuario confirmó que quiere salir sin guardar); false si hay que quedarse. */
+async function _rutasPuedeSalirSinGuardar() {
+  if (!_rutasSinGuardar) return true;
+  const ok = await appConfirm(
+    'Tienes cambios en Ubicaciones o Empresas/Rutas que todavía no se han guardado. Si continúas, se perderán.',
+    { titulo: '⚠️ Cambios sin guardar', icono: '💾', labelOk: 'Salir sin guardar', peligro: true }
+  );
+  if (ok) _rutasSinGuardar = false;
+  return ok;
+}
+
 function volverConfigMenu() {
-  const menu = document.getElementById('config-menu');
-  if (menu) menu.style.display = 'grid';
-  document.querySelectorAll('.config-section-panel').forEach(p => p.classList.remove('active'));
+  _rutasPuedeSalirSinGuardar().then(puede => {
+    if (!puede) return;
+    const menu = document.getElementById('config-menu');
+    if (menu) menu.style.display = 'grid';
+    document.querySelectorAll('.config-section-panel').forEach(p => p.classList.remove('active'));
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -13633,10 +14500,15 @@ function volverConfigMenu() {
 // Estado temporal de edición (se sincroniza con EMPRESAS/UBIC al guardar)
 let _rutasEmp  = {};
 let _rutasUbic = {};
+// Se pone a true en cuanto se toca algo (añadir/editar/borrar ubicación,
+// empresa o ruta) y a false al recargar datos frescos o al guardar con éxito.
+// Se usa para avisar si el usuario intenta salir sin haber pulsado "Guardar".
+let _rutasSinGuardar = false;
 
 function rutasRenderAll() {
   _rutasEmp  = JSON.parse(JSON.stringify(EMPRESAS));
   _rutasUbic = JSON.parse(JSON.stringify(UBIC));
+  _rutasSinGuardar = false;
   _rutasRenderUbic();
   _rutasRenderEmp();
 }
@@ -13669,7 +14541,7 @@ function _rutasRenderUbic() {
 }
 
 function _rutasUbicEdit(key, field, val) {
-  if (_rutasUbic[key]) _rutasUbic[key][field] = val.trim();
+  if (_rutasUbic[key]) { _rutasUbic[key][field] = val.trim(); _rutasSinGuardar = true; }
 }
 
 function _rutasDeleteUbic(key) {
@@ -13678,6 +14550,7 @@ function _rutasDeleteUbic(key) {
   }).then(ok => {
     if (!ok) return;
     delete _rutasUbic[key];
+    _rutasSinGuardar = true;
     _rutasRenderUbic();
   });
 }
@@ -13688,6 +14561,7 @@ async function rutasAddUbic() {
   const key = codigo.trim().toUpperCase().replace(/\s+/g,'_');
   if (_rutasUbic[key]) { await appAlert(`Ya existe una ubicación con el código <strong>${key}</strong>.`, { titulo: 'Ubicación duplicada', icono: '⚠️' }); return; }
   _rutasUbic[key] = { dir: '', pob: '', cp: '', tel: '' };
+  _rutasSinGuardar = true;
   _rutasRenderUbic();
 }
 
@@ -13747,11 +14621,12 @@ function _rutasRenderEmp() {
 }
 
 function _rutasEmpEdit(empKey, field, val) {
-  if (_rutasEmp[empKey]) _rutasEmp[empKey][field] = val.trim();
+  if (_rutasEmp[empKey]) { _rutasEmp[empKey][field] = val.trim(); _rutasSinGuardar = true; }
 }
 function _rutasRutaEdit(empKey, ri, field, val) {
   if (_rutasEmp[empKey] && _rutasEmp[empKey].rutas[ri]) {
     _rutasEmp[empKey].rutas[ri][field] = val.trim();
+    _rutasSinGuardar = true;
     // Auto-actualizar label si cambian origen/destino y el label coincide con el patrón auto
     if (field === 'origen' || field === 'destino') {
       const r = _rutasEmp[empKey].rutas[ri];
@@ -13765,6 +14640,7 @@ function _rutasRutaEdit(empKey, ri, field, val) {
 function _rutasDeleteRuta(empKey, ri) {
   if (!_rutasEmp[empKey]) return;
   _rutasEmp[empKey].rutas.splice(ri, 1);
+  _rutasSinGuardar = true;
   _rutasRenderEmp();
 }
 function _rutasDeleteEmp(empKey) {
@@ -13773,6 +14649,7 @@ function _rutasDeleteEmp(empKey) {
   }).then(ok => {
     if (!ok) return;
     delete _rutasEmp[empKey];
+    _rutasSinGuardar = true;
     _rutasRenderEmp();
   });
 }
@@ -13783,6 +14660,7 @@ function _rutasAddRuta(empKey) {
   const origen = ubics[0], destino = ubics[1];
   const id = empKey.toLowerCase() + '-' + Date.now();
   _rutasEmp[empKey].rutas.push({ id, origen, destino, label: `${origen} → ${destino}` });
+  _rutasSinGuardar = true;
   _rutasRenderEmp();
 }
 
@@ -13792,6 +14670,7 @@ async function rutasAddEmpresa() {
   const key = codigo.trim().toUpperCase().replace(/\s+/g,'_');
   if (_rutasEmp[key]) { await appAlert(`Ya existe una empresa con el código <strong>${key}</strong>.`, { titulo: 'Empresa duplicada', icono: '⚠️' }); return; }
   _rutasEmp[key] = { label: '', razon: '', nif: '', rutas: [] };
+  _rutasSinGuardar = true;
   _rutasRenderEmp();
 }
 
@@ -13819,6 +14698,7 @@ async function rutasGuardar() {
     // Actualizar variables en memoria
     EMPRESAS = JSON.parse(JSON.stringify(_rutasEmp));
     UBIC     = JSON.parse(JSON.stringify(_rutasUbic));
+    _rutasSinGuardar = false;
     mostrarToast('✓ Rutas y empresas guardadas en Sheets', 'ok');
   } catch(e) {
     mostrarToast('❌ Error al guardar: ' + e.message, 'error');
@@ -13832,42 +14712,18 @@ async function rutasCargarDesdeSheets() {
   try {
     const resp = await fetch(`${APPS_SCRIPT_URL}?accion=cargarRutas`, { redirect: 'follow' });
     const json = await resp.json();
-    if (json.ok && json.empresas && json.ubicaciones
-        && Object.keys(json.empresas).length > 0) {
-      EMPRESAS = json.empresas;
-      UBIC     = json.ubicaciones;
-      return true;
+    if (!json.ok) {
+      console.warn('[Rutas] Error al cargar desde Supabase:', json.error);
+      return false;
     }
-    // Hoja vacía o no existe todavía → subir los datos por defecto automáticamente
-    console.log('[Rutas] Hoja vacía o inexistente — inicializando Sheets con datos por defecto…');
-    await _rutasInicializarSheets();
+    // Sin datos por defecto: si las tablas están vacías, EMPRESAS/UBIC quedan
+    // vacíos y se rellenan desde Panel Admin → Config → Rutas.
+    EMPRESAS = json.empresas    || {};
+    UBIC     = json.ubicaciones || {};
     return true;
   } catch(e) {
-    console.warn('[Rutas] Error al cargar desde Sheets:', e);
+    console.warn('[Rutas] Error al cargar desde Supabase:', e);
     return false;
-  }
-}
-
-async function _rutasInicializarSheets() {
-  // Sube EMPRESAS_DEFAULT + UBIC_DEFAULT a Sheets sin tocar EMPRESAS/UBIC en memoria
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        accion: 'guardarRutas',
-        empresas:    EMPRESAS_DEFAULT,
-        ubicaciones: UBIC_DEFAULT
-      })
-    });
-    const json = await resp.json();
-    if (json.ok) {
-      console.log('[Rutas] Datos por defecto subidos a Sheets correctamente ✓');
-    } else {
-      console.warn('[Rutas] Error al inicializar Sheets:', json.error);
-    }
-  } catch(e) {
-    console.warn('[Rutas] No se pudo inicializar Sheets:', e);
   }
 }
 
@@ -13994,7 +14850,7 @@ async function verificarDiagnostico() {
   const cont = document.getElementById('diagnostico-resultado');
   if (!APPS_SCRIPT_URL) { mostrarToast('Sin URL de Apps Script configurada', 'error'); return; }
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Verificando…'; }
-  if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#8899aa;font-size:12px;font-weight:600">Consultando Google Sheets…</div>`;
+  if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#8899aa;font-size:12px;font-weight:600">Consultando Supabase…</div>`;
 
   try {
     const resp = await fetch(`${APPS_SCRIPT_URL}?accion=diagnosticoHojas&_t=${Date.now()}`, { redirect: 'follow' });
@@ -14005,7 +14861,7 @@ async function verificarDiagnostico() {
       if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#e84545;font-size:12px;font-weight:700">No se pudo obtener el diagnóstico</div>`;
     }
   } catch(e) {
-    if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#e84545;font-size:12px;font-weight:700">Sin conexión con Google Sheets</div>`;
+    if (cont) cont.innerHTML = `<div style="text-align:center;padding:24px 0;color:#e84545;font-size:12px;font-weight:700">Sin conexión con Supabase</div>`;
   }
   if (btn) { btn.disabled = false; btn.textContent = '🩺 Verificar'; }
 }
@@ -14028,7 +14884,7 @@ function renderDiagnosticoResultado(hojas, timestamp) {
     return `<div class="diag-row">
       <div style="flex:1;min-width:0">
         <div class="diag-row-nombre">${esc(h.nombre)}</div>
-        <div class="diag-row-tecnico">Hoja "${esc(h.hoja)}" · ${h.columnas||0} columnas</div>
+        <div class="diag-row-tecnico">Tabla "${esc(h.hoja)}" · ${h.columnas||0} columnas</div>
       </div>
       <span class="diag-badge ${badge}">${badgeTexto}</span>
     </div>`;

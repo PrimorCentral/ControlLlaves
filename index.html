@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.2">
+  <meta name="app-version" content="3.4.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -409,7 +409,7 @@
     }
     table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1050px; }
     thead { position: sticky; top: 0; z-index: 10; }
-    thead tr th { background: #1a1a2e; color: #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 11px 10px; text-align: left; white-space: nowrap; border-right: 1px solid #252542; }    thead tr th:last-child { border-right: none; }
+    thead tr th { background: #1a1a2e; color: #e2e8f0; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 11px 10px; text-align: center; white-space: nowrap; border-right: 1px solid #252542; }    thead tr th:last-child { border-right: none; }
     .group-header td { background: #f4f6fb; color: #1a1a2e; font-size: 9px; font-weight: 900; letter-spacing: 2.5px; text-transform: uppercase; padding: 6px 14px; border-bottom: 1px solid #e8eaf0; border-top: 3px solid #e84545; }
     .group-header.first td { border-top: none; }
     tbody tr { border-bottom: 1px solid #f0f3f8; transition: background 0.12s; }
@@ -3573,9 +3573,9 @@
 // ════════════════════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzqYWpeVtdcFvYrzfEoSIsux8mz7v_D7ovv4gnHQN-TTsnSUUNCDiinjQqWc9smYjXN/exec';
 const ADMIN_PASS_HASH_DEFAULT = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // admin123
-// SIEMPRE usar la URL del servidor — no depender de localStorage
+// Valor de arranque: se sobreescribe en cuanto carga inicializarAppsScriptUrl()
+// con lo que haya guardado en Supabase (app_config, clave 'appsScriptUrl').
 let APPS_SCRIPT_URL = APPS_SCRIPT_URL_DEFAULT;
-localStorage.setItem('llaves_script_url', APPS_SCRIPT_URL_DEFAULT); // sincronizar por si acaso
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUPABASE — sustituye a Google Apps Script como backend
@@ -4699,7 +4699,23 @@ let _repostajesFechaMat = {}; // { matricula: { num_tarjeta, hora_devolucion, id
   setInterval(actualizarReloj, 1000);
 })();
 
-document.addEventListener('DOMContentLoaded', () => {
+// Carga la URL del Apps Script desde Supabase (tabla app_config, clave
+// 'appsScriptUrl'). Si no hay nada guardado ahí todavía, se queda con la
+// que viene hardcodeada como valor por defecto (APPS_SCRIPT_URL_DEFAULT).
+async function inicializarAppsScriptUrl() {
+  try {
+    const { data, error } = await sb.from('app_config')
+      .select('valor').eq('clave', 'appsScriptUrl').maybeSingle();
+    if (!error && data && data.valor) {
+      APPS_SCRIPT_URL = data.valor;
+      localStorage.setItem('llaves_script_url', data.valor);
+    }
+  } catch (e) {
+    // Sin conexión a Supabase todavía: nos quedamos con la URL por defecto
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   const hoy = new Date();
   fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
   document.getElementById('fecha-input').value = fechaActual;
@@ -4824,6 +4840,7 @@ document.querySelectorAll('.turno-btn').forEach(b => {
 
   actualizarHeader();
   actualizarBloqueoCuadrante();
+  await inicializarAppsScriptUrl();
   verificarConfig();
   initBuscadorOperario();
 
@@ -11797,13 +11814,20 @@ function cambiarTab(tab) {
   if (tab === 'activos') cargarUsuariosActivos();
 }
 
-function guardarConfigAdmin() {
+async function guardarConfigAdmin() {
   const url = document.getElementById('admin-config-url').value.trim();
   if (!url) { mostrarToast('Introduce la URL', 'error'); return; }
   APPS_SCRIPT_URL = url;
   localStorage.setItem('llaves_script_url', url);
+  try {
+    await sb.from('app_config').delete().eq('clave', 'appsScriptUrl');
+    const { error } = await sb.from('app_config').insert({ clave: 'appsScriptUrl', valor: url });
+    if (error) throw error;
+    mostrarToast('✓ URL guardada. Reconectando…', 'success');
+  } catch (e) {
+    mostrarToast('URL aplicada en este navegador, pero no se pudo guardar en Supabase: ' + e.message, 'error');
+  }
   verificarConfig();
-  mostrarToast('✓ URL guardada. Reconectando…', 'success');
   if (usuarioActual) cargarCuadrante();
 }
 

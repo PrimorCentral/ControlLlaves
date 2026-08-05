@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.8">
+  <meta name="app-version" content="3.5.2">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -505,7 +505,7 @@
       border: 1.5px solid transparent; border-radius: 6px;
       color: #1a1a2e; font-family: 'Barlow', sans-serif;
       font-size: 12px; font-weight: 600; min-width: 55px;
-      pointer-events: none; user-select: none; opacity: 0.75;
+      cursor: default; user-select: none; opacity: 0.75;
     }
     .cell-input-locked.hora { max-width: 68px; }
     .cell-input-locked.num  { max-width: 55px; }
@@ -1941,6 +1941,7 @@
       <div class="login-field">
         <label>Número de usuario</label>
         <input type="text" id="mlr-num" placeholder="Tu número de usuario" maxlength="10"
+          inputmode="numeric" pattern="[0-9]*"
           autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
           oninput="this.value=this.value.replace(/\D/g,'')"
           onkeydown="if(event.key==='Enter') document.getElementById('mlr-clave').focus()">
@@ -4205,10 +4206,10 @@ async function manejarPeticionSupabase(urlStr, options) {
             const kmAnterior = Number(String(ultimos[0].kilometraje).replace(/[.,]/g, ''));
             if (!isNaN(kmAnterior)) {
               if (kmNuevo < kmAnterior) {
-                return { ok: false, error: `El kilometraje (${kmNuevo}) es menor que el último registrado para este vehículo (${kmAnterior} km)` };
+                return { ok: false, error: `El kilometraje (${kmNuevo}) es menor que el último registrado para este vehículo. Revisa el dato.` };
               }
               if (kmNuevo - kmAnterior > 800) {
-                return { ok: false, error: `El kilometraje (${kmNuevo}) supone un salto de más de 800 km respecto al último registrado (${kmAnterior} km). Revisa el dato.` };
+                return { ok: false, error: `El kilometraje (${kmNuevo}) supone un salto demasiado grande respecto al último registrado para este vehículo. Revisa el dato.` };
               }
             }
           }
@@ -6103,6 +6104,12 @@ function renderTabla() {
               title="${esc(val)}">
               ⚠️ INCIDENCIA
             </button></td>`;
+          } else if (esHoy && esBloqueado) {
+            // Vehículo bloqueado (NO DISPONIBLE): no tiene sentido añadir incidencias nuevas
+            html += `<td><button class="btn-print-row" disabled style="background:#f1f2f5;color:#b0b6c1;border-color:#e5e8ee;font-size:10px;padding:4px 8px;cursor:not-allowed;opacity:0.55;"
+              title="Vehículo bloqueado — no se pueden añadir incidencias">
+              Añadir Incidencia
+            </button></td>`;
           } else if (esHoy) {
             // Solo mostrar botón "+ Incidencia" si es hoy y no hay incidencia
             html += `<td><button class="btn-print-row" style="background:#f8f9fc;color:#8899aa;border-color:#dde1ea;font-size:10px;padding:4px 8px;"
@@ -6162,7 +6169,10 @@ function renderTabla() {
             hora_entrega:    'Hora de entrega — se registra automáticamente al asignar operario',
             hora_devolucion: 'Hora de devolución — se registra automáticamente al recibir llaves',
           };
-          const titleAttr = esCampoAuto ? ` title="${titles[col.key] || ''}"` : '';
+          // Si el campo tiene un valor, mostramos ese valor completo en el tooltip
+          // (para poder leerlo entero al pasar el ratón cuando se corta visualmente);
+          // si está vacío, mostramos la explicación genérica del campo.
+          const titleAttr = esCampoAuto ? ` title="${val ? esc(val) : (titles[col.key] || '')}"` : '';
           html += `<td><input class="cell-input-locked ${col.clase}"
             value="${esc(val)}" placeholder="${placeholder}" readonly tabindex="-1"${titleAttr}${dimStyle}></td>`;
         } else {

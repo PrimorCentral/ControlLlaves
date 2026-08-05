@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.3">
+  <meta name="app-version" content="3.4.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3672,6 +3672,7 @@ async function manejarPeticionSupabase(urlStr, options) {
         bloqueado: !!v.bloqueado,
         motivo_bloqueo: v.motivo_bloqueo || '',
         bloqueado_por: v.bloqueado_por || '',
+        fecha_bloqueo: v.fecha_bloqueo || '',
         seguro_aseguradora: v.seguro_aseguradora || '',
         seguro_nombre: v.seguro_nombre || '',
         seguro_cif: v.seguro_cif || '',
@@ -3847,10 +3848,12 @@ async function manejarPeticionSupabase(urlStr, options) {
     }
 
     case 'bloquearVehiculo': {
+      const fechaBloqueoIso = new Date().toISOString();
       const { error } = await sb.from('vehiculos').update({
         bloqueado:      true,
         motivo_bloqueo: params.motivo        || '',
-        bloqueado_por:  params.bloqueado_por || ''
+        bloqueado_por:  params.bloqueado_por || '',
+        fecha_bloqueo:  fechaBloqueoIso
       }).eq('matricula', params.matricula);
       if (error) return { ok: false, error: error.message };
 
@@ -3875,17 +3878,43 @@ async function manejarPeticionSupabase(urlStr, options) {
           </div>`;
         emailError = await enviarCorreoViaAppsScript(destinatarios.join(','), asunto, html, params.motivo || '');
       }
-      return { ok: true, emailError };
+      return { ok: true, emailError, fecha_bloqueo: fechaBloqueoIso };
     }
 
     case 'desbloquearVehiculo': {
       const { error } = await sb.from('vehiculos').update({
         bloqueado:      false,
         motivo_bloqueo: '',
-        bloqueado_por:  ''
+        bloqueado_por:  '',
+        fecha_bloqueo:  null
       }).eq('matricula', params.matricula);
       if (error) return { ok: false, error: error.message };
-      return { ok: true };
+
+      // Resolvemos también la incidencia pendiente más reciente de este vehículo,
+      // igual que si se resolviera desde el menú de "Incidencias pendientes".
+      let incidenciaResuelta = null;
+      try {
+        const { data: pendientes } = await sb.from('incidencias')
+          .select('*')
+          .eq('matricula', params.matricula)
+          .neq('estado', 'COMPLETADO')
+          .order('timestamp', { ascending: false })
+          .limit(1);
+        if (pendientes && pendientes.length) {
+          const inc = pendientes[0];
+          const { error: errRes } = await sb.from('incidencias').update({
+            estado:                'COMPLETADO',
+            resuelto_por:           params.resueltoPor || params.bloqueado_por || '',
+            fecha_resolucion:       new Date().toISOString(),
+            comentario_resolucion:  params.motivo || 'Vehículo desbloqueado'
+          })
+            .eq('timestamp', inc.timestamp)
+            .eq('matricula', inc.matricula);
+          if (!errRes) incidenciaResuelta = inc.timestamp;
+        }
+      } catch (e) { /* no bloqueante: el desbloqueo ya se ha aplicado */ }
+
+      return { ok: true, incidenciaResuelta };
     }
 
     case 'registrarReasignacion': {
@@ -4072,7 +4101,8 @@ async function manejarPeticionSupabase(urlStr, options) {
         const { error: errVeh } = await sb.from('vehiculos').update({
           bloqueado:      true,
           motivo_bloqueo: inc.descripcion || '',
-          bloqueado_por:  inc.responsable || ''
+          bloqueado_por:  inc.responsable || '',
+          fecha_bloqueo:  inc.timestamp || new Date().toISOString()
         }).eq('matricula', inc.matricula);
         if (errVeh) return { ok: false, error: errVeh.message };
       }
@@ -5599,7 +5629,19 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
   overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); restaurarInput(); } });
 }
 
-function mostrarInfoBloqueo(mat, motivo, bloqueado_por) {
+function _fmtFechaHoraBloqueo(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const fecha = d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const hora  = d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    return `${fecha} · ${hora}`;
+  } catch(e) { return ''; }
+}
+
+function mostrarInfoBloqueo(mat, motivo, bloqueado_por, fecha_bloqueo) {
+  const fechaLabel = _fmtFechaHoraBloqueo(fecha_bloqueo);
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
@@ -5611,7 +5653,10 @@ function mostrarInfoBloqueo(mat, motivo, bloqueado_por) {
         <div style="font-size:9px;font-weight:800;color:#b91c1c;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Motivo</div>
         <div style="font-size:13px;color:#1a1a2e;line-height:1.6;">${esc(motivo || 'Sin especificar')}</div>
       </div>
-      ${bloqueado_por ? `<div style="font-size:11px;color:#8899aa;margin-bottom:18px;">Bloqueado por <strong style="color:#556">${esc(bloqueado_por)}</strong></div>` : ''}
+      <div style="text-align:left;display:flex;flex-direction:column;gap:4px;margin-bottom:18px;font-size:11px;color:#8899aa;">
+        ${bloqueado_por ? `<div>Bloqueado por <strong style="color:#556">${esc(bloqueado_por)}</strong></div>` : ''}
+        ${fechaLabel ? `<div>Fecha de bloqueo: <strong style="color:#556">${esc(fechaLabel)}</strong></div>` : ''}
+      </div>
       <div style="display:flex;gap:8px;">
         <button id="btn-info-bloqueo-cerrar" style="flex:1;padding:12px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cerrar</button>
         <button id="btn-info-bloqueo-desbloquear" style="flex:1;padding:12px;background:#2ecc71;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Desbloquear</button>
@@ -5630,13 +5675,16 @@ function confirmarDesbloqueoRapido(mat) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:380px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;text-align:center;">
+    <div style="background:white;border-radius:16px;padding:32px 28px 24px;width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;text-align:center;">
       <div style="font-size:48px;margin-bottom:12px;">🔓</div>
       <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:10px;">¿Desbloquear vehículo?</div>
       <div style="font-size:13px;font-weight:700;color:#1a1a2e;background:#eafaf1;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:14px;">${esc(mat)}</div>
-      <div style="font-size:13px;color:#556;line-height:1.6;margin-bottom:22px;">
-        Vas a desbloquear este vehículo y quedará disponible para asignar conductores.<br><strong>¿Estás seguro?</strong>
+      <div style="font-size:13px;color:#556;line-height:1.6;margin-bottom:16px;text-align:left;">
+        Vas a desbloquear este vehículo y quedará disponible para asignar conductores. Esto también marcará como <strong>resuelta</strong> la incidencia pendiente asociada.
       </div>
+      <label style="font-size:10px;font-weight:800;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;text-align:left;">Motivo del desbloqueo *</label>
+      <textarea id="desbloqueo-motivo-input" rows="3" placeholder="Ej: Reparado en taller, vehículo revisado…"
+        style="width:100%;padding:10px;border:1.5px solid #dde1ea;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;color:#1a1a2e;outline:none;resize:vertical;margin-bottom:18px;box-sizing:border-box;"></textarea>
       <div style="display:flex;gap:8px;">
         <button id="btn-desbloqueo-cancel" style="flex:1;padding:12px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cancelar</button>
         <button id="btn-desbloqueo-ok" style="flex:1;padding:12px;background:#2ecc71;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Sí, desbloquear</button>
@@ -5645,30 +5693,43 @@ function confirmarDesbloqueoRapido(mat) {
   document.body.appendChild(overlay);
   overlay.querySelector('#btn-desbloqueo-cancel').onclick = () => document.body.removeChild(overlay);
   overlay.querySelector('#btn-desbloqueo-ok').onclick = async () => {
+    const motivoInput = overlay.querySelector('#desbloqueo-motivo-input');
+    const motivo = motivoInput.value.trim();
+    if (!motivo) { motivoInput.style.borderColor = '#e84545'; motivoInput.focus(); return; }
+
     overlay.querySelector('#btn-desbloqueo-ok').textContent = '⏳ Desbloqueando…';
     overlay.querySelector('#btn-desbloqueo-ok').disabled = true;
     try {
+      const resueltoPor = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST', headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({ accion:'desbloquearVehiculo', matricula: mat }),
+        body: JSON.stringify({ accion:'desbloquearVehiculo', matricula: mat, motivo, resueltoPor }),
         redirect:'follow'
       });
       const json = await resp.json();
       if (json.ok) {
         // Actualizar GRUPOS en memoria
         GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-          if (v.matricula === mat) { v.bloqueado = false; v.motivo_bloqueo = ''; v.bloqueado_por = ''; }
+          if (v.matricula === mat) { v.bloqueado = false; v.motivo_bloqueo = ''; v.bloqueado_por = ''; v.fecha_bloqueo = ''; }
         }));
+        // Sincronizar con la caché de incidencias del panel admin si está cargada
+        if (json.incidenciaResuelta && typeof incidenciasCache !== 'undefined' && incidenciasCache.length) {
+          const inc = incidenciasCache.find(f => f.timestamp === json.incidenciaResuelta && f.matricula === mat);
+          if (inc) { inc.estado = 'COMPLETADO'; inc.resuelto_por = resueltoPor; inc.comentario_resolucion = motivo; }
+        }
         document.body.removeChild(overlay);
         renderTabla();
+        actualizarBotonIncidenciasPendientes();
         mostrarToast(`✓ ${mat} desbloqueado`, 'success');
       } else {
         mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');
-        document.body.removeChild(overlay);
+        overlay.querySelector('#btn-desbloqueo-ok').textContent = '✓ Sí, desbloquear';
+        overlay.querySelector('#btn-desbloqueo-ok').disabled = false;
       }
     } catch(e) {
       mostrarToast('Error de conexión', 'error');
-      document.body.removeChild(overlay);
+      overlay.querySelector('#btn-desbloqueo-ok').textContent = '✓ Sí, desbloquear';
+      overlay.querySelector('#btn-desbloqueo-ok').disabled = false;
     }
   };
   overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
@@ -5721,7 +5782,7 @@ function abrirModalBloqueoRapido() {
       const json = await resp.json();
       if (json.ok) {
         GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-          if (v.matricula === mat) { v.bloqueado = true; v.motivo_bloqueo = motivo; v.bloqueado_por = bloqueado_por; }
+          if (v.matricula === mat) { v.bloqueado = true; v.motivo_bloqueo = motivo; v.bloqueado_por = bloqueado_por; v.fecha_bloqueo = json.fecha_bloqueo || new Date().toISOString(); }
         }));
         document.body.removeChild(overlay);
         renderTabla();
@@ -5869,10 +5930,10 @@ function renderTabla() {
 
       // Columna operario
       if (esBloqueado) {
-        // VEHÍCULO BLOQUEADO: mostrar mensaje, click abre modal informativo
-        html += `<td><div class="operario-locked" style="cursor:pointer;opacity:0.7" onclick="mostrarInfoBloqueo('${esc(v.matricula)}','${esc(v.motivo_bloqueo||'')}','${esc(v.bloqueado_por||'')}')">
-          <span class="operario-locked-name" style="color:#c63030">⛔ No disponible</span>
-          <span style="font-size:11px;color:#e84545">ℹ️</span>
+        // VEHÍCULO BLOQUEADO: la matrícula ya lleva el badge "NO DISPONIBLE",
+        // así que aquí solo mostramos un acceso a los detalles (sin repetir el texto).
+        html += `<td><div class="operario-locked" style="cursor:pointer;opacity:0.85" onclick="mostrarInfoBloqueo('${esc(v.matricula)}','${esc(v.motivo_bloqueo||'')}','${esc(v.bloqueado_por||'')}','${esc(v.fecha_bloqueo||'')}')">
+          <span class="operario-locked-name" style="color:#c63030">ℹ️ Ver motivo del bloqueo</span>
         </div></td>`;
       } else if (cuadranteBloqueado) {
         html += `<td><div class="operario-locked" style="opacity:0.6">
@@ -7019,7 +7080,7 @@ async function cargarFlotaDesdeSheets(mostrarError = true) {
       json.flota.forEach(v => {
         let g = GRUPOS.find(g => g.nombre === v.grupo);
         if (!g) { g = { nombre: v.grupo, vehiculos: [] }; GRUPOS.push(g); }
-        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? null), restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado===true, fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+        g.vehiculos.push({ matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? null), restringido: v.restringido==='SI', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado===true, fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado===true, motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', fecha_bloqueo: v.fecha_bloqueo||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
       });
       if (mostrarError) ocultarErrorCarga();
       return true;
@@ -7037,7 +7098,7 @@ async function sincronizarVehiculosConSheets() {
   if (!APPS_SCRIPT_URL) return;
   const flota = [];
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? ''), restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
+    flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? ''), restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', fecha_bloqueo: v.fecha_bloqueo||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
   }));
   try {
     await fetch(APPS_SCRIPT_URL, {
@@ -8215,7 +8276,7 @@ function renderAdminVehiculos() {
         <div class="admin-item-tipo">${esc(v.tipo)}</div>
         <div class="admin-item-center">
           ${itvBadge}
-          ${v.bloqueado ? `<span style="font-size:9px;color:#b91c1c;font-weight:700;background:#fee2e2;border-radius:4px;padding:2px 8px;border:1px solid #fecaca;">Motivo: ${esc(v.motivo_bloqueo||'—')} · ${esc(v.bloqueado_por||'—')}</span>` : ''}
+          ${v.bloqueado ? `<span style="font-size:9px;color:#b91c1c;font-weight:700;background:#fee2e2;border-radius:4px;padding:2px 8px;border:1px solid #fecaca;">Motivo: ${esc(v.motivo_bloqueo||'—')} · ${esc(v.bloqueado_por||'—')}${v.fecha_bloqueo ? ' · '+esc(_fmtFechaHoraBloqueo(v.fecha_bloqueo)) : ''}</span>` : ''}
         </div>
         <div class="admin-item-actions">
           <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},-1)" title="Subir orden" ${vi===0?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬆️</button>
@@ -8324,6 +8385,7 @@ function abrirModalBloqueo(gi, vi) {
         GRUPOS[gi].vehiculos[vi].bloqueado     = true;
         GRUPOS[gi].vehiculos[vi].motivo_bloqueo = motivo;
         GRUPOS[gi].vehiculos[vi].bloqueado_por  = bloqueado_por;
+        GRUPOS[gi].vehiculos[vi].fecha_bloqueo  = json.fecha_bloqueo || new Date().toISOString();
         document.body.removeChild(overlay);
         renderAdminVehiculos(); renderAdminStats(); renderTabla();
         registrarAccion('VEHICULO', 'Bloquear vehículo', `${v.matricula} · ${motivo.substring(0,80)}`);
@@ -8338,26 +8400,65 @@ function abrirModalBloqueo(gi, vi) {
   };
 }
 
-async function desbloquearVehiculoAdmin(gi, vi) {
+function desbloquearVehiculoAdmin(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
-  try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method:'POST', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ accion:'desbloquearVehiculo', matricula: v.matricula }),
-      redirect:'follow'
-    });
-    const json = await resp.json();
-    if (json.ok) {
-      GRUPOS[gi].vehiculos[vi].bloqueado      = false;
-      GRUPOS[gi].vehiculos[vi].motivo_bloqueo = '';
-      GRUPOS[gi].vehiculos[vi].bloqueado_por  = '';
-      renderAdminVehiculos(); renderAdminStats(); renderTabla();
-      registrarAccion('VEHICULO', 'Desbloquear vehículo', v.matricula);
-      mostrarToast(`✓ ${v.matricula} desbloqueado`, 'success');
-    } else {
-      mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px 24px 22px;width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
+      <div style="font-size:36px;text-align:center;margin-bottom:10px;">🔓</div>
+      <div style="font-size:16px;font-weight:900;color:#1a1a2e;text-align:center;margin-bottom:4px;">Desbloquear vehículo</div>
+      <div style="font-size:12px;color:#8899aa;text-align:center;margin-bottom:14px;">Vehículo: <strong style="color:#1a1a2e">${esc(v.matricula)}</strong></div>
+      <div style="font-size:12px;color:#556;line-height:1.6;margin-bottom:14px;">Esto también marcará como <strong>resuelta</strong> la incidencia pendiente asociada a este vehículo.</div>
+      <label style="font-size:10px;font-weight:800;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px;">Motivo del desbloqueo *</label>
+      <textarea id="desbloqueo-admin-motivo-input" rows="3" placeholder="Ej: Reparado en taller, vehículo revisado…"
+        style="width:100%;padding:10px;border:1.5px solid #dde1ea;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;color:#1a1a2e;outline:none;resize:vertical;margin-bottom:18px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:8px;">
+        <button id="btn-desbloqueo-admin-cancel" style="flex:1;padding:11px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cancelar</button>
+        <button id="btn-desbloqueo-admin-ok" style="flex:1;padding:11px;background:#2ecc71;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Desbloquear</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#btn-desbloqueo-admin-cancel').onclick = () => document.body.removeChild(overlay);
+  overlay.querySelector('#btn-desbloqueo-admin-ok').onclick = async () => {
+    const motivoInput = overlay.querySelector('#desbloqueo-admin-motivo-input');
+    const motivo = motivoInput.value.trim();
+    if (!motivo) { motivoInput.style.borderColor = '#e84545'; motivoInput.focus(); return; }
+
+    const resueltoPor = usuarioActual?.nombre || 'Admin';
+    const btnOk = overlay.querySelector('#btn-desbloqueo-admin-ok');
+    btnOk.textContent = '⏳ Desbloqueando…'; btnOk.disabled = true;
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method:'POST', headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ accion:'desbloquearVehiculo', matricula: v.matricula, motivo, resueltoPor }),
+        redirect:'follow'
+      });
+      const json = await resp.json();
+      if (json.ok) {
+        GRUPOS[gi].vehiculos[vi].bloqueado      = false;
+        GRUPOS[gi].vehiculos[vi].motivo_bloqueo = '';
+        GRUPOS[gi].vehiculos[vi].bloqueado_por  = '';
+        GRUPOS[gi].vehiculos[vi].fecha_bloqueo  = '';
+        if (json.incidenciaResuelta && typeof incidenciasCache !== 'undefined' && incidenciasCache.length) {
+          const inc = incidenciasCache.find(f => f.timestamp === json.incidenciaResuelta && f.matricula === v.matricula);
+          if (inc) { inc.estado = 'COMPLETADO'; inc.resuelto_por = resueltoPor; inc.comentario_resolucion = motivo; }
+        }
+        document.body.removeChild(overlay);
+        renderAdminVehiculos(); renderAdminStats(); renderTabla();
+        actualizarBotonIncidenciasPendientes();
+        registrarAccion('VEHICULO', 'Desbloquear vehículo', `${v.matricula} · ${motivo.substring(0,80)}`);
+        mostrarToast(`✓ ${v.matricula} desbloqueado`, 'success');
+      } else {
+        mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');
+        btnOk.textContent = '✓ Desbloquear'; btnOk.disabled = false;
+      }
+    } catch(e) {
+      mostrarToast('Error de conexión', 'error');
+      btnOk.textContent = '✓ Desbloquear'; btnOk.disabled = false;
     }
-  } catch(e) { mostrarToast('Error de conexión', 'error'); }
+  };
+  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
 }
 
 function editarITV(gi, vi) {
@@ -11640,7 +11741,7 @@ function abrirAdmin() {
   renderAdminVehiculos();
   renderAdminStats();
   poblarSelectsMatricula();
-  cambiarTab('vehiculos');
+  cambiarTab(null); // el panel se abre en blanco: el usuario elige la pestaña que quiere ver
   document.getElementById('modal-admin').classList.add('open');
 }
 

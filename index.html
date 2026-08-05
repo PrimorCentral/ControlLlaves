@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.5.2">
+  <meta name="app-version" content="3.5.3">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -183,40 +183,6 @@
     #modal-cambio-clave .cc-loading-text { font-size:13px; font-weight:700; color:#1a1a2e; letter-spacing:0.3px; }
     #modal-cambio-clave .cc-box { position:relative; }
 
-    /* ─── MODAL CAMBIO DE CLAVE ─── */
-    #modal-cambio-clave {
-      display: none; position: fixed; inset: 0; z-index: 20000;
-      background: rgba(10,10,30,0.75); backdrop-filter: blur(4px);
-      align-items: center; justify-content: center;
-    }
-    #modal-cambio-clave.visible { display: flex; }
-    #modal-cambio-clave .cc-box {
-      background: white; border-radius: 18px; padding: 32px 28px 26px;
-      width: 360px; font-family: 'Barlow', sans-serif;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.45);
-      animation: nv-in 0.28s cubic-bezier(.34,1.56,.64,1);
-    }
-    #modal-cambio-clave .cc-icon { font-size: 40px; text-align: center; margin-bottom: 8px; }
-    #modal-cambio-clave .cc-title { font-size: 17px; font-weight: 900; color: #1a1a2e; text-align: center; margin-bottom: 4px; }
-    #modal-cambio-clave .cc-sub { font-size: 12px; color: #8899aa; text-align: center; margin-bottom: 22px; }
-    #modal-cambio-clave .cc-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-    #modal-cambio-clave .cc-field label { font-size: 10px; font-weight: 800; color: #556; letter-spacing: 1px; text-transform: uppercase; }
-    #modal-cambio-clave .cc-field input {
-      width: 100%; padding: 10px 12px; border: 1.5px solid #dde1e8; border-radius: 9px;
-      font-family: 'Barlow', sans-serif; font-size: 14px; font-weight: 600; color: #1a1a2e;
-      outline: none; transition: border-color .15s, box-shadow .15s; background: #f8f9fc;
-    }
-    #modal-cambio-clave .cc-field input:focus { border-color: #e84545; box-shadow: 0 0 0 3px rgba(232,69,69,0.1); background: white; }
-    #modal-cambio-clave .cc-error { font-size: 11px; color: #e84545; font-weight: 700; min-height: 16px; margin-bottom: 14px; text-align: center; display: none; }
-    #modal-cambio-clave .cc-error.visible { display: block; }
-    #modal-cambio-clave .cc-ok { font-size: 11px; color: #2ecc71; font-weight: 700; min-height: 16px; margin-bottom: 14px; text-align: center; display: none; }
-    #modal-cambio-clave .cc-ok.visible { display: block; }
-    #modal-cambio-clave .cc-btns { display: flex; gap: 10px; }
-    #modal-cambio-clave .cc-btn-cancel { flex: 1; padding: 11px; background: #f4f5f8; color: #556; border: none; border-radius: 9px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
-    #modal-cambio-clave .cc-btn-cancel:hover { background: #e8eaf0; }
-    #modal-cambio-clave .cc-btn-ok { flex: 2; padding: 11px; background: #e84545; color: white; border: none; border-radius: 9px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; transition: background .15s; }
-    #modal-cambio-clave .cc-btn-ok:hover { background: #c63030; }
-    #modal-cambio-clave .cc-btn-ok:disabled { background: #ccc; cursor: not-allowed; }
     /* ─── BOTONES CUADRADOS CON ICONO ─── */
     .sb-action-btns { display: flex; gap: 7px; margin-bottom: 5px; }
     .sb-action-btns .btn-icon-sq { flex: 1; max-width: calc(50% - 4px); }
@@ -2231,7 +2197,7 @@
             <th>Operario</th><th>Resp. Entrega</th><th>Resp. Recibe</th>
             <th>H. Entrega</th><th>H. Dev.</th><th>Nº Tarjeta</th><th>ITV</th><th>Incidencias</th><th class="col-acciones"></th>
           </tr></thead>
-          <tbody id="hist-tbody"></tbody>
+          <tbody id="hist-tbody"><tr><td colspan="13" class="hist-empty">Usa el filtro para buscar en el historial.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2253,7 +2219,7 @@
             <th>Vehículo</th><th>Operario</th><th>Empresa</th><th>Ruta</th><th>Turno</th>
             <th class="col-acciones"></th>
           </tr></thead>
-          <tbody id="log-tbody"></tbody>
+          <tbody id="log-tbody"><tr><td colspan="9" class="hist-empty">Usa el filtro para buscar en el log de órdenes.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2300,10 +2266,10 @@
       <div class="hist-table-wrap">
         <table class="hist-table">
           <thead><tr>
-            <th>Fecha/Hora</th><th>Turno</th>
+            <th>Fecha/Hora</th>
             <th>Matrícula</th><th>Responsable</th><th style="min-width:260px">Descripción</th><th>Estado</th><th></th>
           </tr></thead>
-          <tbody id="incid-tbody"><tr><td colspan="7" class="hist-empty">Usa el filtro para buscar incidencias.</td></tr></tbody>
+          <tbody id="incid-tbody"><tr><td colspan="6" class="hist-empty">Usa el filtro para buscar incidencias.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4156,7 +4122,28 @@ async function manejarPeticionSupabase(urlStr, options) {
         .eq('timestamp', params.timestamp)
         .eq('matricula', params.matricula);
       if (error) return { ok: false, error: error.message };
-      return { ok: true };
+
+      // Si el vehículo de esta incidencia está bloqueado, quitamos también
+      // el bloqueo (y su motivo) de la tabla de vehículos, para que no se
+      // quede "colgado" en el cuadrante tras borrar la incidencia que lo originó.
+      let vehiculoDesbloqueado = false;
+      try {
+        const { data: veh } = await sb.from('vehiculos')
+          .select('bloqueado')
+          .eq('matricula', params.matricula)
+          .maybeSingle();
+        if (veh && veh.bloqueado) {
+          const { error: errDesb } = await sb.from('vehiculos').update({
+            bloqueado:      false,
+            motivo_bloqueo: '',
+            bloqueado_por:  '',
+            fecha_bloqueo:  null
+          }).eq('matricula', params.matricula);
+          if (!errDesb) vehiculoDesbloqueado = true;
+        }
+      } catch (e) { /* no bloqueante: la incidencia ya se ha borrado */ }
+
+      return { ok: true, vehiculoDesbloqueado };
     }
 
     // ── REPOSTAJES ──────────────────────────────────────────────────────
@@ -11901,35 +11888,30 @@ function cambiarTab(tab) {
       document.getElementById('hist-fecha-desde').value = fechaActual;
       document.getElementById('hist-fecha-hasta').value = fechaActual;
     }
-    cargarHistorial();
   }
   if (tab === 'log') {
     if (!document.getElementById('log-fecha-desde').value) {
       document.getElementById('log-fecha-desde').value = fechaActual;
       document.getElementById('log-fecha-hasta').value = fechaActual;
     }
-    cargarLog();
   }
   if (tab === 'reasignaciones') {
     if (!document.getElementById('reasig-fecha-desde').value) {
       document.getElementById('reasig-fecha-desde').value = fechaActual;
       document.getElementById('reasig-fecha-hasta').value = fechaActual;
     }
-    cargarReasignaciones();
   }
   if (tab === 'incidencias') {
     if (!document.getElementById('incid-fecha-desde').value) {
       document.getElementById('incid-fecha-desde').value = fechaActual;
       document.getElementById('incid-fecha-hasta').value = fechaActual;
     }
-    cargarTabIncidencias();
   }
   if (tab === 'repostajes') {
     if (!document.getElementById('repo-tab-fecha-desde').value) {
       document.getElementById('repo-tab-fecha-desde').value = fechaActual;
       document.getElementById('repo-tab-fecha-hasta').value = fechaActual;
     }
-    cargarTabRepostajes();
   }
   if (tab === 'responsables') cargarResponsables();
   if (tab === 'conductores') renderAdminConductores();
@@ -12401,6 +12383,20 @@ function abrirModalIncidencia(matricula) {
 
     // Guardar en hoja Incidencias (historial, correo y bloqueo si aplica, todo en una sola llamada)
     await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear);
+
+    // Si se bloqueó el vehículo, reflejarlo YA en memoria local para que
+    // la fila se pinte en rojo sin esperar a un "Recargar" manual.
+    if (quiereBloquear) {
+      const respUsuarioLocal = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
+      GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+        if (v.matricula === matricula) {
+          v.bloqueado      = true;
+          v.motivo_bloqueo = texto;
+          v.bloqueado_por  = respUsuarioLocal;
+          v.fecha_bloqueo  = new Date().toISOString();
+        }
+      }));
+    }
 
     document.body.removeChild(modalEnvio);
     document.body.removeChild(overlay);
@@ -13545,31 +13541,54 @@ function renderTabIncidencias() {
   const tbody = document.getElementById('incid-tbody');
   if (!tbody) return;
   if (!incidenciasCache.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="hist-empty">Sin incidencias en el rango seleccionado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="hist-empty">Sin incidencias en el rango seleccionado.</td></tr>';
     return;
   }
   tbody.innerHTML = incidenciasCache.map((f, idx) => {
     // Formatear timestamp a hora legible
     let hora = '—';
     try { hora = new Date(f.timestamp).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e){}
-    const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
     const completado = (f.estado||'').toUpperCase() === 'COMPLETADO';
     const estadoBadge = completado
       ? `<span style="font-size:9px;font-weight:800;color:#1a6635;background:#eafaf1;border:1px solid #a9dfbf;border-radius:5px;padding:2px 8px;white-space:nowrap">✅ Resuelto</span>`
       : `<span style="font-size:9px;font-weight:800;color:#92600a;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 8px;white-space:nowrap">⏳ Pendiente</span>`;
     return `<tr style="background:${completado?'#f9fffe':''}">
       <td style="white-space:nowrap;font-size:11px">${hora}</td>
-      <td><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;background:${f.turno==='MANANA'?'#fffbeb':'#fff5f0'};color:${f.turno==='MANANA'?'#92600a':'#9a3412'}">${turnoLabel}</span></td>
       <td><strong>${f.matricula||'—'}</strong></td>
       <td style="font-size:11px">${f.responsable||'—'}</td>
       <td style="font-size:12px;line-height:1.5;max-width:320px;word-break:break-word">${esc(f.descripcion||'—')}</td>
       <td style="text-align:center;white-space:nowrap">${estadoBadge}</td>
       <td style="text-align:center;white-space:nowrap">
         ${!completado ? `<button class="btn-item-action" onclick="resolverIncidencia(${idx})" title="Marcar como resuelta" style="font-size:11px;padding:3px 8px;color:#1a6635;border-color:#a9dfbf;background:#eafaf1;margin-right:3px">✓ Resolver</button>` : ''}
+        ${completado ? `<button class="btn-item-action" onclick="verResolucionIncidencia(${idx})" title="Ver resolución" style="font-size:11px;padding:3px 8px;color:#1a6635;border-color:#a9dfbf;background:#eafaf1;margin-right:3px">ℹ️ Ver resolución</button>` : ''}
         <button class="btn-item-action danger" onclick="eliminarIncidencia(${idx})" title="Eliminar incidencia" style="font-size:13px;padding:3px 8px">🗑</button>
       </td>
     </tr>`;
   }).join('');
+}
+
+function verResolucionIncidencia(idx) {
+  const inc = incidenciasCache[idx];
+  if (!inc) return;
+  let fechaResLabel = '—';
+  try { fechaResLabel = new Date(inc.fecha_resolucion).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); } catch(e){}
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.7);backdrop-filter:blur(3px);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = `
+    <div style="background:white;border-radius:18px;padding:28px 26px 22px;width:420px;max-width:94vw;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);">
+      <div style="font-size:36px;text-align:center;margin-bottom:8px;">✅</div>
+      <div style="font-size:16px;font-weight:900;color:#1a6635;text-align:center;margin-bottom:4px;">Incidencia resuelta</div>
+      <div style="font-size:12px;color:#8899aa;text-align:center;margin-bottom:18px;">${esc(inc.matricula||'—')}</div>
+      <div style="background:#f4f6fb;border:1.5px solid #e3e8f5;border-radius:10px;padding:12px 14px;font-size:12px;color:#334;line-height:1.7;">
+        <div><strong style="color:#556">Resuelto por:</strong> ${esc(inc.resuelto_por||'—')}</div>
+        <div><strong style="color:#556">Fecha de resolución:</strong> ${esc(fechaResLabel)}</div>
+        ${inc.comentario_resolucion ? `<div style="margin-top:8px;"><strong style="color:#556">Comentario:</strong><br>${esc(inc.comentario_resolucion)}</div>` : ''}
+      </div>
+      <button id="btn-ver-res-cerrar" style="width:100%;margin-top:18px;padding:11px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cerrar</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#btn-ver-res-cerrar').onclick = () => document.body.removeChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov) document.body.removeChild(ov); });
 }
 
 function exportarIncidenciasCSV() {
@@ -13731,11 +13750,26 @@ async function eliminarIncidencia(idx) {
       const keyActual = `${inc.matricula}|${turnoActual}|${fechaActual}`;
       if (datos[key]) datos[key].incidencias = '';
       if (datos[keyActual]) datos[keyActual].incidencias = '';
+
+      // 3. Si el vehículo estaba bloqueado por esta incidencia, el backend
+      // ya lo ha desbloqueado en Supabase: reflejarlo ya en memoria local.
+      if (json.vehiculoDesbloqueado) {
+        GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+          if (v.matricula === inc.matricula) {
+            v.bloqueado      = false;
+            v.motivo_bloqueo = '';
+            v.bloqueado_por  = '';
+            v.fecha_bloqueo  = '';
+          }
+        }));
+        renderAdminVehiculos();
+      }
+
       renderTabla();
 
       incidenciasCache.splice(idx, 1);
       renderTabIncidencias();
-      mostrarToast('✓ Incidencia eliminada', 'success');
+      mostrarToast(json.vehiculoDesbloqueado ? '✓ Incidencia eliminada · Vehículo desbloqueado' : '✓ Incidencia eliminada', 'success');
       actualizarBotonIncidenciasPendientes();
     } catch(e) {
       mostrarToast('Error al eliminar: ' + e.message, 'error');
@@ -14205,135 +14239,6 @@ function forzarActualizacion() {
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     MODAL: CAMBIO DE CLAVE DE ACCESO
-═══════════════════════════════════════════════════════ -->
-<div id="modal-cambio-clave">
-  <div class="cc-box">
-    <div class="cc-icon">🔑</div>
-    <div class="cc-title">Cambiar clave de acceso</div>
-    <div class="cc-sub">Introduce tu clave actual y la nueva clave</div>
-    <div class="cc-loading" id="cc-loading"><div class="cc-loading-spinner"></div><div class="cc-loading-text" id="cc-loading-text">Comprobando…</div></div>
-    <div class="cc-field">
-      <label>Clave actual</label>
-      <input type="text" class="inp-clave" id="cc-actual" placeholder="••••••" maxlength="20"
-        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
-    </div>
-    <div class="cc-field">
-      <label>Nueva clave</label>
-      <input type="text" class="inp-clave" id="cc-nueva" placeholder="••••••" maxlength="20"
-        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
-    </div>
-    <div class="cc-field">
-      <label>Confirmar nueva clave</label>
-      <input type="text" class="inp-clave" id="cc-confirmar" placeholder="••••••" maxlength="20"
-        autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
-        onkeydown="if(event.key==='Enter') guardarCambioClave()">
-    </div>
-    <div class="cc-error" id="cc-error"></div>
-    <div class="cc-ok" id="cc-ok">✓ Clave cambiada correctamente</div>
-    <div class="cc-btns">
-      <button class="cc-btn-cancel" onclick="cerrarModalCambioClave()">Cancelar</button>
-      <button class="cc-btn-ok" id="cc-btn-ok" onclick="guardarCambioClave()">🔑 Guardar clave</button>
-    </div>
-  </div>
-</div>
-
-<script>
-function abrirModalCambioClave() {
-  document.getElementById('cc-actual').value = '';
-  document.getElementById('cc-nueva').value = '';
-  document.getElementById('cc-confirmar').value = '';
-  var err = document.getElementById('cc-error');
-  var ok  = document.getElementById('cc-ok');
-  err.classList.remove('visible');
-  ok.classList.remove('visible');
-  document.getElementById('cc-btn-ok').disabled = false;
-  document.getElementById('modal-cambio-clave').classList.add('visible');
-  setTimeout(function(){ document.getElementById('cc-actual').focus(); }, 120);
-}
-function cerrarModalCambioClave() {
-  document.getElementById('modal-cambio-clave').classList.remove('visible');
-}
-async function guardarCambioClave() {
-  var actual    = document.getElementById('cc-actual').value.trim();
-  var nueva     = document.getElementById('cc-nueva').value.trim();
-  var confirmar = document.getElementById('cc-confirmar').value.trim();
-  var errEl = document.getElementById('cc-error');
-  var okEl  = document.getElementById('cc-ok');
-  errEl.classList.remove('visible');
-  okEl.classList.remove('visible');
-
-  if (!actual || !nueva || !confirmar) {
-    errEl.textContent = 'Rellena todos los campos';
-    errEl.classList.add('visible'); return;
-  }
-  if (nueva.length < 4) {
-    errEl.textContent = 'La nueva clave debe tener al menos 4 caracteres';
-    errEl.classList.add('visible'); return;
-  }
-  if (nueva !== confirmar) {
-    errEl.textContent = 'La nueva clave y la confirmación no coinciden';
-    errEl.classList.add('visible'); return;
-  }
-
-  // Verificar clave actual contra la almacenada del usuario logueado
-  if (!usuarioActual) {
-    errEl.textContent = 'No hay sesión activa';
-    errEl.classList.add('visible'); return;
-  }
-
-  var btnOk = document.getElementById('cc-btn-ok');
-  btnOk.disabled = true;
-  btnOk.textContent = 'Comprobando…';
-
-  try {
-    var hashActual = await hashStr(actual);
-    if (hashActual !== usuarioActual.hash) {
-      errEl.textContent = 'La clave actual no es correcta';
-      errEl.classList.add('visible');
-      btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave'; return;
-    }
-
-    btnOk.textContent = 'Guardando…';
-    var hashNueva = await hashStr(nueva);
-
-    // Llamar al Apps Script para actualizar la clave
-    var resp = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        accion: 'cambiarClave',
-        numUsuario: usuarioActual.numUsuario || usuarioActual.num,
-        hashNueva: hashNueva
-      })
-    });
-    var data = await resp.json();
-
-    if (data.ok) {
-      // Actualizar el hash en memoria para que no haga falta re-login
-      usuarioActual.hash = hashNueva;
-      okEl.classList.add('visible');
-      btnOk.textContent = '✓ Guardado';
-      registrarAccion('ADMIN', 'Cambiar contraseña propia', `Usuario ${usuarioActual.nombre||usuarioActual.numUsuario}`);
-      setTimeout(function(){ cerrarModalCambioClave(); }, 1400);
-    } else {
-      errEl.textContent = data.error || 'Error al guardar la clave';
-      errEl.classList.add('visible');
-      btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave';
-    }
-  } catch(e) {
-    errEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
-    errEl.classList.add('visible');
-    btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave';
-  }
-}
-// Cerrar al pulsar fuera del recuadro
-document.getElementById('modal-cambio-clave').addEventListener('click', function(e){
-  if (e.target === this) cerrarModalCambioClave();
-});
-</script>
-
-<!-- ═══════════════════════════════════════════════════════
      MODAL: LOGIN CONFIG
 ═══════════════════════════════════════════════════════ -->
 <div id="modal-login-config" class="modal-overlay" style="z-index:25000;display:none;">
@@ -14365,6 +14270,7 @@ document.getElementById('modal-cambio-clave').addEventListener('click', function
     <div class="cc-icon">🔑</div>
     <div class="cc-title">Cambiar clave de acceso</div>
     <div class="cc-sub">Introduce tu clave actual y la nueva clave</div>
+    <div class="cc-loading" id="cc-loading"><div class="cc-loading-spinner"></div><div class="cc-loading-text" id="cc-loading-text">Comprobando…</div></div>
     <div class="cc-field">
       <label>Clave actual</label>
       <input type="text" class="inp-clave" id="cc-actual" placeholder="••••••" maxlength="20"

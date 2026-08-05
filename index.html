@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.5">
+  <meta name="app-version" content="3.4.6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4195,7 +4195,8 @@ async function manejarPeticionSupabase(urlStr, options) {
             .select('kilometraje')
             .eq('matricula', r.matricula)
             .not('kilometraje', 'is', null)
-            .order('id', { ascending: false })
+            .order('fecha', { ascending: false })
+            .order('hora_entrega', { ascending: false })
             .limit(1);
           if (!errUlt && ultimos && ultimos.length) {
             const kmAnterior = Number(ultimos[0].kilometraje);

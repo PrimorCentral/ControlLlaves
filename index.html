@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.6">
+  <meta name="app-version" content="3.4.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4163,7 +4163,8 @@ async function manejarPeticionSupabase(urlStr, options) {
       const { data, error } = await sb.from('repostajes')
         .select('*')
         .eq('estado', 'PENDIENTE')
-        .order('id', { ascending: true });
+        .order('fecha', { ascending: true })
+        .order('hora_entrega', { ascending: true });
       if (error) return { ok: false, error: error.message };
       return { ok: true, filas: data || [] };
     }
@@ -4171,7 +4172,7 @@ async function manejarPeticionSupabase(urlStr, options) {
     case 'cargarRepostajes': {
       let q = sb.from('repostajes').select('*')
         .order('fecha', { ascending: false })
-        .order('id', { ascending: false });
+        .order('hora_entrega', { ascending: false });
       if (params.desde)     q = q.gte('fecha', params.desde);
       if (params.hasta)     q = q.lte('fecha', params.hasta);
       if (params.matricula) q = q.eq('matricula', params.matricula);
@@ -4592,7 +4593,8 @@ async function manejarPeticionSupabase(urlStr, options) {
 // mientras no migremos también los ficheros a Supabase Storage.
 // El resto de fetch (CDNs, etc.) sigue funcionando exactamente igual que antes.
 const ACCIONES_APPS_SCRIPT = new Set([
-  'subirDocumento', 'cargarDocumentos', 'eliminarDocumento', 'proxyDoc', 'enviarCorreo'
+  'subirDocumento', 'cargarDocumentos', 'eliminarDocumento', 'proxyDoc',
+  'enviarCorreoIncidencia', 'enviarCorreoBloqueo'
 ]);
 
 function _extraerAccionDePeticion(urlStr, options) {

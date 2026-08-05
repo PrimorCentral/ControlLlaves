@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.5.4">
+  <meta name="app-version" content="3.5.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4461,10 +4461,10 @@ async function manejarPeticionSupabase(urlStr, options) {
         .lt('fecha', params.hoy)
         .not('operario', 'is', null)
         .neq('operario', '')
-        .or('hora_devolucion.is.null,hora_devolucion.eq.')
-        .or('reasignado.is.null,reasignado.eq.false');
+        .is('hora_devolucion', null);
       if (error) return { ok: false, error: error.message };
-      const pendientes = (data || []).map(f => ({
+      const filtrados = (data || []).filter(f => f.reasignado === null || f.reasignado === false);
+      const pendientes = filtrados.map(f => ({
         ...f,
         hora_entrega:    (f.hora_entrega    || '').slice(0, 5),
         hora_devolucion: (f.hora_devolucion || '').slice(0, 5)

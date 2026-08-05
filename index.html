@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.7">
+  <meta name="app-version" content="3.4.8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -4190,7 +4190,9 @@ async function manejarPeticionSupabase(urlStr, options) {
       // Validación de kilometraje: no puede ser menor que el último registrado
       // para este vehículo, ni suponer un salto de más de 800 km respecto al anterior.
       if (r.kilometraje !== '' && r.kilometraje !== undefined && r.kilometraje !== null) {
-        const kmNuevo = Number(r.kilometraje);
+        // Limpia posibles puntos/comas de miles guardados por error, para que
+        // no se interpreten como separador decimal al convertir a número.
+        const kmNuevo = Number(String(r.kilometraje).replace(/[.,]/g, ''));
         if (!isNaN(kmNuevo)) {
           const { data: ultimos, error: errUlt } = await sb.from('repostajes')
             .select('kilometraje')
@@ -4200,7 +4202,7 @@ async function manejarPeticionSupabase(urlStr, options) {
             .order('hora_entrega', { ascending: false })
             .limit(1);
           if (!errUlt && ultimos && ultimos.length) {
-            const kmAnterior = Number(ultimos[0].kilometraje);
+            const kmAnterior = Number(String(ultimos[0].kilometraje).replace(/[.,]/g, ''));
             if (!isNaN(kmAnterior)) {
               if (kmNuevo < kmAnterior) {
                 return { ok: false, error: `El kilometraje (${kmNuevo}) es menor que el último registrado para este vehículo (${kmAnterior} km)` };

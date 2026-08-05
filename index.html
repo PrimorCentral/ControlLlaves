@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.4.4">
+  <meta name="app-version" content="3.4.5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3599,12 +3599,36 @@ async function obtenerDestinatariosPorTipo(tipo) {
 // Llama de verdad a Apps Script (Gmail) para mandar un correo. Devuelve
 // null si fue bien, o el mensaje de error si falló — para que el llamador
 // pueda propagarlo como json.emailError, tal y como espera el cliente.
-async function enviarCorreoViaAppsScript(to, subject, html, text) {
-  if (!to) return null; // sin destinatarios configurados, no es un error
+// Llama a Apps Script (Gmail) para mandar el correo de incidencia: solo
+// mandamos los datos, el HTML se construye en Apps Script (función
+// construirHtmlIncidencia), para que se vea bien en cualquier cliente
+// de correo (Outlook, Gmail...). Devuelve null si fue bien, o el mensaje
+// de error si falló — para que el llamador pueda propagarlo como
+// json.emailError, tal y como espera el cliente.
+async function enviarCorreoIncidenciaViaAppsScript(datos) {
+  if (!datos.to) return null; // sin destinatarios configurados, no es un error
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ accion: 'enviarCorreo', to, subject, html, text }),
+      body: JSON.stringify({ accion: 'enviarCorreoIncidencia', ...datos }),
+      redirect: 'follow'
+    });
+    const json = await resp.json();
+    return json && json.ok ? null : (json && json.error) || 'Error desconocido enviando el correo';
+  } catch (e) {
+    return e.message || 'Error de conexión al enviar el correo';
+  }
+}
+
+// Igual que las anteriores, pero para el correo de "Vehículo bloqueado":
+// solo mandamos los datos, el HTML se construye en Apps Script
+// (función construirHtmlBloqueo).
+async function enviarCorreoBloqueoViaAppsScript(datos) {
+  if (!datos.to) return null; // sin destinatarios configurados, no es un error
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'enviarCorreoBloqueo', ...datos }),
       redirect: 'follow'
     });
     const json = await resp.json();
@@ -3860,23 +3884,13 @@ async function manejarPeticionSupabase(urlStr, options) {
       let emailError = null;
       const destinatarios = await obtenerDestinatariosPorTipo('bloqueos');
       if (destinatarios.length) {
-        const ahora = new Date();
-        const fechaFmt = ahora.toLocaleDateString('es-ES');
-        const horaFmt  = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-        const asunto = `Vehículo bloqueado · ${params.matricula} · ${fechaFmt}`;
-        const html = `
-          <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;">
-            <div style="background:#1a1a2e;padding:18px 24px;color:#fff;font-size:20px;font-weight:900;">⛔ Vehículo Bloqueado</div>
-            <div style="padding:20px 24px;background:#fff;font-size:13px;color:#1a1a2e;line-height:1.7;">
-              <p><strong>Matrícula:</strong> ${params.matricula}</p>
-              <p><strong>Bloqueado por:</strong> ${params.bloqueado_por || '—'}</p>
-              <p><strong>Fecha y hora:</strong> ${fechaFmt} · ${horaFmt}</p>
-              <div style="margin-top:14px;background:#fff0f0;border-left:4px solid #e84545;padding:12px 14px;">
-                <strong style="color:#b91c1c;">Motivo:</strong> ${params.motivo || '—'}
-              </div>
-            </div>
-          </div>`;
-        emailError = await enviarCorreoViaAppsScript(destinatarios.join(','), asunto, html, params.motivo || '');
+        emailError = await enviarCorreoBloqueoViaAppsScript({
+          to:            destinatarios.join(','),
+          matricula:     params.matricula,
+          bloqueado_por: params.bloqueado_por || '',
+          motivo:        params.motivo || '',
+          fecha:         fechaBloqueoIso
+        });
       }
       return { ok: true, emailError, fecha_bloqueo: fechaBloqueoIso };
     }
@@ -4110,22 +4124,15 @@ async function manejarPeticionSupabase(urlStr, options) {
       let emailError = null;
       const destinatarios = await obtenerDestinatariosPorTipo('incidencias');
       if (destinatarios.length) {
-        const fechaFmt = (inc.fecha || '').split('-').reverse().join('-');
-        const asunto = `Nueva incidencia de flota · ${inc.matricula} · ${fechaFmt}${params.bloquearVehiculo ? ' · BLOQUEADO' : ''}`;
-        const html = `
-          <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;">
-            <div style="background:#1a1a2e;padding:18px 24px;color:#fff;font-size:20px;font-weight:900;">⚠️ Nueva Incidencia</div>
-            <div style="padding:20px 24px;background:#fff;font-size:13px;color:#1a1a2e;line-height:1.7;">
-              <p><strong>Matrícula:</strong> ${inc.matricula}</p>
-              <p><strong>Responsable:</strong> ${inc.responsable || '—'}</p>
-              <p><strong>Fecha:</strong> ${fechaFmt} &middot; Turno ${inc.turno === 'MANANA' ? 'MAÑANA' : (inc.turno || '—')}</p>
-              <div style="margin-top:14px;background:#fff8f0;border-left:4px solid #e84545;padding:12px 14px;">
-                <strong style="color:#b07040;">Descripción:</strong> ${inc.descripcion || '—'}
-              </div>
-              ${params.bloquearVehiculo ? '<div style="margin-top:14px;background:#fff0f0;border-left:4px solid #e84545;padding:12px 14px;color:#b91c1c;font-weight:800;">⛔ Vehículo bloqueado</div>' : ''}
-            </div>
-          </div>`;
-        emailError = await enviarCorreoViaAppsScript(destinatarios.join(','), asunto, html, inc.descripcion || '');
+        emailError = await enviarCorreoIncidenciaViaAppsScript({
+          to:          destinatarios.join(','),
+          matricula:   inc.matricula,
+          responsable: inc.responsable || '',
+          fecha:       inc.fecha,
+          turno:       inc.turno,
+          descripcion: inc.descripcion || '',
+          bloqueado:   !!params.bloquearVehiculo
+        });
       }
       return { ok: true, emailError };
     }

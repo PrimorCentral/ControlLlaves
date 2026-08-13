@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.5.8">
+  <meta name="app-version" content="3.5.9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -5559,8 +5559,18 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
 
   const turnoLabel = info.turno === 'MANANA' ? 'Mañana' : 'Tarde';
   const fechaLabel = (info.fecha || '').split('-').reverse().join('/');
-  const ahoraHHMM  = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   const hayMas     = pendientesRestantes > 1;
+
+  // ── Hora de devolución sugerida ──────────────────────────────────────────
+  // NO usamos "la hora actual" como valor por defecto: si esto se registra al
+  // día siguiente (o hitas más tarde), la hora actual da lugar a rangos sin
+  // sentido (p.ej. entrega 13:20 → devolución 05:30 del día siguiente, porque
+  // el responsable dejó el valor que venía puesto sin fijarse).
+  // En su lugar, proponemos la hora aproximada de fin del turno en que se
+  // entregó el vehículo, y dejamos que el responsable la ajuste si lo sabe con
+  // más precisión.
+  const FIN_TURNO_SUGERIDO = { MANANA: '13:00', TARDE: '21:00' };
+  const horaSugerida = FIN_TURNO_SUGERIDO[info.turno] || new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
@@ -5577,10 +5587,13 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
         </div>
         ${hayMas ? `<div style="font-size:11px;color:#b07040;font-weight:700;margin-top:8px;">⚠️ Hay ${pendientesRestantes} devoluciones acumuladas sin registrar de este vehículo. Se te pedirán una a una, empezando por la más antigua.</div>` : ''}
       </div>
-      <div style="font-size:12px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;margin-bottom:8px;text-align:left;">Registrar devolución de llaves ahora</div>
-      <input type="time" id="voc-hora-devolucion" value="${ahoraHHMM}"
-        style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:18px;text-align:center;">
-      <div style="display:flex;gap:10px;justify-content:center;">
+      <div style="font-size:12px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;margin-bottom:4px;text-align:left;">Registrar devolución de llaves ahora</div>
+      <div style="font-size:11px;color:#8899aa;margin-bottom:8px;text-align:left;">Hora aproximada a la que se devolvieron las llaves (no la hora actual)</div>
+      <input type="time" id="voc-hora-devolucion" value="${horaSugerida}"
+        style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-align:center;">
+      <div id="voc-error-hora" style="display:none;font-size:11px;color:#c62020;font-weight:700;margin-bottom:8px;text-align:left;"></div>
+      <button id="btn-voc-admin" style="display:none;width:100%;padding:9px;background:#fff5f5;color:#c62020;border:1.5px solid #f5b5b5;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:12px;">🔑 Autorizar como admin</button>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:4px;">
         <button id="btn-voc-cancel" style="flex:1;padding:11px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
         <button id="btn-voc-ok" style="flex:1;padding:11px;background:#c62020;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Registrar devolución</button>
       </div>
@@ -5592,13 +5605,10 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
     restaurarInput();
   };
 
-  overlay.querySelector('#btn-voc-ok').onclick = async () => {
+  // Guarda la fila de devolución. forzarAdmin=true salta solo el tope de 8h
+  // (el tope de "no anterior a la entrega" nunca se salta: no tiene sentido válido).
+  const guardarDevolucion = async (horaDevolucion, forzarAdmin) => {
     const btn = overlay.querySelector('#btn-voc-ok');
-    const horaDevolucion = document.getElementById('voc-hora-devolucion').value;
-    if (!horaDevolucion) {
-      mostrarToast('Introduce la hora de devolución', 'error');
-      return;
-    }
     btn.disabled = true;
     btn.textContent = '⏳ Guardando…';
     try {
@@ -5623,8 +5633,8 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
       const json = await resp.json();
       if (!json.ok) throw new Error(json.error || 'Error al guardar');
 
-      registrarAccion('CUADRANTE', 'Recepción de llaves (turno anterior)',
-        `${mat} · turno ${info.turno} · ${info.fecha} · conductor: ${info.operario}`);
+      registrarAccion('CUADRANTE', forzarAdmin ? 'Recepción de llaves (turno anterior, autorizado por admin)' : 'Recepción de llaves (turno anterior)',
+        `${mat} · turno ${info.turno} · ${info.fecha} · conductor: ${info.operario} · hora devolución: ${horaDevolucion}`);
 
       document.body.removeChild(overlay);
       mostrarToast(`✓ Llaves de ${mat} recepcionadas`, 'success');
@@ -5634,6 +5644,65 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
       btn.textContent = '✓ Registrar devolución';
       mostrarToast('No se pudo registrar la devolución. Inténtalo de nuevo.', 'error');
     }
+  };
+
+  overlay.querySelector('#btn-voc-ok').onclick = async () => {
+    const horaDevolucion = document.getElementById('voc-hora-devolucion').value;
+    const errEl    = document.getElementById('voc-error-hora');
+    const btnAdmin = document.getElementById('btn-voc-admin');
+    errEl.style.display    = 'none';
+    btnAdmin.style.display = 'none';
+
+    if (!horaDevolucion) {
+      mostrarToast('Introduce la hora de devolución', 'error');
+      return;
+    }
+
+    // ── Validación: la devolución no puede ser anterior a la entrega ────────
+    // (mismo día de referencia: si el vehículo se entregó a las 13:20, no
+    // tiene sentido registrar una devolución a las 05:30 — esa hora suele
+    // colarse porque es "la hora actual" en el momento de rellenar el modal,
+    // no la hora real en que se devolvieron las llaves). Esta comprobación
+    // NUNCA se puede saltar, ni siquiera como admin.
+    if (info.hora_entrega && horaDevolucion < info.hora_entrega) {
+      errEl.textContent = `La hora de devolución (${horaDevolucion}) no puede ser anterior a la hora de entrega (${info.hora_entrega}). Pon la hora aproximada real a la que se devolvieron las llaves, no la hora actual.`;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // ── Validación: la devolución no puede ser más de 8 horas después de la entrega ──
+    // Evita registros técnicamente "válidos" pero absurdos (p.ej. entrega 05:35 →
+    // devolución 23:00), que igualmente suelen deberse a dejar puesta una hora
+    // que no es la real. Esta sí se puede saltar con autorización de admin, por
+    // si alguna vez es un caso legítimo (turno alargado, incidencia, etc.).
+    if (info.hora_entrega) {
+      const [hE, mE] = info.hora_entrega.split(':').map(Number);
+      const [hD, mD] = horaDevolucion.split(':').map(Number);
+      const diffMin = (hD * 60 + mD) - (hE * 60 + mE);
+      const MAX_DIFF_MIN = 8 * 60; // 8 horas
+      if (diffMin > MAX_DIFF_MIN) {
+        const horasStr = (diffMin / 60).toFixed(1).replace('.0', '');
+        errEl.textContent = `Han pasado ${horasStr} horas desde la entrega (${info.hora_entrega}) hasta la hora indicada (${horaDevolucion}) — más de las 8 horas habituales de un turno. Comprueba que sea la hora real de devolución, no la hora actual.`;
+        errEl.style.display    = 'block';
+        btnAdmin.style.display = 'block';
+        return;
+      }
+    }
+
+    guardarDevolucion(horaDevolucion, false);
+  };
+
+  overlay.querySelector('#btn-voc-admin').onclick = () => {
+    const horaDevolucion = document.getElementById('voc-hora-devolucion').value;
+    const inp = document.getElementById('inp-admin-password');
+    if (inp) inp.value = '';
+    const errAdmin = document.getElementById('admin-error-msg');
+    if (errAdmin) errAdmin.style.display = 'none';
+    _pendingAdminCallback = async () => {
+      guardarDevolucion(horaDevolucion, true);
+    };
+    document.getElementById('modal-login-admin').classList.add('open');
+    setTimeout(() => { if (inp) inp.focus(); }, 100);
   };
 
   overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); restaurarInput(); } });

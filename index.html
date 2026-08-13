@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.5.7">
+  <meta name="app-version" content="3.5.8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -5842,7 +5842,86 @@ function mostrarAvisoRestringido(mat, nombre, onContinuar) {
   };
 }
 
-function _abrirConfirmarAsignacion(mat, nombre) {
+// Modal que se muestra cuando se intenta asignar un conductor en un hueco vacío
+// del turno MAÑANA fuera de horario (mismo criterio que la reasignación)
+function mostrarModalAsignacionBloqueada(mat, nombre) {
+  const restaurarInput = () => {
+    const inp = document.querySelector(`.operario-search-input[data-mat="${CSS.escape(mat)}"]`);
+    if (inp) inp.value = getDato(mat).operario || '';
+  };
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:0;width:600px;max-width:96vw;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;overflow:hidden;">
+
+      <!-- CABECERA ROJA -->
+      <div style="background:#dc2626;padding:22px 28px 18px;display:flex;align-items:center;gap:14px;">
+        <div style="background:rgba(255,255,255,0.18);border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">🚫</div>
+        <div>
+          <div style="font-size:19px;font-weight:900;color:#fff;line-height:1.2;">Asignación no disponible</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.8);font-weight:600;margin-top:2px;">Vehículo: ${esc(mat)} · Conductor: ${esc(nombre)}</div>
+        </div>
+      </div>
+
+      <!-- CUERPO -->
+      <div style="padding:24px 28px 22px;">
+        <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:24px;flex-shrink:0;">☀️🌆</span>
+          <div>
+            <div style="font-size:13px;font-weight:900;color:#1d4ed8;margin-bottom:4px;">El turno de mañana está a punto de finalizar</div>
+            <div style="font-size:12px;color:#1e3a5f;line-height:1.6;">A partir de las <strong>12:00</strong> no se puede asignar un conductor dentro del cuadrante de <strong>mañana</strong>. Si vas a poner un conductor de <strong>tarde</strong>, cambia primero al cuadrante de tarde y asígnalo desde allí.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:nowrap;">
+          <button id="btn-asigblq-admin" style="padding:11px 14px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🔑 Autorizar como admin</button>
+          <button id="btn-asigblq-cancel" style="padding:11px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Cancelar</button>
+          <button id="btn-asigblq-turno" style="padding:11px 20px;background:#1d4ed8;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">Ir al cuadrante de tarde →</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-asigblq-cancel').onclick = () => {
+    document.body.removeChild(overlay);
+    restaurarInput();
+  };
+
+  overlay.querySelector('#btn-asigblq-turno').onclick = () => {
+    document.body.removeChild(overlay);
+    restaurarInput();
+    const btnTarde = document.querySelector('.turno-btn[data-turno="TARDE"]');
+    if (btnTarde) seleccionarTurno(btnTarde);
+  };
+
+  overlay.querySelector('#btn-asigblq-admin').onclick = () => {
+    document.body.removeChild(overlay);
+    const inp = document.getElementById('inp-admin-password');
+    if (inp) inp.value = '';
+    const errEl = document.getElementById('admin-error-msg');
+    if (errEl) errEl.style.display = 'none';
+    _pendingAdminCallback = async () => {
+      _abrirConfirmarAsignacion(mat, nombre, true); // true = forzarAdmin, salta el bloqueo horario
+    };
+    document.getElementById('modal-login-admin').classList.add('open');
+    setTimeout(() => { if (inp) inp.focus(); }, 100);
+  };
+}
+
+function _abrirConfirmarAsignacion(mat, nombre, forzarAdmin) {
+  // ─── Bloqueo: no permitir asignar dentro de MAÑANA a partir de las 11:00 ───
+  // (mismo criterio que en pedirReasignacion, para el hueco vacío en vez del ya asignado)
+  if (!forzarAdmin && turnoActual === 'MANANA' && esFechaHoy()) {
+    const ahora = new Date();
+    const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+    const MIN_BLOQUEO_ASIG_MANANA = 12 * 60; // 12:00
+    if (minutosAhora >= MIN_BLOQUEO_ASIG_MANANA) {
+      mostrarModalAsignacionBloqueada(mat, nombre);
+      return;
+    }
+  }
+
   const respEntrega = (usuarioActual && usuarioActual.nombre)
     ? usuarioActual.nombre
     : (usuarioActual ? usuarioActual.numUsuario : '—');
@@ -6293,7 +6372,7 @@ function mostrarModalReasignacionBloqueada(matricula) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:0;width:500px;max-width:96vw;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;overflow:hidden;">
+    <div style="background:white;border-radius:16px;padding:0;width:600px;max-width:96vw;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;overflow:hidden;">
 
       <!-- CABECERA ROJA -->
       <div style="background:#dc2626;padding:22px 28px 18px;display:flex;align-items:center;gap:14px;">
@@ -6310,13 +6389,13 @@ function mostrarModalReasignacionBloqueada(matricula) {
           <span style="font-size:24px;flex-shrink:0;">☀️🌆</span>
           <div>
             <div style="font-size:13px;font-weight:900;color:#1d4ed8;margin-bottom:4px;">El turno de mañana está a punto de finalizar</div>
-            <div style="font-size:12px;color:#1e3a5f;line-height:1.6;">A partir de las <strong>11:00</strong> no se puede reasignar un conductor dentro del cuadrante de <strong>mañana</strong>. Si vas a poner un conductor de <strong>tarde</strong>, cambia primero al cuadrante de tarde y asígnalo desde allí.</div>
+            <div style="font-size:12px;color:#1e3a5f;line-height:1.6;">A partir de las <strong>12:00</strong> no se puede reasignar un conductor dentro del cuadrante de <strong>mañana</strong>. Si vas a poner un conductor de <strong>tarde</strong>, cambia primero al cuadrante de tarde y asígnalo desde allí.</div>
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
-          <button id="btn-reasigblq-admin" style="padding:11px 14px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🔑 Soy admin, forzar</button>
-          <button id="btn-reasigblq-cancel" style="padding:11px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:nowrap;">
+          <button id="btn-reasigblq-admin" style="padding:11px 14px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🔑 Autorizar como admin</button>
+          <button id="btn-reasigblq-cancel" style="padding:11px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Cancelar</button>
           <button id="btn-reasigblq-turno" style="padding:11px 20px;background:#1d4ed8;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">Ir al cuadrante de tarde →</button>
         </div>
       </div>
@@ -6351,13 +6430,13 @@ function pedirReasignacion(matricula, forzarAdmin) {
   const nombre = d.operario || '';
 
   // ─── Bloqueo: no permitir reasignar dentro de MAÑANA a partir de las 11:00 ───
-  // (mismo umbral horario que desbloquea la selección del turno TARDE en turnoPermitidoParaFecha)
+  // (12:00, una hora antes de que finalice el turno de mañana a las 13:00)
   // Evita que el responsable de tarde, al no cambiar de turno, meta al conductor de
   // tarde reasignando el camión dentro del cuadrante de mañana.
   if (!forzarAdmin && turnoActual === 'MANANA' && esFechaHoy()) {
     const ahora = new Date();
     const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
-    const MIN_BLOQUEO_REASIG_MANANA = 11 * 60; // 11:00
+    const MIN_BLOQUEO_REASIG_MANANA = 12 * 60; // 12:00
     if (minutosAhora >= MIN_BLOQUEO_REASIG_MANANA) {
       mostrarModalReasignacionBloqueada(matricula);
       return;

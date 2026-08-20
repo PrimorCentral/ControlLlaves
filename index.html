@@ -10,7 +10,7 @@
        Cambia este número cada vez que subas una nueva versión.
        También actualiza version.json en GitHub con el mismo número.
   ══════════════════════════════════════════════════════════════ -->
-  <meta name="app-version" content="3.5.9">
+  <meta name="app-version" content="3.6.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#e84545">
@@ -3996,6 +3996,12 @@ async function manejarPeticionSupabase(urlStr, options) {
       return { ok: true };
     }
 
+    case 'eliminarConductor': {
+      const { error } = await sb.from('conductores').delete().eq('num_usuario', params.numUsuario);
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
     case 'verificarOcupacion': {
       const { data, error } = await sb.from('registros')
         .select('*')
@@ -7375,13 +7381,45 @@ async function cargarConductoresDesdeSheets(mostrarError = true) {
 }
 
 async function sincronizarConductoresConSheets() {
-  if (!APPS_SCRIPT_URL) return;
+  if (!APPS_SCRIPT_URL) return false;
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ accion: 'guardarConductores', conductores: CONDUCTORES }), redirect: 'follow'
     });
-  } catch(e) { console.warn('No se pudo sincronizar conductores:', e); }
+    const json = await resp.json();
+    if (!json.ok) {
+      console.warn('Fallo al sincronizar conductores:', json.error);
+      mostrarToast('⚠️ No se pudo guardar en la base de datos: ' + (json.error || 'error desconocido'), 'error');
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.warn('No se pudo sincronizar conductores:', e);
+    mostrarToast('⚠️ No se pudo guardar en la base de datos (sin conexión)', 'error');
+    return false;
+  }
+}
+
+async function eliminarConductorDeSheets(numUsuario) {
+  if (!APPS_SCRIPT_URL) return false;
+  try {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ accion: 'eliminarConductor', numUsuario }), redirect: 'follow'
+    });
+    const json = await resp.json();
+    if (!json.ok) {
+      console.warn('Fallo al eliminar conductor:', json.error);
+      mostrarToast('⚠️ No se pudo eliminar de la base de datos: ' + (json.error || 'error desconocido'), 'error');
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.warn('No se pudo eliminar conductor:', e);
+    mostrarToast('⚠️ No se pudo eliminar de la base de datos (sin conexión)', 'error');
+    return false;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -10107,9 +10145,12 @@ function confirmarNuevoConductor() {
   CONDUCTORES.push({ nombre, dni, numUsuario: num, sociedad, nave });
   cerrarModalNuevoConductor();
   renderAdminConductores();
-  sincronizarConductoresConSheets();
-  registrarAccion('ADMIN', 'Añadir conductor', `${nombre} · DNI ${dni} · Nº${num}`);
-  mostrarToast(`✓ ${nombre} añadido`, 'success');
+  sincronizarConductoresConSheets().then(ok => {
+    if (ok) {
+      registrarAccion('ADMIN', 'Añadir conductor', `${nombre} · DNI ${dni} · Nº${num}`);
+      mostrarToast(`✓ ${nombre} añadido`, 'success');
+    }
+  });
 }
 function añadirConductorAdmin() { abrirModalNuevoConductor(); }
 
@@ -10132,11 +10173,18 @@ function eliminarConductorAdmin(idx) {
   overlay.querySelector('#del-cond-cancel').onclick  = () => document.body.removeChild(overlay);
   overlay.querySelector('#del-cond-confirm').onclick = () => {
     document.body.removeChild(overlay);
+    const numUsuarioBorrado = c.numUsuario;
     CONDUCTORES.splice(idx, 1);
     renderAdminConductores();
-    sincronizarConductoresConSheets();
-    registrarAccion('ADMIN', 'Eliminar conductor', `${c.nombre} · DNI ${c.dni}`);
-    mostrarToast('Conductor eliminado', 'info');
+    eliminarConductorDeSheets(numUsuarioBorrado).then(ok => {
+      if (ok) {
+        registrarAccion('ADMIN', 'Eliminar conductor', `${c.nombre} · DNI ${c.dni}`);
+        mostrarToast('Conductor eliminado', 'info');
+      } else {
+        CONDUCTORES.splice(idx, 0, c);
+        renderAdminConductores();
+      }
+    });
   };
 }
 

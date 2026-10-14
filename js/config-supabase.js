@@ -645,14 +645,18 @@ async function manejarPeticionSupabase(urlStr, options) {
       }
 
       // Validación de kilometraje: no puede ser menor que el último registrado
-      // para este vehículo, ni suponer un salto de más de 800 km respecto al anterior.
+      // para este vehículo, ni superar el salto máximo permitido respecto al
+      // anterior. El salto permitido depende de los días transcurridos:
+      // KM_POR_DIA por cada día (mínimo 1 día), con un tope de KM_SALTO_MAX.
+      // Referencia (oct-2026): el máximo histórico entre repostajes era 1.298 km
+      // y el máximo por día 399 km.
       if (r.kilometraje !== '' && r.kilometraje !== undefined && r.kilometraje !== null) {
         // Limpia posibles puntos/comas de miles guardados por error, para que
         // no se interpreten como separador decimal al convertir a número.
         const kmNuevo = Number(String(r.kilometraje).replace(/[.,]/g, ''));
         if (!isNaN(kmNuevo)) {
           const { data: ultimos, error: errUlt } = await sb.from('repostajes')
-            .select('kilometraje')
+            .select('kilometraje, fecha')
             .eq('matricula', r.matricula)
             .not('kilometraje', 'is', null)
             .order('fecha', { ascending: false })
@@ -664,8 +668,15 @@ async function manejarPeticionSupabase(urlStr, options) {
               if (kmNuevo < kmAnterior) {
                 return { ok: false, error: `El kilometraje (${kmNuevo}) es menor que el último registrado para este vehículo. Revisa el dato.` };
               }
-              if (kmNuevo - kmAnterior > 800) {
-                return { ok: false, error: `El kilometraje (${kmNuevo}) supone un salto demasiado grande respecto al último registrado para este vehículo. Revisa el dato.` };
+              const KM_POR_DIA   = 500;
+              const KM_SALTO_MAX = 1800;
+              const fNueva    = new Date((r.fecha || new Date().toISOString().slice(0, 10)) + 'T00:00:00');
+              const fAnterior = new Date(String(ultimos[0].fecha || '').slice(0, 10) + 'T00:00:00');
+              let dias = Math.round((fNueva - fAnterior) / 86400000);
+              if (isNaN(dias) || dias < 1) dias = 1;
+              const saltoPermitido = Math.min(dias * KM_POR_DIA, KM_SALTO_MAX);
+              if (kmNuevo - kmAnterior > saltoPermitido) {
+                return { ok: false, error: `El kilometraje (${kmNuevo}) supone un salto de ${kmNuevo - kmAnterior} km respecto al último registrado (${kmAnterior}), y el máximo permitido es ${saltoPermitido} km. Revisa el dato.` };
               }
             }
           }

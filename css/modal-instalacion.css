@@ -1,0 +1,48 @@
+  #modal-requiere-instalacion {
+    display: none;
+    position: fixed; inset: 0; z-index: 999999;
+    background: rgba(10,10,30,0.85);
+    backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  #modal-requiere-instalacion.visible { display: flex; }
+  #modal-requiere-instalacion .ri-box {
+    background: white; border-radius: 18px;
+    padding: 36px 32px 28px; width: 400px; max-width: 92vw;
+    text-align: center;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+    font-family: 'Barlow', sans-serif;
+    animation: nv-in 0.3s cubic-bezier(.34,1.56,.64,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  #modal-requiere-instalacion .ri-icon  { font-size: 52px; margin-bottom: 10px; }
+  #modal-requiere-instalacion .ri-title { font-size: 20px; font-weight: 900; color: #1a1a2e; margin-bottom: 8px; }
+  #modal-requiere-instalacion .ri-desc  { font-size: 13px; color: #6b7a94; line-height: 1.6; margin-bottom: 18px; }
+  #modal-requiere-instalacion .ri-pasos {
+    text-align: left; background: #f6f8fc; border: 1.5px solid #e3e8f5;
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 22px;
+    font-size: 12.5px; color: #3a3a4a; line-height: 1.9;
+  }
+  #modal-requiere-instalacion .ri-pasos b { color: #1a1a2e; }
+  #modal-requiere-instalacion .btn-instalar {
+    width: 100%; padding: 14px;
+    background: #e84545; color: white; border: none;
+    border-radius: 11px; font-family: 'Barlow', sans-serif;
+    font-size: 15px; font-weight: 900; letter-spacing: 1.5px;
+    text-transform: uppercase; cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 6px 20px rgba(232,69,69,0.35);
+    margin-bottom: 10px;
+    display: none; /* se muestra solo si beforeinstallprompt está disponible */
+  }
+  #modal-requiere-instalacion .btn-instalar:hover  { background: #c63030; transform: translateY(-1px); }
+  #modal-requiere-instalacion .btn-instalar:active { transform: translateY(0); }
+  #modal-requiere-instalacion .btn-ya-instalado {
+    width: 100%; padding: 12px;
+    background: transparent; color: #6b7a94; border: 1.5px solid #d8dee8;
+    border-radius: 11px; font-family: 'Barlow', sans-serif;
+    font-size: 12px; font-weight: 800; letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #modal-requiere-instalacion .btn-ya-instalado:hover { border-color: #aab4c8; color: #3a3a4a; }

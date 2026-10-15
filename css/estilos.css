@@ -1245,7 +1245,7 @@
     ══════════════════════════════════════════════════════════ */
     #modal-ficha-vehiculo {
       display: none; position: fixed; inset: 0; z-index: 9998;
-      background: rgba(5,5,20,0.85); backdrop-filter: blur(3px);
+      background: rgba(5,5,20,0.85);
       align-items: center; justify-content: center; padding: 16px;
     }
     #modal-ficha-vehiculo.visible { display: flex; }
@@ -1492,7 +1492,7 @@
     /* ── VISOR DE DOCUMENTOS ── */
     #modal-visor-doc {
       display: none; position: fixed; inset: 0; z-index: 10000;
-      background: rgba(3,3,15,0.92); backdrop-filter: blur(12px);
+      background: rgba(3,3,15,0.92);
       align-items: center; justify-content: center; padding: 12px;
     }
     #modal-visor-doc.visible { display: flex; }
@@ -1550,9 +1550,8 @@
     }
     #visor-pdf-container.active { display: flex; }
     .visor-pdf-page {
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-      display: block; background: #fff;
-      transition: transform 0.25s ease;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      display: block; background: #fff; flex-shrink: 0;
     }
     /* Imagen */
     #visor-doc-img {

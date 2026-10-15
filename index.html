@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Flota Primor">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- Cliente Supabase (sustituye a Google Apps Script como backend) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -491,22 +491,30 @@
 <!-- MODAL: PANEL ADMIN -->
 <div class="modal-overlay" id="modal-admin">
   <div class="modal-admin">
-    <div class="admin-header">
-      <h2>🔐 Panel de Administración</h2>
-      <button class="btn-cerrar-admin" onclick="cerrarAdmin()">✕ Cerrar</button>
-    </div>
-    <div class="admin-tabs">
-      <button class="admin-tab active" id="tab-btn-vehiculos" onclick="cambiarTab('vehiculos')">🚛 Vehículos</button>
-      <button class="admin-tab" id="tab-btn-conductores" onclick="cambiarTab('conductores')">🧑‍✈️ Conductores</button>
-      <button class="admin-tab" id="tab-btn-historial" onclick="cambiarTab('historial')">📋 Historial</button>
-      <button class="admin-tab" id="tab-btn-log" onclick="cambiarTab('log')">📝 Log Órdenes</button>
-      <button class="admin-tab" id="tab-btn-reasignaciones" onclick="cambiarTab('reasignaciones')">↺ Reasignaciones</button>
-      <button class="admin-tab" id="tab-btn-incidencias" onclick="cambiarTab('incidencias')">⚠️ Incidencias</button>
-      <button class="admin-tab" id="tab-btn-repostajes" onclick="cambiarTab('repostajes')">⛽ Repostajes</button>
-      <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')">👥 Responsables</button>
-      <button class="admin-tab" id="tab-btn-config" onclick="abrirLoginConfig()">⚙️ Config</button>
-      <button class="admin-tab" id="tab-btn-activos" onclick="cambiarTab('activos')">👷🏻 Usuarios Activos</button>
-    </div>
+    <aside class="admin-sidebar">
+      <div class="admin-brand">
+        <div class="admin-brand-logo">P</div>
+        <div class="admin-brand-txt"><strong>Flota Primor</strong><span>Administración</span></div>
+      </div>
+      <nav class="admin-tabs" aria-label="Secciones del panel">
+      <div class="admin-nav-grupo">Flota</div>
+      <button class="admin-tab" id="tab-btn-vehiculos" onclick="cambiarTab('vehiculos')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg><span>Vehículos</span></button>
+      <button class="admin-tab" id="tab-btn-conductores" onclick="cambiarTab('conductores')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/></svg><span>Conductores</span></button>
+      <button class="admin-tab" id="tab-btn-historial" onclick="cambiarTab('historial')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></svg><span>Historial</span></button>
+      <div class="admin-nav-grupo">Operativa</div>
+      <button class="admin-tab" id="tab-btn-log" onclick="cambiarTab('log')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log de órdenes</span></button>
+      <button class="admin-tab" id="tab-btn-reasignaciones" onclick="cambiarTab('reasignaciones')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></svg><span>Reasignaciones</span></button>
+      <button class="admin-tab" id="tab-btn-incidencias" onclick="cambiarTab('incidencias')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17h.01"/></svg><span>Incidencias</span></button>
+      <button class="admin-tab" id="tab-btn-repostajes" onclick="cambiarTab('repostajes')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M14 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3"/></svg><span>Repostajes</span></button>
+      <div class="admin-nav-grupo">Sistema</div>
+      <button class="admin-tab" id="tab-btn-responsables" onclick="cambiarTab('responsables')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4-6.3"/></svg><span>Responsables</span></button>
+      <button class="admin-tab" id="tab-btn-activos" onclick="cambiarTab('activos')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Usuarios activos</span></button>
+      <button class="admin-tab" id="tab-btn-config" onclick="abrirLoginConfig()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"/></svg><span>Configuración</span></button>
+      </nav>
+      <button class="btn-cerrar-admin" onclick="cerrarAdmin()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Cerrar panel</span></button>
+    </aside>
+
+    <div class="admin-main">
 
     <!-- LOGO DE FONDO — solo visible cuando no hay ninguna pestaña seleccionada -->
     <div id="admin-home-watermark" style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0;">
@@ -515,18 +523,19 @@
 
     <!-- TAB: VEHÍCULOS -->
     <div class="admin-tab-panel active" id="tab-panel-vehiculos">
-      <div class="admin-stats" id="admin-stats"></div>
-      <div class="admin-section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div class="admin-section-title" style="margin-bottom:0">🚛 Flota de vehículos</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="exportarFlotaPDF()" style="background:#e84545;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;">📄 Exportar PDF</button>
-            <button class="btn-add-item" onclick="abrirModalNuevoVehiculo()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;">+ Añadir vehículo</button>
-          </div>
+      <div class="adm-page-head">
+        <div>
+          <h1>Vehículos</h1>
+          <p>Flota de las naves, ITV, seguros y estado de cada vehículo.</p>
         </div>
-        <div class="admin-list" id="admin-lista-vehiculos"></div>
-        <div class="nota-restriccion" style="margin-top:12px;">⚠️ Los vehículos <strong>Restringido</strong> solo podrán asignarse a personas autorizadas. Los vehículos en <strong>Alquiler</strong> son los que tienen proveedor distinto a PROPIEDAD (PINVECO, DFM, etc.).</div>
+        <div class="adm-page-actions">
+          <button class="adm-btn" onclick="exportarFlotaPDF()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Exportar PDF</button>
+          <button class="adm-btn adm-btn-primary" onclick="abrirModalNuevoVehiculo()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir vehículo</button>
+        </div>
       </div>
+      <div class="admin-stats" id="admin-stats"></div>
+      <div id="admin-lista-vehiculos"></div>
+      <p class="adm-nota">Los vehículos <strong>restringidos</strong> solo pueden asignarse a personas autorizadas. Son de <strong>alquiler</strong> los que tienen un proveedor distinto a PROPIEDAD (PINVECO, DFM, etc.).</p>
     </div>
 
 
@@ -1171,6 +1180,7 @@
 
       </div><!-- fin config-content -->
     </div>
+    </div><!-- fin admin-main -->
   </div>
 </div>
 
@@ -1206,6 +1216,7 @@
   </div>
 </div>
 <link rel="stylesheet" href="css/estilos-2.css?v=3.7.3">
+<link rel="stylesheet" href="css/admin-panel.css?v=3.7.3">
 
 <!-- MODAL: REGISTRAR REPOSTAJE -->
 <div class="modal-overlay" id="modal-registrar-repostaje">

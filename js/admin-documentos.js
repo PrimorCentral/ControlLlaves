@@ -20,6 +20,8 @@ const _DOCS_CATS = [
   { id: 'fotos',               label: 'Fotos',                  icon: '📷' },
 ];
 const DOCS_CARPETA_DEFECTO = 'Entrega vehículo';
+const DOCS_CARPETAS_HABITUALES = ['Entrega vehículo', 'Devolución vehículo', 'Daños', 'Taller / reparación', 'Limpieza'];
+const DOCS_CARPETA_NUEVA = '__nueva__';
 const _DOCS_MIME_EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif' };
 
 // ── Capa de datos ────────────────────────────────────────────────────────────
@@ -169,6 +171,42 @@ async function docsEliminarSupabase(id, path) {
   if (del.error) throw new Error(del.error.message);
 }
 
+/** Desplegable de carpetas: habituales + las que ya tiene el vehículo + "Nueva carpeta…". Conserva la elección. */
+function _docsRellenarCarpetas(overlay, existentes) {
+  const sel = overlay.querySelector('#docs-carpeta-sel');
+  if (!sel) return;
+  const actual = sel.value;
+  const propias = [...new Set(existentes)].filter(n => !DOCS_CARPETAS_HABITUALES.includes(n)).sort((a, b) => a.localeCompare(b, 'es'));
+  const cuenta = n => existentes.filter(x => x === n).length;
+  const opt = n => `<option value="${esc(n)}">${esc(n)}${cuenta(n) ? ` (${cuenta(n)})` : ''}</option>`;
+  sel.innerHTML = `<optgroup label="Habituales">${DOCS_CARPETAS_HABITUALES.map(opt).join('')}</optgroup>`
+    + (propias.length ? `<optgroup label="De este vehículo">${propias.map(opt).join('')}</optgroup>` : '')
+    + `<option value="${DOCS_CARPETA_NUEVA}">+ Nueva carpeta…</option>`;
+  const quiero = sel.dataset.forzar || actual;
+  delete sel.dataset.forzar;
+  sel.value = [...sel.options].some(o => o.value === quiero) ? quiero : DOCS_CARPETA_DEFECTO;
+  const inp = overlay.querySelector('#docs-carpeta-nueva');
+  if (inp && sel.value !== DOCS_CARPETA_NUEVA) { inp.style.display = 'none'; inp.value = ''; }
+  if (!sel.dataset.listo) {
+    sel.dataset.listo = '1';
+    sel.onchange = () => {
+      const inp = overlay.querySelector('#docs-carpeta-nueva');
+      const nueva = sel.value === DOCS_CARPETA_NUEVA;
+      inp.style.display = nueva ? 'block' : 'none';
+      if (nueva) inp.focus();
+    };
+  }
+}
+function _docsCarpetaElegida(overlay) {
+  const sel = overlay.querySelector('#docs-carpeta-sel');
+  if (sel.value !== DOCS_CARPETA_NUEVA) return sel.value || DOCS_CARPETA_DEFECTO;
+  const nombre = overlay.querySelector('#docs-carpeta-nueva').value.trim().replace(/\s+/g, ' ');
+  if (!nombre) return '';
+  // Si ya existe con otras mayúsculas, se reutiliza esa carpeta
+  const igual = [...sel.options].map(o => o.value).find(v => v.toLowerCase() === nombre.toLowerCase());
+  return igual && igual !== DOCS_CARPETA_NUEVA ? igual : nombre;
+}
+
 // ── Gestor de documentos (Panel Admin) ───────────────────────────────────────
 async function abrirGestorDocumentos(matricula) {
   const overlay = document.createElement('div');
@@ -193,11 +231,12 @@ async function abrirGestorDocumentos(matricula) {
               ${_DOCS_CATS.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
             </select>
           </label>
-          <label id="docs-carpeta-wrap" style="flex:1;min-width:160px;font-size:12px;font-weight:600;color:#5b6475;display:none;flex-direction:column;gap:4px;">Carpeta
-            <input id="docs-carpeta" list="docs-carpetas" value="${esc(DOCS_CARPETA_DEFECTO)}" placeholder="Ej: Entrega vehículo"
-              style="padding:9px 10px;border:1px solid #d5d9e0;border-radius:8px;font:600 13px 'Barlow',sans-serif;color:#1a1a2e;background:#fff;">
-            <datalist id="docs-carpetas"></datalist>
-          </label>
+          <div id="docs-carpeta-wrap" style="flex:1;min-width:170px;display:none;flex-direction:column;gap:4px;">
+            <label for="docs-carpeta-sel" style="font-size:12px;font-weight:600;color:#5b6475;">Carpeta</label>
+            <select id="docs-carpeta-sel" style="padding:9px 10px;border:1px solid #d5d9e0;border-radius:8px;font:600 13px 'Barlow',sans-serif;color:#1a1a2e;background:#fff;"></select>
+            <input id="docs-carpeta-nueva" aria-label="Nombre de la nueva carpeta" placeholder="Nombre de la carpeta"
+              style="display:none;padding:9px 10px;border:1px solid #d5d9e0;border-radius:8px;font:600 13px 'Barlow',sans-serif;color:#1a1a2e;background:#fff;">
+          </div>
           <label style="flex:1.4;min-width:180px;font-size:12px;font-weight:600;color:#5b6475;display:flex;flex-direction:column;gap:4px;"><span id="docs-file-label">Archivo (PDF o imagen, máx. ${DOCS_MAX_MB} MB)</span>
             <input type="file" id="docs-file" accept=".pdf,image/*" style="padding:6px 8px;border:1px solid #d5d9e0;border-radius:8px;font:600 12px 'Barlow',sans-serif;background:#fff;">
           </label>
@@ -259,11 +298,7 @@ function _docsRender(docsSb, docsDrive, matricula, overlay, driveCargando, aviso
     html = `<div style="text-align:center;padding:28px 0;color:#6b7385;font-size:13px;font-weight:600;">No hay documentos todavía.<br><span style="font-size:12px;font-weight:500;">Usa el formulario de arriba para subir el primero.</span></div>`;
   }
   const fotos = docs.filter(d => d.categoria === 'fotos' && d.origen === 'supabase');
-  const dl = overlay.querySelector('#docs-carpetas');
-  if (dl) {
-    const nombres = [...new Set([DOCS_CARPETA_DEFECTO].concat(fotos.map(f => f.carpeta).filter(Boolean)))];
-    dl.innerHTML = nombres.map(n => `<option value="${esc(n)}">`).join('');
-  }
+  _docsRellenarCarpetas(overlay, fotos.map(f => f.carpeta).filter(Boolean));
   _DOCS_CATS.forEach(cat => {
     if (cat.id === 'fotos') return;
     const catDocs = docs.filter(d => d.categoria !== 'fotos' && ((d.categoria || 'otros') === cat.id || (cat.id === 'otros' && !_DOCS_CATS.some(c => c.id === d.categoria))));
@@ -307,7 +342,8 @@ async function _docsSubir(matricula, overlay) {
   const files     = [...fileInput.files];
   const categoria = catSelect.value;
   const esFotos   = categoria === 'fotos';
-  const carpeta   = esFotos ? (overlay.querySelector('#docs-carpeta').value.trim() || DOCS_CARPETA_DEFECTO) : null;
+  const carpeta   = esFotos ? _docsCarpetaElegida(overlay) : null;
+  if (esFotos && !carpeta) { mostrarToast('Escribe el nombre de la nueva carpeta', 'error'); overlay.querySelector('#docs-carpeta-nueva').focus(); return; }
 
   if (!files.length) { mostrarToast(esFotos ? 'Elige al menos una foto' : 'Selecciona un archivo primero', 'error'); return; }
   for (const f of files) {
@@ -339,6 +375,7 @@ async function _docsSubir(matricula, overlay) {
   btnSubir.disabled = false; btnSubir.textContent = 'Subir';
   if (ok) {
     fileInput.value = '';
+    if (esFotos) overlay.querySelector('#docs-carpeta-sel').dataset.forzar = carpeta;
     const que = esFotos ? `${ok} foto${ok === 1 ? '' : 's'} en «${carpeta}»` : catLabel;
     mostrarToast(`✓ ${que} subid${esFotos && ok !== 1 ? 'as' : (esFotos ? 'a' : 'o')}`, 'success');
     registrarAccion('VEHICULO', 'Subir documento', `${matricula} · ${esFotos ? 'Fotos · ' + carpeta + ' · ' + ok : catLabel + ' · ' + files[0].name}`);

@@ -15,170 +15,281 @@ function moverVehiculoOrden(gi, vi, direccion) {
   sincronizarVehiculosConSheets();
 }
 
+// ── Estado de la vista (filtros) ─────────────────────────────────────────────
+let _admVehNave = '';          // '' = todas las naves
+let _admVehBusqueda = '';
+let _admVehVerBajas = false;
+let _admVehAvisoAbierto = false;
+
+const _ADM_ICO = {
+  edit:   'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+  clock:  'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  file:   'M6 3h8l4 4v14H6zM14 3v4h4',
+  up:     'M12 19V5M6 11l6-6 6 6',
+  down:   'M12 5v14M6 13l6 6 6-6',
+  lock:   'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
+  unlock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 7.5-2',
+  ban:    'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
+  check:  'M5 12l5 5 9-10',
+  archive:'M3 4h18v4H3zM5 8v12h14V8M10 12h4',
+  restore:'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
+  alert:  'M12 3l9 16H3zM12 10v4M12 17h.01',
+  ok:     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
+  dots:   'M5 12h.01M12 12h.01M19 12h.01',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4'
+};
+function _admIco(n) { return `<svg class="adm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${_ADM_ICO[n]}"/></svg>`; }
+
+function _admItvInfo(v, hoy) {
+  if (!v.itv_fin) return { cls: 'na', txt: 'Sin fecha', dias: Infinity };
+  const dias = Math.ceil((new Date(v.itv_fin + 'T00:00:00') - hoy) / 86400000);
+  if (dias <= 0)  return { cls: 'bad',  txt: 'Caducada · ' + fmtFechaITV(v.itv_fin), dias };
+  if (dias <= 30) return { cls: 'warn', txt: `Vence en ${dias} d · ${fmtFechaITV(v.itv_fin)}`, dias };
+  if (dias <= 60) return { cls: 'warn', txt: `Vence en ${dias} d · ${fmtFechaITV(v.itv_fin)}`, dias };
+  return { cls: 'ok', txt: fmtFechaITV(v.itv_fin), dias };
+}
+
 function renderAdminVehiculos() {
   const lista = document.getElementById('admin-lista-vehiculos');
-  let html = '';
+  if (!lista) return;
+  cerrarMenuVehiculo();
   const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let html = '';
 
-  // ── ITV Control Panel ──────────────────────────────────────────────────────
+  // ── Aviso de ITV (caducadas, ≤60 días o sin fecha) ─────────────────────────
   const itvAlertas = [];
-  GRUPOS.forEach((grupo, gi) => {
-    grupo.vehiculos.forEach((v, vi) => {
-      if (v.archivado) return;
-      if (v.itv_fin) {
-        const fin = new Date(v.itv_fin + 'T00:00:00');
-        const dias = Math.ceil((fin - hoy) / 86400000);
-        if (dias <= 60) itvAlertas.push({ v, gi, vi, dias });
-      } else {
-        itvAlertas.push({ v, gi, vi, dias: Infinity, sinFecha: true });
-      }
-    });
-  });
-  itvAlertas.sort((a, b) => a.dias - b.dias);
+  GRUPOS.forEach((grupo, gi) => grupo.vehiculos.forEach((v, vi) => {
+    if (v.archivado) return;
+    const info = _admItvInfo(v, hoy);
+    if (info.cls !== 'ok') itvAlertas.push({ v, gi, vi, info });
+  }));
+  itvAlertas.sort((a, b) => a.info.dias - b.info.dias);
 
-  let itvPanelHtml = '';
-  if (itvAlertas.length === 0) {
-    itvPanelHtml = `<div class="itv-empty-ok">✅ Todas las ITV están en vigor — sin vencimientos en los próximos 60 días.</div>`;
+  if (!itvAlertas.length) {
+    html += `<div class="adm-aviso ok" role="status"><div class="adm-aviso-head">${_admIco('ok')}<span>Todas las ITV están en vigor, sin vencimientos en los próximos 60 días.</span></div></div>`;
   } else {
-    itvAlertas.forEach(({ v, gi, vi, dias, sinFecha }) => {
-      let cls, badge;
-      if (sinFecha) { cls='proxima60'; badge=`<span class="itv-alert-badge proxima60">⚠️ Sin fecha registrada</span>`; }
-      else if (dias <= 0)  { cls='caducada';  badge=`<span class="itv-alert-badge caducada">⛔ CADUCADA · ${fmtFechaITV(v.itv_fin)}</span>`; }
-      else if (dias <= 30) { cls='proxima30'; badge=`<span class="itv-alert-badge proxima30">⚠️ Vence en ${dias}d · ${fmtFechaITV(v.itv_fin)}</span>`; }
-      else                 { cls='proxima60'; badge=`<span class="itv-alert-badge proxima60">🔵 Vence en ${dias}d · ${fmtFechaITV(v.itv_fin)}</span>`; }
-      itvPanelHtml += `<div class="itv-alert-item ${cls}">
-        <div class="itv-alert-mat">${esc(v.matricula)}</div>
-        <div class="itv-alert-tipo">${esc(v.tipo)}${v.nota?' · '+esc(v.nota):''}</div>
-        ${badge}
-        <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" style="font-size:10px;padding:4px 9px;">📋 Actualizar ITV</button>
-      </div>`;
-    });
+    const n = itvAlertas.length;
+    html += `<div class="adm-aviso" role="status">
+      <div class="adm-aviso-head">${_admIco('alert')}
+        <span><strong>${n} vehículo${n>1?'s':''}</strong> con la ITV caducada, a punto de vencer o sin fecha registrada.</span>
+        <button type="button" class="adm-link" onclick="toggleAvisoITV()" aria-expanded="${_admVehAvisoAbierto}">${_admVehAvisoAbierto ? 'Ocultar' : 'Ver vencimientos'}</button>
+      </div>
+      ${_admVehAvisoAbierto ? `<div class="adm-aviso-lista">${itvAlertas.map(({ v, gi, vi, info }) => `
+        <div class="adm-aviso-item">
+          <span class="adm-mat">${esc(v.matricula)}</span>
+          <span class="adm-aviso-tipo">${esc(v.tipo)} · ${esc(GRUPOS[gi].nombre)}</span>
+          <span class="adm-pill ${info.cls}">${esc(info.txt)}</span>
+          <button type="button" class="adm-btn adm-btn-sm" onclick="editarITV(${gi},${vi})">Actualizar ITV</button>
+        </div>`).join('')}</div>` : ''}
+    </div>`;
   }
-  html += `<div class="itv-control-panel">
-    <div class="itv-control-header">
-      <span style="font-size:20px">🔧</span>
-      <div>
-        <div class="itv-control-title">Control de ITV · Próximos vencimientos</div>
-        <div style="font-size:10px;color:#8899aa;font-weight:600;margin-top:1px;">Vehículos con ITV caducada o que vence en los próximos 60 días</div>
+
+  // ── Barra de filtros ──────────────────────────────────────────────────────
+  const activosDe = g => g.vehiculos.filter(v => !v.archivado).length;
+  const totalActivos = GRUPOS.reduce((s, g) => s + activosDe(g), 0);
+  const totalBajas = GRUPOS.reduce((s, g) => s + g.vehiculos.filter(v => v.archivado).length, 0);
+  if (_admVehNave && !GRUPOS.some(g => g.nombre === _admVehNave)) _admVehNave = '';
+  const seg = [`<button type="button" class="${_admVehNave===''?'on':''}" onclick="filtrarNaveVehiculos('')">Todas · ${totalActivos}</button>`]
+    .concat(GRUPOS.map((g, gi) => !g.vehiculos.length ? '' :
+      `<button type="button" class="${_admVehNave===g.nombre?'on':''}" onclick="filtrarNaveVehiculos(GRUPOS[${gi}].nombre)">${esc(g.nombre)} · ${activosDe(g)}</button>`)).join('');
+
+  html += `<div class="adm-card">
+    <div class="adm-toolbar">
+      <div class="adm-seg" role="group" aria-label="Filtrar por nave">${seg}</div>
+      <div class="adm-toolbar-right">
+        ${totalBajas ? `<label class="adm-check"><input type="checkbox" ${_admVehVerBajas?'checked':''} onchange="toggleVerBajasVehiculos(this.checked)"> Mostrar bajas (${totalBajas})</label>` : ''}
+        <label class="adm-search">${_admIco('search')}<span class="adm-sr">Buscar vehículo</span>
+          <input type="search" id="adm-veh-buscar" placeholder="Buscar matrícula, tipo o proveedor…" value="${esc(_admVehBusqueda)}" oninput="buscarVehiculosAdmin(this.value)">
+        </label>
       </div>
     </div>
-    <div class="itv-control-list">${itvPanelHtml}</div>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr>
+          <th scope="col">Matrícula</th><th scope="col">Tipo</th><th scope="col">Nave</th><th scope="col">Propiedad</th>
+          <th scope="col">ITV</th><th scope="col">Estado</th><th scope="col"><span class="adm-sr">Acciones</span></th>
+        </tr></thead>
+        <tbody id="adm-veh-tbody">${_admFilasVehiculos(hoy)}</tbody>
+      </table>
+    </div>
   </div>`;
 
-  // ── Lista de vehículos por grupo ───────────────────────────────────────────
+  lista.innerHTML = html;
+}
+
+function _admFilasVehiculos(hoy) {
+  hoy = hoy || (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+  const q = _admVehBusqueda.trim().toUpperCase();
+  let filas = '';
   GRUPOS.forEach((grupo, gi) => {
-    const activos = grupo.vehiculos.filter(v => !v.archivado);
-    const bajas   = grupo.vehiculos.filter(v => v.archivado);
-    if (!grupo.vehiculos.length) return;
-
-    html += `<div style="font-size:9px;font-weight:900;letter-spacing:2.5px;color:#8899aa;text-transform:uppercase;padding:10px 4px 5px;border-top:${gi>0?'2px solid #f0f3f8':'none'};display:flex;align-items:center;gap:8px;">
-      📍 ${grupo.nombre}
-      <span style="font-size:9px;font-weight:700;background:#f0f2f5;color:#6b7a94;border-radius:4px;padding:1px 7px;border:1px solid #e2e8f0;">${activos.length} activos${bajas.length?' · '+bajas.length+' de baja':''}</span>
-    </div>`;
-
+    if (_admVehNave && grupo.nombre !== _admVehNave) return;
     grupo.vehiculos.forEach((v, vi) => {
-      // ITV badge
-      let itvBadge = '';
-      if (v.itv_fin) {
-        const fin = new Date(v.itv_fin + 'T00:00:00');
-        const diffDias = Math.ceil((fin - hoy) / 86400000);
-        let itvColor, itvBg, itvLabel;
-        if (diffDias <= 0)       { itvColor = '#b91c1c'; itvBg = '#fee2e2'; itvLabel = `⛔ ITV CADUCADA · ${fmtFechaITV(v.itv_fin)}`; }
-        else if (diffDias <= 30) { itvColor = '#d97706'; itvBg = '#fef3c7'; itvLabel = `⚠️ Vence en ${diffDias}d · ${fmtFechaITV(v.itv_fin)}`; }
-        else if (diffDias <= 60) { itvColor = '#0369a1'; itvBg = '#e0f2fe'; itvLabel = `🔵 Vence en ${diffDias}d · ${fmtFechaITV(v.itv_fin)}`; }
-        else                     { itvColor = '#16a34a'; itvBg = '#f0fdf4'; itvLabel = `✅ En vigor · ${fmtFechaITV(v.itv_fin)}`; }
-        itvBadge = `<span style="font-size:9px;font-weight:800;color:${itvColor};background:${itvBg};border:1px solid ${itvColor}33;border-radius:5px;padding:2px 9px;">${itvLabel}</span>`;
-      } else {
-        itvBadge = `<span style="font-size:9px;font-weight:800;color:#94a3b8;background:#f8f9fc;border:1px solid #e2e8f0;border-radius:5px;padding:2px 9px;">📋 Sin fecha ITV</span>`;
+      if (v.archivado && !_admVehVerBajas) return;
+      if (q && ![v.matricula, v.tipo, v.nota, grupo.nombre].some(x => (x||'').toUpperCase().includes(q))) return;
+
+      const nota = (v.nota||'').trim();
+      const prop = nota.toUpperCase() === 'PROPIEDAD' ? 'Propia' : (nota ? `Alquiler · ${esc(nota)}` : 'Alquiler');
+      const itv = _admItvInfo(v, hoy);
+
+      let estado;
+      if (v.archivado) estado = `<span class="adm-estado"><span class="adm-dot na"></span>De baja</span>`;
+      else if (v.bloqueado) {
+        const quien = [v.bloqueado_por, v.fecha_bloqueo ? _fmtFechaHoraBloqueo(v.fecha_bloqueo) : ''].filter(Boolean).join(' · ');
+        estado = `<span class="adm-estado"><span class="adm-dot bad"></span>Bloqueado</span>
+          <span class="adm-estado-motivo">${esc(v.motivo_bloqueo||'Sin motivo')}${quien ? ' · ' + esc(quien) : ''}</span>`;
       }
+      else if (v.restringido) estado = `<span class="adm-estado"><span class="adm-dot warn"></span>Restringido</span>`;
+      else estado = `<span class="adm-estado"><span class="adm-dot ok"></span>Libre</span>`;
 
-      // Propiedad badge
-      const nota = (v.nota||'').trim().toUpperCase();
-      const esPropia = nota === 'PROPIEDAD';
-      const propBadge = esPropia
-        ? `<span class="admin-item-propiedad propia">🏢 Propiedad</span>`
-        : `<span class="admin-item-propiedad alquiler">🔑 Alquiler · ${esc(v.nota||'—')}</span>`;
-
-      // Estado del vehículo
-      let itemStyle = '';
-      if (v.archivado) itemStyle = 'opacity:0.55;background:#f8f8f8;';
-      else if (v.bloqueado) itemStyle = 'background:#fff5f5;border-color:#fecaca;';
-
-      html += `<div class="admin-item" style="${itemStyle}">
-        <div class="admin-item-left">
-          <div class="admin-item-mat ${v.restringido?'restringido':''}">${esc(v.matricula)}${v.archivado ? ' <span style="font-size:8px;font-weight:800;color:#fff;background:#94a3b8;border-radius:4px;padding:1px 6px;vertical-align:middle;">BAJA</span>' : ''}${v.bloqueado ? ' <span style="font-size:8px;font-weight:800;color:#fff;background:#dc2626;border-radius:4px;padding:1px 6px;vertical-align:middle;">⛔ BLOQ.</span>' : ''}</div>
-          ${propBadge}
-        </div>
-        <div class="admin-item-tipo">${esc(v.tipo)}</div>
-        <div class="admin-item-center">
-          ${itvBadge}
-          ${v.bloqueado ? `<span style="font-size:9px;color:#b91c1c;font-weight:700;background:#fee2e2;border-radius:4px;padding:2px 8px;border:1px solid #fecaca;">Motivo: ${esc(v.motivo_bloqueo||'—')} · ${esc(v.bloqueado_por||'—')}${v.fecha_bloqueo ? ' · '+esc(_fmtFechaHoraBloqueo(v.fecha_bloqueo)) : ''}</span>` : ''}
-        </div>
-        <div class="admin-item-actions">
-          <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},-1)" title="Subir orden" ${vi===0?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬆️</button>
-          <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},1)" title="Bajar orden" ${vi===grupo.vehiculos.length-1?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬇️</button>
-          <button class="btn-item-action" onclick="editarVehiculo(${gi},${vi})" title="Editar nombre, tipo, nave y propiedad" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">✏️ Editar</button>
-          <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV">📋 ITV</button>
-          <button class="btn-item-action" onclick="editarSeguro(${gi},${vi})" title="Datos del seguro" style="background:#eef2ff;color:#3b5bdb;border-color:#c5d0ff;">🛡️ Seguro</button>
-          <button class="btn-item-action" onclick="abrirGestorDocumentos('${esc(v.matricula)}')" title="Gestionar documentos" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;">📂 Docs</button>
-          ${!v.archivado ? `<button class="btn-item-action ${v.restringido?'btn-restringido':'btn-libre'}" onclick="toggleRestringido(${gi},${vi})">
-            ${v.restringido?'🔒 Restringido':'🔓 Libre'}
-          </button>` : ''}
-          ${!v.archivado ? (v.bloqueado
-            ? `<button class="btn-item-action btn-desbloquear" onclick="desbloquearVehiculoAdmin(${gi},${vi})">✅ Desbloquear</button>`
-            : `<button class="btn-item-action btn-bloquear" onclick="abrirModalBloqueo(${gi},${vi})">⛔ Bloquear</button>`
-          ) : ''}
-          ${v.archivado
-            ? `<button class="btn-item-action btn-alta" onclick="desarchivarVehiculo(${gi},${vi})">↩ Dar de alta</button>`
-            : `<button class="btn-item-action btn-baja" onclick="eliminarVehiculo(${gi},${vi})" title="Dar de baja el vehículo">✕ Dar de baja</button>`
-          }
-        </div>
-      </div>`;
+      const cls = v.archivado ? 'baja' : (v.bloqueado ? 'bloq' : '');
+      filas += `<tr class="${cls}">
+        <td><span class="adm-mat">${esc(v.matricula)}</span>${v.archivado ? '<span class="adm-tag baja">BAJA</span>' : ''}</td>
+        <td>${esc(v.tipo)}</td>
+        <td>${esc(grupo.nombre)}</td>
+        <td>${prop}</td>
+        <td>${v.archivado ? '—' : `<span class="adm-pill ${itv.cls}">${esc(itv.txt)}</span>`}</td>
+        <td>${estado}</td>
+        <td class="acciones">
+          <button type="button" class="adm-btn adm-btn-sm" onclick="editarVehiculo(${gi},${vi})">Editar</button>
+          <button type="button" class="adm-icon-btn" aria-label="Más acciones para ${esc(v.matricula)}" aria-haspopup="menu" aria-expanded="false" onclick="abrirMenuVehiculo(event,${gi},${vi})">${_admIco('dots')}</button>
+        </td>
+      </tr>`;
     });
   });
-  lista.innerHTML = html;
+  if (!filas) filas = `<tr><td class="vacio" colspan="7">No hay vehículos que coincidan con el filtro.</td></tr>`;
+  return filas;
+}
+
+function filtrarNaveVehiculos(nave) { _admVehNave = nave; renderAdminVehiculos(); }
+function toggleVerBajasVehiculos(on) { _admVehVerBajas = on; renderAdminVehiculos(); }
+function toggleAvisoITV() { _admVehAvisoAbierto = !_admVehAvisoAbierto; renderAdminVehiculos(); }
+function buscarVehiculosAdmin(txt) {
+  _admVehBusqueda = txt || '';
+  cerrarMenuVehiculo();
+  const tb = document.getElementById('adm-veh-tbody');
+  if (tb) tb.innerHTML = _admFilasVehiculos();
+}
+
+// ── Menú de acciones (⋯) ─────────────────────────────────────────────────────
+let _admMenuEl = null, _admMenuBtn = null;
+
+function cerrarMenuVehiculo() {
+  if (_admMenuEl) { _admMenuEl.remove(); _admMenuEl = null; }
+  if (_admMenuBtn) { _admMenuBtn.setAttribute('aria-expanded', 'false'); _admMenuBtn = null; }
+  document.removeEventListener('mousedown', _admMenuFuera, true);
+  document.removeEventListener('keydown', _admMenuTeclas, true);
+  window.removeEventListener('resize', cerrarMenuVehiculo);
+  const wrap = document.querySelector('#tab-panel-vehiculos');
+  if (wrap) wrap.removeEventListener('scroll', cerrarMenuVehiculo, true);
+}
+function _admMenuFuera(e) {
+  if (_admMenuEl && !_admMenuEl.contains(e.target) && e.target !== _admMenuBtn && !_admMenuBtn?.contains(e.target)) cerrarMenuVehiculo();
+}
+function _admMenuTeclas(e) {
+  if (!_admMenuEl) return;
+  const items = [..._admMenuEl.querySelectorAll('button:not(:disabled)')];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); const b = _admMenuBtn; cerrarMenuVehiculo(); b && b.focus(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  else if (e.key === 'ArrowUp')   { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  else if (e.key === 'Tab') cerrarMenuVehiculo();
+}
+
+function abrirMenuVehiculo(ev, gi, vi) {
+  ev.stopPropagation();
+  const btn = ev.currentTarget;
+  if (_admMenuBtn === btn) { cerrarMenuVehiculo(); return; }
+  cerrarMenuVehiculo();
+  const v = GRUPOS[gi].vehiculos[vi];
+  const n = GRUPOS[gi].vehiculos.length;
+
+  const items = [
+    { ico: 'edit',   txt: 'Editar datos',    fn: () => editarVehiculo(gi, vi) },
+    { ico: 'clock',  txt: 'Fecha de ITV',    fn: () => editarITV(gi, vi) },
+    { ico: 'shield', txt: 'Seguro',          fn: () => editarSeguro(gi, vi) },
+    { ico: 'file',   txt: 'Documentos',      fn: () => abrirGestorDocumentos(v.matricula) },
+    'sep',
+    { ico: 'up',     txt: 'Subir en la lista', fn: () => moverVehiculoOrden(gi, vi, -1), off: vi === 0 },
+    { ico: 'down',   txt: 'Bajar en la lista', fn: () => moverVehiculoOrden(gi, vi, 1),  off: vi === n - 1 },
+  ];
+  if (!v.archivado) {
+    items.push('sep',
+      v.restringido
+        ? { ico: 'unlock', txt: 'Permitir a todos', fn: () => toggleRestringido(gi, vi) }
+        : { ico: 'lock',   txt: 'Restringir acceso', fn: () => toggleRestringido(gi, vi) },
+      v.bloqueado
+        ? { ico: 'check', txt: 'Desbloquear',       fn: () => desbloquearVehiculoAdmin(gi, vi), cls: 'exito' }
+        : { ico: 'ban',   txt: 'Bloquear vehículo', fn: () => abrirModalBloqueo(gi, vi), cls: 'peligro' },
+      'sep',
+      { ico: 'archive', txt: 'Dar de baja', fn: () => eliminarVehiculo(gi, vi), cls: 'peligro' });
+  } else {
+    items.push('sep', { ico: 'restore', txt: 'Dar de alta', fn: () => desarchivarVehiculo(gi, vi), cls: 'exito' });
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'adm-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', `Acciones para ${v.matricula}`);
+  items.forEach(it => {
+    if (it === 'sep') { const s = document.createElement('div'); s.className = 'adm-menu-sep'; menu.appendChild(s); return; }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'menuitem');
+    if (it.cls) b.className = it.cls;
+    b.disabled = !!it.off;
+    b.innerHTML = _admIco(it.ico) + `<span>${it.txt}</span>`;
+    b.onclick = () => { cerrarMenuVehiculo(); it.fn(); };
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+
+  // Posición: debajo del botón, alineado a la derecha; si no cabe, encima
+  const r = btn.getBoundingClientRect();
+  const mh = menu.offsetHeight, mw = menu.offsetWidth;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  const left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+
+  _admMenuEl = menu; _admMenuBtn = btn;
+  btn.setAttribute('aria-expanded', 'true');
+  document.addEventListener('mousedown', _admMenuFuera, true);
+  document.addEventListener('keydown', _admMenuTeclas, true);
+  window.addEventListener('resize', cerrarMenuVehiculo);
+  const wrap = document.querySelector('#tab-panel-vehiculos');
+  if (wrap) wrap.addEventListener('scroll', cerrarMenuVehiculo, true);
+  const primero = menu.querySelector('button:not(:disabled)');
+  if (primero) primero.focus();
 }
 
 function renderAdminStats() {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  let total=0, restringidos=0, alquiler=0, bloqueados=0, itvAlerta=0;
+  let total=0, restringidos=0, alquiler=0, bloqueados=0, itvAlerta=0, bajas=0;
+  const proveedores = new Set();
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    if (v.archivado) return;
+    if (v.archivado) { bajas++; return; }
     total++;
     if (v.restringido) restringidos++;
     if (v.bloqueado) bloqueados++;
     const nota = (v.nota||'').trim().toUpperCase();
-    if (nota !== 'PROPIEDAD') alquiler++;
+    if (nota !== 'PROPIEDAD') { alquiler++; if (nota) proveedores.add(nota); }
     if (v.itv_fin) {
-      const fin = new Date(v.itv_fin + 'T00:00:00');
-      const dias = Math.ceil((fin - hoy) / 86400000);
+      const dias = Math.ceil((new Date(v.itv_fin + 'T00:00:00') - hoy) / 86400000);
       if (dias <= 60) itvAlerta++;
     }
   }));
+  const prov = [...proveedores].slice(0, 3).join(', ') + (proveedores.size > 3 ? '…' : '');
   document.getElementById('admin-stats').innerHTML = `
-    <div class="admin-stat-card">
-      <div class="admin-stat-icon">🚛</div>
-      <div class="admin-stat-num">${total}</div>
-      <div class="admin-stat-label">Vehículos activos</div>
-    </div>
-    <div class="admin-stat-card">
-      <div class="admin-stat-icon">🔑</div>
-      <div class="admin-stat-num">${alquiler}</div>
-      <div class="admin-stat-label">En alquiler</div>
-      <div class="admin-stat-sub">PINVECO, DFM, etc.</div>
-    </div>
-    <div class="admin-stat-card">
-      <div class="admin-stat-icon">🔒</div>
-      <div class="admin-stat-num red">${restringidos}</div>
-      <div class="admin-stat-label">Restringidos</div>
-      <div class="admin-stat-sub">Solo pers. autorizado</div>
-    </div>
-    <div class="admin-stat-card" style="${itvAlerta>0?'border-color:#fde68a;background:#fffbeb':''}">
-      <div class="admin-stat-icon">🔧</div>
-      <div class="admin-stat-num" style="${itvAlerta>0?'color:#d97706':''}">${itvAlerta}</div>
-      <div class="admin-stat-label">ITV próximas</div>
-      <div class="admin-stat-sub">Vencen en ≤60 días</div>
-    </div>`;
+    <div class="adm-kpi"><span class="adm-kpi-label">Vehículos activos</span><span class="adm-kpi-num">${total}</span>
+      <span class="adm-kpi-sub">${bloqueados ? bloqueados + ' bloqueado' + (bloqueados>1?'s':'') : 'Ninguno bloqueado'}${bajas ? ' · ' + bajas + ' de baja' : ''}</span></div>
+    <div class="adm-kpi"><span class="adm-kpi-label">En alquiler</span><span class="adm-kpi-num">${alquiler}</span>
+      <span class="adm-kpi-sub">${esc(prov || '—')}</span></div>
+    <div class="adm-kpi"><span class="adm-kpi-label">Restringidos</span><span class="adm-kpi-num">${restringidos}</span>
+      <span class="adm-kpi-sub">Solo personal autorizado</span></div>
+    <div class="adm-kpi"><span class="adm-kpi-label">ITV próximas</span><span class="adm-kpi-num ${itvAlerta?'aviso':''}">${itvAlerta}</span>
+      <span class="adm-kpi-sub">Vencen en 60 días o menos</span></div>`;
 }
 
 function toggleRestringido(gi, vi) {

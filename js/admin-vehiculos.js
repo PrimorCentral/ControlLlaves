@@ -988,6 +988,7 @@ let _visorImgDeg   = 0;      // rotación acumulada para imágenes
 let _visorPrintUrl = '';     // URL para imprimir / descargar
 
 async function abrirVisorDoc(url, nombre, formato) {
+  _visorLiberar();
   const isPdf = formato === 'pdf' || (nombre || '').toLowerCase().endsWith('.pdf');
   _visorIsPdf  = isPdf;
   _visorRotDeg = 0;
@@ -1072,6 +1073,7 @@ async function _visorRenderPdf(url, fileId, urlDirecta) {
   if (urlDirecta) {
     try {
       _visorPdfDoc = await pdfjsLib.getDocument({ url: urlDirecta }).promise;
+      if (!document.getElementById('modal-visor-doc').classList.contains('visible')) { _visorLiberar(); return; }
       pdfCont.innerHTML = '';
       pdfCont.classList.add('active');
       await _visorRenderPaginas();
@@ -1113,6 +1115,7 @@ async function _visorRenderPdf(url, fileId, urlDirecta) {
 
   try {
     _visorPdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      if (!document.getElementById('modal-visor-doc').classList.contains('visible')) { _visorLiberar(); return; }
     pdfCont.innerHTML = '';
     pdfCont.classList.add('active');
     await _visorRenderPaginas();
@@ -1151,22 +1154,79 @@ function _visorMostrarErrorPdf(msg, url, fileId) {
   pdfCont.classList.add('active');
 }
 
+// Dibujo perezoso: se crean los huecos de todas las páginas, pero solo se
+// pintan las que están (o están a punto de estar) en pantalla. Al cerrar o
+// cambiar de documento se cancela todo y se libera la memoria.
+let _visorGen      = 0;           // sube cada vez que el contenido deja de ser válido
+let _visorObserver = null;
+let _visorTareas   = new Set();   // renderTask de PDF.js en curso
+
+function _visorCancelarDibujo() {
+  _visorGen++;
+  if (_visorObserver) { _visorObserver.disconnect(); _visorObserver = null; }
+  _visorTareas.forEach(t => { try { t.cancel(); } catch (e) {} });
+  _visorTareas.clear();
+  const pdfCont = document.getElementById('visor-pdf-container');
+  if (pdfCont) {
+    // Vaciar los canvas libera su memoria de inmediato
+    pdfCont.querySelectorAll('canvas').forEach(c => { c.width = 0; c.height = 0; });
+    pdfCont.innerHTML = '';
+  }
+}
+
+function _visorLiberar() {
+  _visorCancelarDibujo();
+  if (_visorPdfDoc) { try { _visorPdfDoc.destroy(); } catch (e) {} }
+  _visorPdfDoc = null;
+}
+
 async function _visorRenderPaginas() {
   const pdfCont = document.getElementById('visor-pdf-container');
   if (!_visorPdfDoc) return;
-  pdfCont.innerHTML = '';
-  const totalPages = _visorPdfDoc.numPages;
-  for (let p = 1; p <= totalPages; p++) {
-    const page   = await _visorPdfDoc.getPage(p);
-    const rotacionTotal = (page.rotate + _visorRotDeg) % 360;
-    const vp     = page.getViewport({ scale: _visorZoom, rotation: rotacionTotal });
+  _visorCancelarDibujo();
+  const gen = _visorGen;
+  const doc = _visorPdfDoc;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);   // nítido sin disparar memoria
+  const scroller = document.getElementById('visor-body');
+
+  _visorObserver = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const c = en.target;
+      _visorObserver && _visorObserver.unobserve(c);
+      _visorPintarPagina(doc, c, gen, dpr);
+    });
+  }, { root: scroller, rootMargin: '800px 0px' });
+
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    if (gen !== _visorGen) return;
+    const vp = page.getViewport({ scale: _visorZoom, rotation: (page.rotate + _visorRotDeg) % 360 });
     const canvas = document.createElement('canvas');
     canvas.className = 'visor-pdf-page';
-    canvas.width  = vp.width;
-    canvas.height = vp.height;
+    canvas.dataset.page = p;
+    canvas.style.width  = Math.floor(vp.width) + 'px';
+    canvas.style.height = Math.floor(vp.height) + 'px';
     pdfCont.appendChild(canvas);
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    _visorObserver.observe(canvas);
+    if (p === 1) await _visorPintarPagina(doc, canvas, gen, dpr); // la primera, ya
   }
+}
+
+async function _visorPintarPagina(doc, canvas, gen, dpr) {
+  if (canvas.dataset.pintada || gen !== _visorGen) return;
+  canvas.dataset.pintada = '1';
+  try {
+    const page = await doc.getPage(Number(canvas.dataset.page));
+    if (gen !== _visorGen) return;
+    const vp = page.getViewport({ scale: _visorZoom * dpr, rotation: (page.rotate + _visorRotDeg) % 360 });
+    canvas.width  = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    const tarea = page.render({ canvasContext: canvas.getContext('2d', { alpha: false }), viewport: vp });
+    _visorTareas.add(tarea);
+    await tarea.promise.catch(() => {});
+    _visorTareas.delete(tarea);
+  } catch (e) { /* documento cerrado o cancelado */ }
 }
 
 async function rotarVisorDoc() {
@@ -1200,18 +1260,15 @@ function cerrarVisorDoc() {
   const imgEl   = document.getElementById('visor-doc-img');
   const loading = document.getElementById('visor-loading');
   modal.classList.remove('visible');
-  setTimeout(() => {
-    pdfCont.innerHTML = '';
-    pdfCont.classList.remove('active');
-    imgEl.classList.remove('active');
-    imgEl.src = '';
-    imgEl.style.transform = 'none';
-    loading.classList.remove('active');
-    _visorPdfDoc = null;
-    _visorRotDeg = 0;
-    _visorZoom   = 1.0;
-    _visorImgDeg = 0;
-  }, 300);
+  _visorLiberar();
+  pdfCont.classList.remove('active');
+  imgEl.classList.remove('active');
+  imgEl.removeAttribute('src');
+  imgEl.style.transform = 'none';
+  loading.classList.remove('active');
+  _visorRotDeg = 0;
+  _visorZoom   = 1.0;
+  _visorImgDeg = 0;
 }
 
 function imprimirVisorDoc() {

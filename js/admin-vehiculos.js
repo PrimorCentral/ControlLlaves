@@ -952,9 +952,16 @@ function _fichaRenderDocs(docs, buscandoDrive) {
   if (fotos.length && typeof docsHtmlFotos === 'function') {
     const w = document.createElement('div');
     w.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
-    w.innerHTML = `<div class="ficha-docs-cat-title">📷 Fotos</div>` + docsHtmlFotos(fotos, _fichaMat, false);
+    const mat = _fichaMat;
+    w.innerHTML = `<div class="ficha-docs-cat-title">📷 Fotos</div>` + docsHtmlFotos(fotos, mat, false);
     cont.appendChild(w);
     docsPintarMiniaturas(w);
+    // Comentarios de las carpetas (se añaden en cuanto llegan)
+    docsListarCarpetas(mat).then(filas => {
+      if (!filas || !filas.length || _fichaMat !== mat || !document.body.contains(w)) return;
+      w.innerHTML = `<div class="ficha-docs-cat-title">📷 Fotos</div>` + docsHtmlFotos(fotos, mat, false, filas);
+      docsPintarMiniaturas(w);
+    });
   }
   if (buscandoDrive) {
     const w = document.createElement('div');

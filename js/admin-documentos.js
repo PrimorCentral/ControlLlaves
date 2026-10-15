@@ -138,30 +138,89 @@ async function docsPintarMiniaturas(cont) {
   imgs.forEach(i => { if (porPath[i.dataset.path]) i.src = porPath[i.dataset.path]; });
 }
 
-/** HTML de las fotos agrupadas por carpeta. conBorrar: muestra botón de eliminar. */
-function docsHtmlFotos(fotos, matricula, conBorrar) {
-  const carpetas = {};
-  fotos.forEach(f => { const c = f.carpeta || 'Sin carpeta'; (carpetas[c] = carpetas[c] || []).push(f); });
-  return Object.keys(carpetas).sort((a, b) => a.localeCompare(b, 'es')).map(c => {
-    const lista = carpetas[c].slice().sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
-    return `<div style="border:1px solid #e3e6eb;border-radius:10px;padding:10px 12px;background:#fff;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5b6475" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"/></svg>
-        <span style="font-size:14px;font-weight:700;color:#1a1a2e;flex:1;">${esc(c)}</span>
-        <span style="font-size:12px;color:#5b6475;font-weight:600;">${lista.length} foto${lista.length === 1 ? '' : 's'}</span>
+// ── Carpetas de fotos ────────────────────────────────────────────────────────
+// La lista de carpetas (con su comentario) vive en public.carpetas_fotos; las
+// fotos son filas de documentos_vehiculo con categoria='fotos' y carpeta=<nombre>.
+
+/** Filas de carpetas_fotos del vehículo, o null si la tabla aún no existe. */
+async function docsListarCarpetas(matricula) {
+  try {
+    const { data, error } = await sb.from('carpetas_fotos').select('*').eq('matricula', matricula);
+    if (error) return null;
+    return data || [];
+  } catch (e) { return null; }
+}
+
+/** Une filas de carpetas y fotos en [{nombre, comentario, fotos[], fecha, creado_por}] (más recientes primero). */
+function docsCombinarCarpetas(fotos, filas) {
+  const mapa = {};
+  (filas || []).forEach(c => {
+    mapa[c.nombre] = { id: c.id, nombre: c.nombre, comentario: c.comentario || '', creado_por: c.creado_por || '', fecha: c.created_at, fotos: [] };
+  });
+  fotos.forEach(f => {
+    const n = f.carpeta || 'Sin carpeta';
+    if (!mapa[n]) mapa[n] = { id: null, nombre: n, comentario: '', creado_por: f.subido_por || '', fecha: f.fecha, fotos: [] };
+    mapa[n].fotos.push(f);
+  });
+  Object.values(mapa).forEach(c => c.fotos.sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))));
+  return Object.values(mapa).sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+}
+
+async function docsGuardarCarpeta(matricula, nombre, comentario) {
+  const { data: ya, error: e1 } = await sb.from('carpetas_fotos').select('id').eq('matricula', matricula).eq('nombre', nombre).maybeSingle();
+  if (e1) throw new Error(e1.message);
+  if (ya) {
+    const { error } = await sb.from('carpetas_fotos').update({ comentario: comentario || '', updated_at: new Date().toISOString() }).eq('id', ya.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await sb.from('carpetas_fotos').insert({ matricula, nombre, comentario: comentario || '', creado_por: usuarioActual?.nombre || 'Admin' });
+    if (error) throw new Error(error.message);
+  }
+}
+
+async function docsEliminarCarpeta(matricula, carpeta) {
+  const paths = carpeta.fotos.map(f => f.path);
+  for (let i = 0; i < paths.length; i += 100) {
+    const rm = await sb.storage.from(DOCS_BUCKET).remove(paths.slice(i, i + 100));
+    if (rm.error) throw new Error(rm.error.message);
+  }
+  const d1 = await sb.from('documentos_vehiculo').delete().eq('matricula', matricula).eq('categoria', 'fotos').eq('carpeta', carpeta.nombre);
+  if (d1.error) throw new Error(d1.error.message);
+  const d2 = await sb.from('carpetas_fotos').delete().eq('matricula', matricula).eq('nombre', carpeta.nombre);
+  if (d2.error && !/carpetas_fotos/.test(d2.error.message)) throw new Error(d2.error.message);
+}
+
+const _DOCS_ICO = {
+  carpeta: 'M3 6h6l2 2h10v11H3z',
+  camara:  'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  galeria: 'M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01',
+  mas:     'M12 5v14M5 12h14',
+  cerrar:  'M6 6l12 12M18 6L6 18',
+  volver:  'M15 6l-6 6 6 6',
+  papelera:'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'
+};
+function _dIco(n, size, sw) {
+  return `<svg width="${size || 20}" height="${size || 20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw || 2}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${_DOCS_ICO[n]}"/></svg>`;
+}
+const _dBtn  = 'height:46px;padding:0 18px;border-radius:10px;border:1px solid #d5d9e0;background:#fff;color:#1a1a2e;font:700 16px Barlow,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;';
+const _dBtnP = 'height:46px;padding:0 20px;border-radius:10px;border:none;background:#1a1a2e;color:#fff;font:700 16px Barlow,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;';
+const _dFecha = f => f ? new Date(f).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+/** Bloque de solo lectura (ficha del vehículo): carpetas con comentario y miniaturas. */
+function docsHtmlFotos(fotos, matricula, conBorrar, filasCarpetas) {
+  return docsCombinarCarpetas(fotos, filasCarpetas).filter(c => c.fotos.length).map(c => `
+    <div style="border:1px solid #e3e6eb;border-radius:12px;padding:12px 14px;background:#fff;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;color:#1a1a2e;">
+        ${_dIco('carpeta', 18, 1.9)}<span style="font-size:15px;font-weight:800;flex:1;">${esc(c.nombre)}</span>
+        <span style="font-size:13px;color:#5b6475;font-weight:600;">${c.fotos.length} foto${c.fotos.length === 1 ? '' : 's'}</span>
       </div>
+      ${c.comentario ? `<p style="margin:0;font-size:14px;line-height:1.45;color:#333b4a;white-space:pre-line;">${esc(c.comentario)}</p>` : ''}
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;">
-        ${lista.map(f => `<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#f1f3f6;">
-          <button type="button" onclick="event.stopPropagation();abrirVisorDoc('${esc(f.ref)}','${esc(f.nombre || '')}','imagen')" aria-label="Ver ${esc(f.nombre || 'foto')}"
-            style="all:unset;display:block;width:100%;height:100%;cursor:zoom-in;">
-            <img data-path="${esc(f.path)}" alt="${esc(f.nombre || '')}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
-          </button>
-          ${conBorrar ? `<button type="button" onclick="event.stopPropagation();_docsEliminar('${esc(f.id)}','${esc(f.path)}','${esc(matricula)}',this)" aria-label="Eliminar foto"
-            style="position:absolute;top:4px;right:4px;width:26px;height:26px;border:none;border-radius:6px;background:rgba(17,17,34,.72);color:#fff;font-size:13px;cursor:pointer;">✕</button>` : ''}
-        </div>`).join('')}
+        ${c.fotos.map(f => `<button type="button" onclick="event.stopPropagation();abrirVisorDoc('${esc(f.ref)}','${esc(f.nombre || '')}','imagen')" aria-label="Ver ${esc(f.nombre || 'foto')}"
+          style="all:unset;display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#f1f3f6;cursor:zoom-in;">
+          <img data-path="${esc(f.path)}" alt="${esc(f.nombre || '')}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></button>`).join('')}
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 async function docsEliminarSupabase(id, path) {
@@ -171,223 +230,412 @@ async function docsEliminarSupabase(id, path) {
   if (del.error) throw new Error(del.error.message);
 }
 
-/** Desplegable de carpetas: habituales + las que ya tiene el vehículo + "Nueva carpeta…". Conserva la elección. */
-function _docsRellenarCarpetas(overlay, existentes) {
-  const sel = overlay.querySelector('#docs-carpeta-sel');
-  if (!sel) return;
-  const actual = sel.value;
-  const propias = [...new Set(existentes)].filter(n => !DOCS_CARPETAS_HABITUALES.includes(n)).sort((a, b) => a.localeCompare(b, 'es'));
-  const cuenta = n => existentes.filter(x => x === n).length;
-  const opt = n => `<option value="${esc(n)}">${esc(n)}${cuenta(n) ? ` (${cuenta(n)})` : ''}</option>`;
-  sel.innerHTML = `<optgroup label="Habituales">${DOCS_CARPETAS_HABITUALES.map(opt).join('')}</optgroup>`
-    + (propias.length ? `<optgroup label="De este vehículo">${propias.map(opt).join('')}</optgroup>` : '')
-    + `<option value="${DOCS_CARPETA_NUEVA}">+ Nueva carpeta…</option>`;
-  const quiero = sel.dataset.forzar || actual;
-  delete sel.dataset.forzar;
-  sel.value = [...sel.options].some(o => o.value === quiero) ? quiero : DOCS_CARPETA_DEFECTO;
-  const inp = overlay.querySelector('#docs-carpeta-nueva');
-  if (inp && sel.value !== DOCS_CARPETA_NUEVA) { inp.style.display = 'none'; inp.value = ''; }
-  if (!sel.dataset.listo) {
-    sel.dataset.listo = '1';
-    sel.onchange = () => {
-      const inp = overlay.querySelector('#docs-carpeta-nueva');
-      const nueva = sel.value === DOCS_CARPETA_NUEVA;
-      inp.style.display = nueva ? 'block' : 'none';
-      if (nueva) inp.focus();
-    };
-  }
-}
-function _docsCarpetaElegida(overlay) {
-  const sel = overlay.querySelector('#docs-carpeta-sel');
-  if (sel.value !== DOCS_CARPETA_NUEVA) return sel.value || DOCS_CARPETA_DEFECTO;
-  const nombre = overlay.querySelector('#docs-carpeta-nueva').value.trim().replace(/\s+/g, ' ');
-  if (!nombre) return '';
-  // Si ya existe con otras mayúsculas, se reutiliza esa carpeta
-  const igual = [...sel.options].map(o => o.value).find(v => v.toLowerCase() === nombre.toLowerCase());
-  return igual && igual !== DOCS_CARPETA_NUEVA ? igual : nombre;
-}
-
-// ── Gestor de documentos (Panel Admin) ───────────────────────────────────────
-async function abrirGestorDocumentos(matricula) {
+// ── Gestor de documentos y fotos (Panel Admin) ───────────────────────────────
+async function abrirGestorDocumentos(matricula, pestana) {
+  document.getElementById('overlay-docs')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'overlay-docs';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,20,0.72);z-index:6000;display:flex;align-items:center;justify-content:center;';
-
-  overlay.innerHTML = `
-    <div role="dialog" aria-label="Documentos de ${esc(matricula)}" style="background:#fff;border-radius:16px;width:600px;max-width:97vw;max-height:88vh;
-                display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:'Barlow',sans-serif;overflow:hidden;">
-      <div style="padding:20px 22px 14px;border-bottom:1px solid #eef0f3;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;">
-        <div>
-          <div style="font-size:12px;font-weight:600;color:#5b6475;">Documentos del vehículo</div>
-          <div style="font-size:20px;font-weight:800;color:#1a1a2e;margin-top:2px;font-family:'JetBrains Mono',ui-monospace,monospace;">${esc(matricula)}</div>
-        </div>
-        <button id="docs-close" aria-label="Cerrar" style="background:#fff;border:1px solid #d5d9e0;color:#1a1a2e;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;">✕</button>
-      </div>
-
-      <div style="background:#f7f8fa;border-bottom:1px solid #eef0f3;padding:16px 22px;flex-shrink:0;">
-        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-          <label style="flex:1;min-width:160px;font-size:12px;font-weight:600;color:#5b6475;display:flex;flex-direction:column;gap:4px;">Categoría
-            <select id="docs-cat" style="padding:9px 10px;border:1px solid #d5d9e0;border-radius:8px;font:600 13px 'Barlow',sans-serif;color:#1a1a2e;background:#fff;">
-              ${_DOCS_CATS.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
-            </select>
-          </label>
-          <div id="docs-carpeta-wrap" style="flex:1;min-width:170px;display:none;flex-direction:column;gap:4px;">
-            <label for="docs-carpeta-sel" style="font-size:12px;font-weight:600;color:#5b6475;">Carpeta</label>
-            <select id="docs-carpeta-sel" style="padding:9px 10px;border:1px solid #d5d9e0;border-radius:8px;font:600 13px 'Barlow',sans-serif;color:#1a1a2e;background:#fff;"></select>
-            <input id="docs-carpeta-nueva" aria-label="Nombre de la nueva carpeta" placeholder="Nombre de la carpeta"
-              style="display:none;padding:9px 10px;border:1px solid #d5d9e0;border-radius:8px;font:600 13px 'Barlow',sans-serif;color:#1a1a2e;background:#fff;">
-          </div>
-          <label style="flex:1.4;min-width:180px;font-size:12px;font-weight:600;color:#5b6475;display:flex;flex-direction:column;gap:4px;"><span id="docs-file-label">Archivo (PDF o imagen, máx. ${DOCS_MAX_MB} MB)</span>
-            <input type="file" id="docs-file" accept=".pdf,image/*" style="padding:6px 8px;border:1px solid #d5d9e0;border-radius:8px;font:600 12px 'Barlow',sans-serif;background:#fff;">
-          </label>
-          <button id="docs-subir" style="height:38px;padding:0 18px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;font:700 13px 'Barlow',sans-serif;cursor:pointer;white-space:nowrap;">Subir</button>
-        </div>
-        <div id="docs-upload-status" role="status" style="margin-top:8px;font-size:12px;font-weight:700;display:none;"></div>
-      </div>
-
-      <div id="docs-lista" style="flex:1;overflow-y:auto;padding:14px 22px 20px;display:flex;flex-direction:column;gap:8px;"></div>
-    </div>`;
-
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,20,0.72);z-index:6000;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;font-family:Barlow,sans-serif;color:#1a1a2e;';
+  overlay._g = { mat: matricula, tab: pestana || 'docs', vista: 'carpetas', sel: null, docsSb: [], docsDrive: [], filas: [], sinTabla: false,
+                 cargando: true, nueva: { nombre: DOCS_CARPETA_DEFECTO, otro: false, comentario: '', files: [] }, ocupado: false };
+  overlay.innerHTML = `<section role="dialog" aria-modal="true" aria-label="Documentos y fotos de ${esc(matricula)}"
+      style="width:1080px;max-width:100%;height:88vh;max-height:860px;background:#fff;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;"></section>`;
   document.body.appendChild(overlay);
-  overlay.querySelector('#docs-close').onclick = () => overlay.remove();
-  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-  overlay.querySelector('#docs-subir').onclick = () => _docsSubir(matricula, overlay);
-  const catSel = overlay.querySelector('#docs-cat');
-  catSel.onchange = () => {
-    const fotos = catSel.value === 'fotos';
-    const fi = overlay.querySelector('#docs-file');
-    overlay.querySelector('#docs-carpeta-wrap').style.display = fotos ? 'flex' : 'none';
-    fi.multiple = fotos;
-    fi.accept = fotos ? 'image/*' : '.pdf,image/*';
-    overlay.querySelector('#docs-file-label').textContent = fotos ? 'Fotos (puedes elegir varias)' : `Archivo (PDF o imagen, máx. ${DOCS_MAX_MB} MB)`;
-  };
-  await _docsCargar(matricula, overlay);
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) return _gCerrar(overlay);
+    const b = e.target.closest('[data-acc]');
+    if (b && !b.disabled) _gAccion(overlay, b.dataset.acc, b.dataset, b);
+  });
+  overlay.addEventListener('change', e => {
+    if (e.target.matches('input[type=file][data-subir]')) _gFicherosElegidos(overlay, e.target);
+  });
+  overlay.addEventListener('input', e => {
+    if (e.target.id === 'g-nueva-otro') overlay._g.nueva.nombreOtro = e.target.value;
+    if (e.target.id === 'g-nueva-com') overlay._g.nueva.comentario = e.target.value;
+  });
+  _gPintar(overlay);
+  await _gCargar(overlay);
+}
+// Compatibilidad con llamadas antiguas
+async function _docsCargar(matricula, overlay) { if (overlay && overlay._g) await _gCargar(overlay); }
+
+function _gCerrar(overlay) {
+  if (overlay._g.ocupado && !confirm('Se están subiendo fotos. ¿Cerrar igualmente?')) return;
+  overlay._g.nueva.files.forEach(f => URL.revokeObjectURL(f.url));
+  overlay.remove();
 }
 
-function _docsSpinner(txt) {
-  return `<div style="display:flex;align-items:center;gap:8px;color:#5b6475;font-size:12px;font-weight:600;padding:12px 0;justify-content:center;">
-    <div style="width:16px;height:16px;border:2.5px solid #e0e4ed;border-top-color:#1a1a2e;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>${txt}</div>`;
-}
-
-async function _docsCargar(matricula, overlay) {
-  const lista = overlay.querySelector('#docs-lista');
-  lista.innerHTML = _docsSpinner('Cargando documentos…');
-  let docsSb = [];
+async function _gCargar(overlay) {
+  const g = overlay._g;
   try {
-    docsSb = await docsListarSupabase(matricula);
-  } catch (e) {
-    lista.innerHTML = `<div style="color:#b42318;font-size:13px;font-weight:700;padding:16px 0;text-align:center;">Error al cargar documentos: ${esc(e.message)}</div>`;
-    return;
-  }
-  // Pintamos ya lo de Supabase (instantáneo) y Drive se añade después sin bloquear
-  _docsRender(docsSb, [], matricula, overlay, await docsDriveActivo());
-  if (!(await docsDriveActivo())) return;
-  try {
-    const docsDrive = await docsListarDrive(matricula, docsSb.map(d => d.drive_id).filter(Boolean));
-    if (document.body.contains(overlay)) _docsRender(docsSb, docsDrive, matricula, overlay, false);
-  } catch (e) {
-    if (document.body.contains(overlay)) _docsRender(docsSb, [], matricula, overlay, false, 'No se pudieron consultar los documentos antiguos de Drive.');
+    const [docs, filas] = await Promise.all([docsListarSupabase(g.mat), docsListarCarpetas(g.mat)]);
+    g.docsSb = docs; g.filas = filas || []; g.sinTabla = filas === null; g.error = '';
+  } catch (e) { g.error = e.message; }
+  g.cargando = false;
+  if (!document.body.contains(overlay)) return;
+  _gPintar(overlay);
+  if (await docsDriveActivo()) {
+    try { g.docsDrive = await docsListarDrive(g.mat, g.docsSb.map(d => d.drive_id).filter(Boolean)); } catch (e) { g.docsDrive = []; }
+    if (document.body.contains(overlay)) _gPintar(overlay);
   }
 }
 
-function _docsRender(docsSb, docsDrive, matricula, overlay, driveCargando, avisoDrive) {
-  const lista = overlay.querySelector('#docs-lista');
-  const docs = docsSb.concat(docsDrive);
-  let html = '';
-  if (!docs.length && !driveCargando) {
-    html = `<div style="text-align:center;padding:28px 0;color:#6b7385;font-size:13px;font-weight:600;">No hay documentos todavía.<br><span style="font-size:12px;font-weight:500;">Usa el formulario de arriba para subir el primero.</span></div>`;
-  }
-  const fotos = docs.filter(d => d.categoria === 'fotos' && d.origen === 'supabase');
-  _docsRellenarCarpetas(overlay, fotos.map(f => f.carpeta).filter(Boolean));
-  _DOCS_CATS.forEach(cat => {
-    if (cat.id === 'fotos') return;
-    const catDocs = docs.filter(d => d.categoria !== 'fotos' && ((d.categoria || 'otros') === cat.id || (cat.id === 'otros' && !_DOCS_CATS.some(c => c.id === d.categoria))));
-    if (!catDocs.length) return;
-    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#5b6475;margin-top:8px;display:flex;align-items:center;gap:8px;">
-              ${cat.label}<span style="flex:1;height:1px;background:#eef0f3;"></span></div>`;
-    catDocs.forEach(doc => {
-      const fecha = doc.fecha ? new Date(doc.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-      const enDrive = doc.origen === 'drive';
-      const borrar = enDrive
-        ? `_docsEliminarDrive('${esc(doc.id)}','${esc(matricula)}',this)`
-        : `_docsEliminar('${esc(doc.id)}','${esc(doc.path)}','${esc(matricula)}',this)`;
-      html += `<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e3e6eb;border-radius:10px;padding:10px 12px;">
-        <div aria-hidden="true" style="width:36px;height:36px;border-radius:8px;background:#f1f3f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#5b6475;flex-shrink:0;">${_docsEsPdf(doc) ? 'PDF' : 'IMG'}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:700;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</div>
-          <div style="font-size:12px;color:#5b6475;margin-top:2px;">${fecha} · ${esc(doc.subido_por || '—')}${enDrive ? ' · <span style="color:#93370d;font-weight:700;">en Drive</span>' : ''}</div>
+function _gCarpetas(g) {
+  return docsCombinarCarpetas(g.docsSb.filter(d => d.categoria === 'fotos'), g.filas);
+}
+
+function _gPintar(overlay) {
+  const g = overlay._g;
+  const docs = g.docsSb.filter(d => d.categoria !== 'fotos').concat(g.docsDrive);
+  const carpetas = _gCarpetas(g);
+  const nFotos = carpetas.reduce((s, c) => s + c.fotos.length, 0);
+  const tab = (id, txt, n) => `<button type="button" data-acc="tab" data-tab="${id}" role="tab" aria-selected="${g.tab === id}"
+      style="all:unset;display:inline-flex;align-items:center;gap:8px;height:50px;padding:0 18px;font-size:17px;font-weight:${g.tab === id ? 800 : 600};color:${g.tab === id ? '#1a1a2e' : '#5b6475'};border-bottom:3px solid ${g.tab === id ? '#e84545' : 'transparent'};cursor:pointer;">
+      ${txt}<span style="font-size:13px;font-weight:700;border-radius:10px;padding:2px 9px;background:${g.tab === id ? '#1a1a2e' : '#f1f3f6'};color:${g.tab === id ? '#fff' : '#4a5263'};">${n}</span></button>`;
+
+  let cuerpo;
+  if (g.cargando) cuerpo = `<div style="flex:1;display:flex;align-items:center;justify-content:center;">${_docsSpinner('Cargando documentos…')}</div>`;
+  else if (g.error) cuerpo = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:#b42318;font-size:16px;font-weight:700;padding:24px;text-align:center;">No se pudieron cargar los documentos: ${esc(g.error)}</div>`;
+  else if (g.tab === 'docs') cuerpo = _gHtmlDocs(g, docs);
+  else if (g.vista === 'nueva') cuerpo = _gHtmlNueva(g, carpetas);
+  else if (g.vista === 'carpeta') cuerpo = _gHtmlCarpeta(g, carpetas.find(c => c.nombre === g.sel));
+  else cuerpo = _gHtmlCarpetas(g, carpetas, nFotos);
+
+  overlay.firstElementChild.innerHTML = `
+    <header style="padding:22px 26px 0;border-bottom:1px solid #e3e6eb;display:flex;flex-direction:column;gap:14px;flex-shrink:0;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+          <span style="font-size:15px;font-weight:600;color:#5b6475;">Documentos y fotos del vehículo</span>
+          <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:28px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(g.mat)}</span>
         </div>
-        <button onclick="event.stopPropagation();abrirVisorDoc('${esc(doc.ref)}','${esc(doc.nombre || '')}','${esc(doc.formato || '')}')"
-          style="height:32px;padding:0 12px;font:700 12px 'Barlow',sans-serif;border-radius:7px;cursor:pointer;border:1px solid #d5d9e0;background:#fff;color:#1a1a2e;flex-shrink:0;">Ver</button>
-        <button onclick="${borrar}" aria-label="Eliminar ${esc(doc.nombre || '')}"
-          style="height:32px;padding:0 12px;font:700 12px 'Barlow',sans-serif;border-radius:7px;cursor:pointer;border:1px solid #fecdca;background:#fff;color:#b42318;flex-shrink:0;">Eliminar</button>
+        <button type="button" data-acc="cerrar" aria-label="Cerrar" style="${_dBtn}width:46px;padding:0;flex-shrink:0;">${_dIco('cerrar', 20, 2.2)}</button>
+      </div>
+      <div role="tablist" style="display:flex;gap:6px;">${tab('docs', 'Documentos', docs.length)}${tab('fotos', 'Fotos', nFotos)}</div>
+    </header>
+    ${cuerpo}`;
+  docsPintarMiniaturas(overlay);
+  const foco = overlay.querySelector('[data-foco]');
+  if (foco) { foco.focus(); foco.removeAttribute('data-foco'); }
+}
+
+// ── Pestaña Documentos ──
+function _gHtmlDocs(g, docs) {
+  const cats = _DOCS_CATS.filter(c => c.id !== 'fotos');
+  let lista = '';
+  cats.forEach(cat => {
+    const cd = docs.filter(d => (d.categoria || 'otros') === cat.id || (cat.id === 'otros' && !_DOCS_CATS.some(c => c.id === d.categoria)));
+    if (!cd.length) return;
+    lista += `<h3 style="margin:10px 0 2px;font-size:13px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#5b6475;">${cat.label}</h3>`;
+    cd.forEach(d => {
+      const borrar = d.origen === 'drive' ? `_docsEliminarDrive('${esc(d.id)}','${esc(g.mat)}',this)` : `_docsEliminar('${esc(d.id)}','${esc(d.path)}','${esc(g.mat)}',this)`;
+      lista += `<div style="display:flex;align-items:center;gap:14px;border:1px solid #e3e6eb;border-radius:12px;padding:12px 14px;">
+        <span aria-hidden="true" style="width:46px;height:46px;border-radius:10px;background:#f1f3f6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#5b6475;flex-shrink:0;">${_docsEsPdf(d) ? 'PDF' : 'IMG'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(d.nombre)}">${esc(d.nombre || 'Sin nombre')}</div>
+          <div style="font-size:14px;color:#5b6475;margin-top:2px;">${_dFecha(d.fecha)} · ${esc(d.subido_por || '—')}${d.origen === 'drive' ? ' · <strong style="color:#93370d;">en Drive</strong>' : ''}</div>
+        </div>
+        <button type="button" onclick="abrirVisorDoc('${esc(d.ref)}','${esc(d.nombre || '')}','${esc(d.formato || '')}')" style="${_dBtn}height:42px;">Ver</button>
+        <button type="button" onclick="${borrar}" aria-label="Eliminar ${esc(d.nombre || '')}" style="${_dBtn}height:42px;color:#b42318;border-color:#fecdca;">Eliminar</button>
       </div>`;
     });
   });
-  if (fotos.length) {
-    html += `<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#5b6475;margin-top:8px;display:flex;align-items:center;gap:8px;">
-              Fotos<span style="flex:1;height:1px;background:#eef0f3;"></span></div>` + docsHtmlFotos(fotos, matricula, true);
-  }
-  if (driveCargando) html += _docsSpinner('Buscando documentos antiguos en Drive…');
-  if (avisoDrive) html += `<div style="font-size:12px;color:#93370d;text-align:center;padding:6px 0;">${esc(avisoDrive)}</div>`;
-  lista.innerHTML = html;
-  docsPintarMiniaturas(lista);
+  if (!lista) lista = `<div style="text-align:center;padding:40px 0;color:#5b6475;font-size:17px;font-weight:600;">Este vehículo aún no tiene documentos.<br><span style="font-size:15px;font-weight:500;">Súbelos con el formulario de arriba.</span></div>`;
+  return `
+    <div style="padding:16px 26px;background:#f7f8fa;border-bottom:1px solid #eef0f3;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;flex-shrink:0;">
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:15px;font-weight:700;flex:1;min-width:200px;">Tipo de documento
+        <select id="docs-cat" style="height:46px;padding:0 12px;border:1px solid #d5d9e0;border-radius:10px;font:600 16px Barlow,sans-serif;color:#1a1a2e;background:#fff;">
+          ${cats.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
+        </select></label>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:15px;font-weight:700;flex:1.4;min-width:220px;">Archivo (PDF o imagen, máx. ${DOCS_MAX_MB} MB)
+        <input type="file" id="docs-file" accept=".pdf,image/*" style="height:46px;box-sizing:border-box;padding:9px 10px;border:1px solid #d5d9e0;border-radius:10px;font:600 15px Barlow,sans-serif;background:#fff;"></label>
+      <button type="button" data-acc="subirDoc" style="${_dBtnP}">Subir documento</button>
+    </div>
+    <div id="docs-upload-status" role="status" style="display:none;padding:10px 26px 0;font-size:15px;font-weight:700;"></div>
+    <div style="flex:1;overflow:auto;padding:16px 26px 26px;display:flex;flex-direction:column;gap:10px;">${lista}</div>`;
 }
 
-async function _docsSubir(matricula, overlay) {
-  const fileInput = overlay.querySelector('#docs-file');
-  const catSelect = overlay.querySelector('#docs-cat');
-  const statusEl  = overlay.querySelector('#docs-upload-status');
-  const btnSubir  = overlay.querySelector('#docs-subir');
-  const files     = [...fileInput.files];
-  const categoria = catSelect.value;
-  const esFotos   = categoria === 'fotos';
-  const carpeta   = esFotos ? _docsCarpetaElegida(overlay) : null;
-  if (esFotos && !carpeta) { mostrarToast('Escribe el nombre de la nueva carpeta', 'error'); overlay.querySelector('#docs-carpeta-nueva').focus(); return; }
+// ── Pestaña Fotos: tarjetas de carpeta ──
+function _gHtmlCarpetas(g, carpetas, nFotos) {
+  const tarjetas = carpetas.map(c => {
+    const portada = c.fotos.slice(-4);
+    const mosaico = portada.length
+      ? `<div style="display:grid;grid-template-columns:repeat(${portada.length > 1 ? 2 : 1},minmax(0,1fr));grid-template-rows:repeat(${portada.length > 2 ? 2 : 1},minmax(0,1fr));gap:3px;height:170px;overflow:hidden;flex-shrink:0;background:#e3e6eb;">
+          ${portada.map(f => `<img data-path="${esc(f.path)}" alt="" loading="lazy" style="width:100%;height:100%;min-height:0;object-fit:cover;display:block;background:#dfe3e8;${portada.length === 3 && f === portada[0] ? 'grid-row:span 2;' : ''}">`).join('')}</div>`
+      : `<div style="height:170px;background:#f1f3f6;display:flex;align-items:center;justify-content:center;color:#8a93a3;">${_dIco('camara', 34, 1.6)}</div>`;
+    return `<button type="button" data-acc="abrir" data-nombre="${esc(c.nombre)}" aria-label="Abrir carpeta ${esc(c.nombre)}"
+        style="all:unset;box-sizing:border-box;border:1px solid #e3e6eb;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;background:#fff;cursor:pointer;">
+      ${mosaico}
+      <span style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;">
+        <span style="display:flex;align-items:center;gap:10px;">${_dIco('carpeta', 22, 1.9)}
+          <span style="font-size:19px;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.nombre)}</span>
+          <span style="font-size:14px;font-weight:700;color:#4a5263;background:#f1f3f6;border-radius:10px;padding:3px 10px;white-space:nowrap;">${c.fotos.length} foto${c.fotos.length === 1 ? '' : 's'}</span></span>
+        <span style="font-size:15px;line-height:1.45;color:${c.comentario ? '#333b4a' : '#8a93a3'};display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;">${esc(c.comentario || 'Sin comentario')}</span>
+        <span style="font-size:13px;color:#5b6475;font-weight:600;">${[_dFecha(c.fecha), esc(c.creado_por)].filter(Boolean).join(' · ')}</span>
+      </span></button>`;
+  }).join('');
+  return `
+    <div style="padding:14px 26px;background:#f7f8fa;border-bottom:1px solid #eef0f3;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0;">
+      <span style="font-size:16px;color:#5b6475;font-weight:600;">${carpetas.length} carpeta${carpetas.length === 1 ? '' : 's'} · ${nFotos} foto${nFotos === 1 ? '' : 's'}</span>
+      <button type="button" data-acc="nueva" style="${_dBtnP}">${_dIco('mas', 20, 2.2)}Nueva carpeta de fotos</button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:20px 26px 26px;">
+      ${carpetas.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;">${tarjetas}</div>`
+        : `<div style="text-align:center;padding:50px 0;color:#5b6475;font-size:17px;font-weight:600;">Todavía no hay fotos de este vehículo.<br><span style="font-size:15px;font-weight:500;">Crea una carpeta, por ejemplo «Entrega vehículo», y añade las fotos.</span></div>`}
+    </div>`;
+}
 
-  if (!files.length) { mostrarToast(esFotos ? 'Elige al menos una foto' : 'Selecciona un archivo primero', 'error'); return; }
-  for (const f of files) {
-    const mime = _docsMime(f);
-    if (esFotos ? !mime.startsWith('image/') : (mime !== 'application/pdf' && !mime.startsWith('image/'))) {
-      mostrarToast(esFotos ? `${f.name} no es una imagen` : 'Solo se admiten PDF o imágenes', 'error'); return;
+// ── Carpeta abierta ──
+function _gHtmlCarpeta(g, c) {
+  if (!c) { g.vista = 'carpetas'; return _gHtmlCarpetas(g, _gCarpetas(g), 0); }
+  return `
+    <div style="padding:14px 26px;background:#f7f8fa;border-bottom:1px solid #eef0f3;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;">
+      <button type="button" data-acc="volver" style="${_dBtn}">${_dIco('volver', 20, 2.2)}Carpetas</button>
+      <h3 style="margin:0;font-size:24px;font-weight:800;flex:1;min-width:200px;display:flex;align-items:center;gap:10px;">${_dIco('carpeta', 24, 1.9)}${esc(c.nombre)}</h3>
+      <span style="font-size:15px;color:#5b6475;font-weight:600;">${c.fotos.length} foto${c.fotos.length === 1 ? '' : 's'}${c.fecha ? ' · ' + _dFecha(c.fecha) : ''}${c.creado_por ? ' · ' + esc(c.creado_por) : ''}</span>
+    </div>
+    <div style="flex:1;overflow:auto;padding:18px 26px 26px;display:flex;flex-direction:column;gap:18px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label for="g-com" style="font-size:16px;font-weight:700;">Comentario de la carpeta</label>
+        <textarea id="g-com" rows="3" ${g.sinTabla ? 'disabled' : ''} placeholder="Ej: a quién se entrega, kilómetros, combustible, daños que ya tenía…"
+          style="width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #d5d9e0;border-radius:10px;font:500 16px/1.5 Barlow,sans-serif;color:#1a1a2e;resize:vertical;">${esc(c.comentario)}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;">
+          ${g.sinTabla ? `<span style="font-size:14px;color:#93370d;font-weight:600;">Falta crear la tabla de carpetas en Supabase para guardar comentarios.</span>` : ''}
+          <button type="button" data-acc="guardarCom" data-nombre="${esc(c.nombre)}" ${g.sinTabla ? 'disabled' : ''} style="${_dBtn}height:42px;">Guardar comentario</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <span style="font-size:16px;font-weight:700;">Añadir fotos a esta carpeta</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <label style="${_dBtn}height:58px;font-size:17px;">${_dIco('camara', 24, 1.9)}Hacer foto
+            <input type="file" accept="image/*" capture="environment" data-subir="carpeta" data-nombre="${esc(c.nombre)}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+          <label style="${_dBtn}height:58px;font-size:17px;">${_dIco('galeria', 24, 1.9)}Elegir de la galería
+            <input type="file" accept="image/*" multiple data-subir="carpeta" data-nombre="${esc(c.nombre)}" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+        </div>
+        <div id="g-subida" role="status" style="font-size:15px;font-weight:700;color:#5b6475;min-height:20px;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;">
+        ${c.fotos.map(f => `<div style="position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#f1f3f6;">
+          <button type="button" onclick="abrirVisorDoc('${esc(f.ref)}','${esc(f.nombre || '')}','imagen')" aria-label="Ver ${esc(f.nombre || 'foto')}" style="all:unset;display:block;width:100%;height:100%;cursor:zoom-in;">
+            <img data-path="${esc(f.path)}" alt="${esc(f.nombre || '')}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></button>
+          <button type="button" data-acc="borrarFoto" data-id="${esc(f.id)}" data-path="${esc(f.path)}" aria-label="Eliminar foto"
+            style="position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:9px;border:none;background:rgba(17,17,34,.75);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;">${_dIco('papelera', 18, 2)}</button>
+        </div>`).join('')}
+      </div>
+      ${c.fotos.length ? '' : `<p style="margin:0;color:#5b6475;font-size:16px;">Esta carpeta no tiene fotos todavía.</p>`}
+      <div style="border-top:1px solid #eef0f3;padding-top:16px;display:flex;justify-content:flex-end;">
+        <button type="button" data-acc="borrarCarpeta" data-nombre="${esc(c.nombre)}" style="${_dBtn}height:42px;color:#b42318;border-color:#fecdca;">${_dIco('papelera', 18, 2)}Eliminar carpeta</button>
+      </div>
+    </div>`;
+}
+
+// ── Nueva carpeta en un solo paso ──
+function _gHtmlNueva(g, carpetas) {
+  const n = g.nueva;
+  const chip = (txt, on, acc, extra) => `<button type="button" role="radio" aria-checked="${on}" data-acc="${acc}" ${extra || ''}
+      style="height:46px;padding:0 18px;border-radius:23px;font:700 16px Barlow,sans-serif;cursor:pointer;${on ? 'background:#1a1a2e;color:#fff;border:1px solid #1a1a2e;' : 'background:#fff;color:#1a1a2e;border:1px solid #d5d9e0;'}">${esc(txt)}</button>`;
+  const existentes = carpetas.map(c => c.nombre).filter(x => !DOCS_CARPETAS_HABITUALES.includes(x));
+  const nombres = DOCS_CARPETAS_HABITUALES.concat(existentes);
+  const nf = n.files.length;
+  return `
+    <div style="padding:14px 26px;background:#f7f8fa;border-bottom:1px solid #eef0f3;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <button type="button" data-acc="volver" style="${_dBtn}">${_dIco('volver', 20, 2.2)}Carpetas</button>
+      <h3 style="margin:0;font-size:24px;font-weight:800;">Nueva carpeta de fotos</h3>
+    </div>
+    <div style="flex:1;overflow:auto;padding:20px 26px;display:flex;flex-direction:column;gap:24px;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <span style="font-size:17px;font-weight:800;">1. ¿Qué es?</span>
+        <div role="radiogroup" aria-label="Nombre de la carpeta" style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${nombres.map(x => chip(x, !n.otro && n.nombre === x, 'chip', `data-nombre="${esc(x)}"`)).join('')}
+          ${chip('+ Otro nombre…', n.otro, 'chipOtro')}
+        </div>
+        ${n.otro ? `<input id="g-nueva-otro" ${n.enfocarOtro ? 'data-foco' : ''} value="${esc(n.nombreOtro || '')}" aria-label="Nombre de la carpeta" placeholder="Escribe el nombre de la carpeta"
+          style="height:48px;box-sizing:border-box;padding:0 14px;border:1px solid #d5d9e0;border-radius:10px;font:600 17px Barlow,sans-serif;color:#1a1a2e;max-width:460px;">` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label for="g-nueva-com" style="font-size:17px;font-weight:800;">2. Comentario <span style="font-weight:500;color:#5b6475;">(opcional)</span></label>
+        <textarea id="g-nueva-com" rows="3" placeholder="Ej: a quién se entrega, kilómetros, combustible, daños que ya tenía…" ${g.sinTabla ? 'disabled' : ''}
+          style="width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #d5d9e0;border-radius:10px;font:500 16px/1.5 Barlow,sans-serif;color:#1a1a2e;resize:vertical;">${esc(n.comentario)}</textarea>
+        ${g.sinTabla ? `<span style="font-size:14px;color:#93370d;font-weight:600;">Falta crear la tabla de carpetas en Supabase para guardar comentarios.</span>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <span style="font-size:17px;font-weight:800;">3. Fotos</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <label style="${_dBtn}height:64px;font-size:17px;position:relative;">${_dIco('camara', 24, 1.9)}Hacer foto
+            <input type="file" accept="image/*" capture="environment" data-subir="nueva" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+          <label style="${_dBtn}height:64px;font-size:17px;position:relative;">${_dIco('galeria', 24, 1.9)}Elegir de la galería
+            <input type="file" accept="image/*" multiple data-subir="nueva" style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+        </div>
+        ${nf ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">
+            ${n.files.map((f, i) => `<div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#f1f3f6;">
+              <img src="${f.url}" alt="${esc(f.file.name)}" style="width:100%;height:100%;object-fit:cover;display:block;">
+              <button type="button" data-acc="quitar" data-i="${i}" aria-label="Quitar ${esc(f.file.name)}" style="position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:8px;border:none;background:rgba(17,17,34,.75);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;">${_dIco('cerrar', 16, 2.4)}</button>
+            </div>`).join('')}</div>
+          <span style="font-size:15px;color:#5b6475;font-weight:600;">${nf} foto${nf === 1 ? '' : 's'} lista${nf === 1 ? '' : 's'} · se reducen automáticamente para subir rápido</span>`
+          : `<span style="font-size:15px;color:#5b6475;">Puedes crear la carpeta sin fotos y añadirlas después.</span>`}
+      </div>
+    </div>
+    <footer style="padding:16px 26px;border-top:1px solid #e3e6eb;background:#f7f8fa;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;flex-shrink:0;">
+      <button type="button" data-acc="volver" style="${_dBtn}height:52px;">Cancelar</button>
+      <button type="button" data-acc="crear" id="g-crear" style="${_dBtnP}height:52px;font-size:17px;font-weight:800;">${nf ? `Crear carpeta y subir ${nf} foto${nf === 1 ? '' : 's'}` : 'Crear carpeta'}</button>
+    </footer>`;
+}
+
+// ── Acciones ──
+async function _gAccion(overlay, acc, ds, btn) {
+  const g = overlay._g;
+  if (g.ocupado && acc !== 'cerrar') return;
+  switch (acc) {
+    case 'cerrar': return _gCerrar(overlay);
+    case 'tab': g.tab = ds.tab; if (g.tab === 'fotos' && g.vista !== 'nueva') g.vista = g.vista === 'carpeta' ? 'carpeta' : 'carpetas'; return _gPintar(overlay);
+    case 'nueva': g.vista = 'nueva'; return _gPintar(overlay);
+    case 'volver':
+      if (g.vista === 'nueva') { g.nueva.files.forEach(f => URL.revokeObjectURL(f.url)); g.nueva = { nombre: DOCS_CARPETA_DEFECTO, otro: false, comentario: '', files: [] }; }
+      g.vista = 'carpetas'; g.sel = null; return _gPintar(overlay);
+    case 'abrir': g.vista = 'carpeta'; g.sel = ds.nombre; return _gPintar(overlay);
+    case 'chip': g.nueva.otro = false; g.nueva.nombre = ds.nombre; return _gPintar(overlay);
+    case 'chipOtro': g.nueva.otro = true; g.nueva.enfocarOtro = true; _gPintar(overlay); g.nueva.enfocarOtro = false; return;
+    case 'quitar': { const f = g.nueva.files.splice(Number(ds.i), 1)[0]; if (f) URL.revokeObjectURL(f.url); return _gPintar(overlay); }
+    case 'subirDoc': return _gSubirDocumento(overlay);
+    case 'crear': return _gCrearCarpeta(overlay);
+    case 'guardarCom': {
+      const txt = overlay.querySelector('#g-com').value.trim();
+      btn.disabled = true; btn.textContent = 'Guardando…';
+      try {
+        await docsGuardarCarpeta(g.mat, ds.nombre, txt);
+        mostrarToast('✓ Comentario guardado', 'success');
+        registrarAccion('VEHICULO', 'Comentario carpeta fotos', `${g.mat} · ${ds.nombre}`);
+        await _gCargar(overlay);
+      } catch (e) { mostrarToast('No se pudo guardar: ' + e.message, 'error'); btn.disabled = false; btn.textContent = 'Guardar comentario'; }
+      return;
     }
-    if (!esFotos && f.size > DOCS_MAX_MB * 1024 * 1024) { mostrarToast(`El archivo supera los ${DOCS_MAX_MB} MB`, 'error'); return; }
+    case 'borrarFoto': {
+      if (!(await appConfirm('La foto se eliminará permanentemente.', { titulo: '¿Eliminar foto?', icono: '🗑️', labelOk: 'Sí, eliminar', peligro: true }))) return;
+      try { await docsEliminarSupabase(ds.id, ds.path); mostrarToast('Foto eliminada', 'success'); await _gCargar(overlay); }
+      catch (e) { mostrarToast('Error al eliminar: ' + e.message, 'error'); }
+      return;
+    }
+    case 'borrarCarpeta': {
+      const c = _gCarpetas(g).find(x => x.nombre === ds.nombre);
+      if (!c) return;
+      const n = c.fotos.length;
+      if (!(await appConfirm(`Se eliminará la carpeta «${esc(c.nombre)}»${n ? ` y sus ${n} foto${n === 1 ? '' : 's'}` : ''}. No se puede deshacer.`, { titulo: '¿Eliminar carpeta?', icono: '🗑️', labelOk: 'Sí, eliminar', peligro: true }))) return;
+      try {
+        await docsEliminarCarpeta(g.mat, c);
+        mostrarToast('Carpeta eliminada', 'success');
+        registrarAccion('VEHICULO', 'Eliminar carpeta fotos', `${g.mat} · ${c.nombre} · ${n} fotos`);
+        g.vista = 'carpetas'; g.sel = null;
+        await _gCargar(overlay);
+      } catch (e) { mostrarToast('Error al eliminar: ' + e.message, 'error'); }
+      return;
+    }
   }
+}
 
-  const catLabel = _DOCS_CATS.find(c => c.id === categoria)?.label || categoria;
-  btnSubir.disabled = true; btnSubir.textContent = 'Subiendo…';
-  statusEl.style.display = 'block';
+function _gFicherosElegidos(overlay, input) {
+  const g = overlay._g;
+  const files = [...input.files].filter(f => _docsMime(f).startsWith('image/'));
+  if (input.files.length && !files.length) mostrarToast('Solo se admiten imágenes', 'error');
+  input.value = '';
+  if (!files.length) return;
+  if (input.dataset.subir === 'nueva') {
+    files.forEach(f => g.nueva.files.push({ file: f, url: URL.createObjectURL(f) }));
+    _gPintar(overlay);
+  } else {
+    _gSubirFotos(overlay, input.dataset.nombre, files, overlay.querySelector('#g-subida'));
+  }
+}
+
+/** Sube fotos a una carpeta. estado(i, total) se usa para mostrar el progreso. Devuelve {ok, fallos}. */
+async function _gSubirFotos(overlay, carpeta, files, statusEl, botonEl) {
+  const g = overlay._g;
+  g.ocupado = true;
   let ok = 0; const fallos = [];
   for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    statusEl.innerHTML = `<span style="color:#5b6475;">${files.length > 1 ? `Subiendo ${i + 1} de ${files.length}: ` : 'Subiendo '}${esc(f.name)}…</span>`;
+    const txt = `Subiendo ${i + 1} de ${files.length}…`;
+    if (statusEl) statusEl.textContent = txt;
+    if (botonEl) botonEl.textContent = txt;
     try {
-      let blob = f, nombre = f.name;
-      if (esFotos) ({ blob, nombre } = await docsComprimirImagen(f));
+      let { blob, nombre } = await docsComprimirImagen(files[i]);
       if (blob.size > DOCS_MAX_MB * 1024 * 1024) throw new Error(`supera los ${DOCS_MAX_MB} MB`);
-      if (!blob.type) blob = new Blob([blob], { type: _docsMime(f) });
-      await docsSubirArchivo(matricula, categoria, blob, nombre, esFotos ? { carpeta } : undefined);
+      if (!blob.type) blob = new Blob([blob], { type: _docsMime(files[i]) });
+      await docsSubirArchivo(g.mat, 'fotos', blob, nombre, { carpeta });
       ok++;
-    } catch (err) {
-      fallos.push(`${f.name}: ${err.message}`);
-    }
+    } catch (e) { fallos.push(`${files[i].name}: ${e.message}`); }
   }
-  btnSubir.disabled = false; btnSubir.textContent = 'Subir';
+  g.ocupado = false;
   if (ok) {
-    fileInput.value = '';
-    if (esFotos) overlay.querySelector('#docs-carpeta-sel').dataset.forzar = carpeta;
-    const que = esFotos ? `${ok} foto${ok === 1 ? '' : 's'} en «${carpeta}»` : catLabel;
-    mostrarToast(`✓ ${que} subid${esFotos && ok !== 1 ? 'as' : (esFotos ? 'a' : 'o')}`, 'success');
-    registrarAccion('VEHICULO', 'Subir documento', `${matricula} · ${esFotos ? 'Fotos · ' + carpeta + ' · ' + ok : catLabel + ' · ' + files[0].name}`);
-    await _docsCargar(matricula, overlay);
+    mostrarToast(`✓ ${ok} foto${ok === 1 ? '' : 's'} subida${ok === 1 ? '' : 's'} a «${carpeta}»`, 'success');
+    registrarAccion('VEHICULO', 'Subir fotos', `${g.mat} · ${carpeta} · ${ok}`);
   }
-  if (fallos.length) {
-    statusEl.innerHTML = `<span style="color:#b42318;">No se pudo subir: ${fallos.map(esc).join('<br>')}</span>`;
-    mostrarToast('Algún archivo no se pudo subir', 'error');
-  } else {
-    statusEl.innerHTML = `<span style="color:#05603a;">✓ Subido</span>`;
-    setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+  if (fallos.length) appAlert(fallos.map(esc).join('<br>'), { titulo: 'Algunas fotos no se subieron', icono: '⚠️' });
+  await _gCargar(overlay);
+  return { ok, fallos };
+}
+
+async function _gCrearCarpeta(overlay) {
+  const g = overlay._g, n = g.nueva;
+  let nombre = n.otro ? (overlay.querySelector('#g-nueva-otro')?.value || '').trim().replace(/\s+/g, ' ') : n.nombre;
+  if (!nombre) { mostrarToast('Escribe el nombre de la carpeta', 'error'); overlay.querySelector('#g-nueva-otro')?.focus(); return; }
+  const existente = _gCarpetas(g).find(c => c.nombre.toLowerCase() === nombre.toLowerCase());
+  if (existente) nombre = existente.nombre;
+  const comentario = (overlay.querySelector('#g-nueva-com')?.value || '').trim();
+  const btn = overlay.querySelector('#g-crear');
+  btn.disabled = true; btn.textContent = 'Creando…';
+
+  if (!g.sinTabla) {
+    try {
+      const com = existente && existente.comentario
+        ? (comentario && comentario !== existente.comentario ? existente.comentario + '\n' + comentario : existente.comentario)
+        : comentario;
+      await docsGuardarCarpeta(g.mat, nombre, com);
+    } catch (e) {
+      mostrarToast('No se pudo crear la carpeta: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = 'Crear carpeta'; return;
+    }
+  } else if (!n.files.length) {
+    mostrarToast('Añade al menos una foto (falta la tabla de carpetas en Supabase)', 'error');
+    btn.disabled = false; btn.textContent = 'Crear carpeta'; return;
   }
+  const files = n.files.map(f => f.file);
+  n.files.forEach(f => URL.revokeObjectURL(f.url));
+  g.nueva = { nombre: DOCS_CARPETA_DEFECTO, otro: false, comentario: '', files: [] };
+  if (existente) mostrarToast(`La carpeta «${nombre}» ya existía: se añaden las fotos ahí`, 'info');
+  else registrarAccion('VEHICULO', 'Crear carpeta fotos', `${g.mat} · ${nombre}`);
+  if (files.length) await _gSubirFotos(overlay, nombre, files, null, btn);
+  else { mostrarToast(`✓ Carpeta «${nombre}» creada`, 'success'); await _gCargar(overlay); }
+  g.vista = 'carpeta'; g.sel = nombre;
+  if (document.body.contains(overlay)) _gPintar(overlay);
+}
+
+async function _gSubirDocumento(overlay) {
+  const g = overlay._g;
+  const fileInput = overlay.querySelector('#docs-file');
+  const categoria = overlay.querySelector('#docs-cat').value;
+  const statusEl  = overlay.querySelector('#docs-upload-status');
+  const file = fileInput.files[0];
+  if (!file) { mostrarToast('Selecciona un archivo primero', 'error'); return; }
+  const mime = _docsMime(file);
+  if (mime !== 'application/pdf' && !mime.startsWith('image/')) { mostrarToast('Solo se admiten PDF o imágenes', 'error'); return; }
+  if (file.size > DOCS_MAX_MB * 1024 * 1024) { mostrarToast(`El archivo supera los ${DOCS_MAX_MB} MB`, 'error'); return; }
+  const catLabel = _DOCS_CATS.find(c => c.id === categoria)?.label || categoria;
+  statusEl.style.display = 'block'; statusEl.style.color = '#5b6475'; statusEl.textContent = `Subiendo ${file.name}…`;
+  g.ocupado = true;
+  try {
+    const blob = file.type ? file : new Blob([file], { type: mime });
+    await docsSubirArchivo(g.mat, categoria, blob, file.name);
+    mostrarToast(`✓ ${catLabel} subido`, 'success');
+    registrarAccion('VEHICULO', 'Subir documento', `${g.mat} · ${catLabel} · ${file.name}`);
+    g.ocupado = false;
+    await _gCargar(overlay);
+  } catch (e) {
+    g.ocupado = false;
+    statusEl.style.color = '#b42318'; statusEl.textContent = 'No se pudo subir: ' + e.message;
+  }
+}
+
+function _docsSpinner(txt) {
+  return `<div style="display:flex;align-items:center;gap:10px;color:#5b6475;font-size:16px;font-weight:600;padding:14px 0;justify-content:center;">
+    <div style="width:20px;height:20px;border:3px solid #e0e4ed;border-top-color:#1a1a2e;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>${txt}</div>`;
 }
 
 async function _docsEliminar(id, path, matricula, btnEl) {
@@ -399,7 +647,7 @@ async function _docsEliminar(id, path, matricula, btnEl) {
     await docsEliminarSupabase(id, path);
     mostrarToast('Documento eliminado', 'success');
     registrarAccion('VEHICULO', 'Eliminar documento', matricula);
-    if (overlay) await _docsCargar(matricula, overlay);
+    if (overlay) await _gCargar(overlay);
   } catch (e) {
     mostrarToast('Error al eliminar: ' + e.message, 'error');
     btnEl.disabled = false; btnEl.textContent = 'Eliminar';
@@ -417,7 +665,7 @@ async function _docsEliminarDrive(fileId, matricula, btnEl) {
     if (!d.ok) throw new Error(d.error || 'error');
     mostrarToast('Documento eliminado', 'success');
     registrarAccion('VEHICULO', 'Eliminar documento', matricula);
-    if (overlay) await _docsCargar(matricula, overlay);
+    if (overlay) await _gCargar(overlay);
   } catch (e) {
     mostrarToast('Error al eliminar', 'error');
     btnEl.disabled = false; btnEl.textContent = 'Eliminar';

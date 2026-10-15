@@ -117,6 +117,7 @@ function renderAdminVehiculos() {
         <div class="admin-item-actions">
           <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},-1)" title="Subir orden" ${vi===0?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬆️</button>
           <button class="btn-item-action" onclick="moverVehiculoOrden(${gi},${vi},1)" title="Bajar orden" ${vi===grupo.vehiculos.length-1?'disabled style="opacity:.35;cursor:not-allowed;"':''}>⬇️</button>
+          <button class="btn-item-action" onclick="editarVehiculo(${gi},${vi})" title="Editar nombre, tipo, nave y propiedad" style="background:#fff7ed;color:#c2410c;border-color:#fed7aa;">✏️ Editar</button>
           <button class="btn-item-action btn-itv" onclick="editarITV(${gi},${vi})" title="Editar fecha ITV">📋 ITV</button>
           <button class="btn-item-action" onclick="editarSeguro(${gi},${vi})" title="Datos del seguro" style="background:#eef2ff;color:#3b5bdb;border-color:#c5d0ff;">🛡️ Seguro</button>
           <button class="btn-item-action" onclick="abrirGestorDocumentos('${esc(v.matricula)}')" title="Gestionar documentos" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;">📂 Docs</button>
@@ -323,6 +324,116 @@ function editarITV(gi, vi) {
     renderAdminVehiculos(); renderTabla();
     sincronizarVehiculosConSheets();
     mostrarToast('✓ Fecha ITV guardada', 'success');
+  };
+}
+
+// ── EDITAR VEHÍCULO (nombre/matrícula, tipo, nave, propiedad) ────────────────
+function _vehiculoTieneMovimientoActivo(mat) {
+  // Asignaciones del cuadrante cargadas en memoria (clave: matricula|turno|fecha)
+  const enCuadrante = Object.keys(datos || {}).some(k => {
+    if (!k.startsWith(mat + '|')) return false;
+    const d = datos[k] || {};
+    return Object.values(d).some(val => val !== '' && val !== null && val !== undefined && val !== false);
+  });
+  const enRepostaje = (typeof _repostajesPendientesMat !== 'undefined' && _repostajesPendientesMat[mat]);
+  return enCuadrante || !!enRepostaje;
+}
+
+function editarVehiculo(gi, vi) {
+  const v = GRUPOS[gi].vehiculos[vi];
+  const tiposBase = ['FURGONETA', 'CAMION 8P', 'CAMION 15P', 'CAMION 24P'];
+  const tipos = tiposBase.includes(v.tipo) ? tiposBase : [v.tipo, ...tiposBase];
+  const naves = GRUPOS.map(g => g.nombre);
+  const lbl = 'font-size:10px;font-weight:700;color:#556;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;';
+  const inp = 'width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;';
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;padding:28px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
+      <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">✏️ Editar vehículo</div>
+      <div style="font-size:12px;color:#8899aa;margin-bottom:18px;">Actual: <strong>${esc(v.matricula)}</strong> · ${esc(GRUPOS[gi].nombre)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="grid-column:1/-1">
+          <label style="${lbl}">Nombre / Matrícula *</label>
+          <input id="edv-mat" value="${esc(v.matricula)}" oninput="this.value=this.value.toUpperCase()" style="${inp}">
+        </div>
+        <div>
+          <label style="${lbl}">Tipo</label>
+          <select id="edv-tipo" style="${inp}">
+            ${tipos.map(t => `<option value="${esc(t)}" ${t===v.tipo?'selected':''}>${esc(t)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="${lbl}">Nave / Ubicación *</label>
+          <input id="edv-nave" list="edv-naves" value="${esc(GRUPOS[gi].nombre)}" oninput="this.value=this.value.toUpperCase()" style="${inp}">
+          <datalist id="edv-naves">${naves.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="${lbl}">Propiedad / Nota</label>
+          <input id="edv-nota" value="${esc(v.nota||'')}" placeholder="Ej: Propiedad, PINVECO…" style="${inp}">
+        </div>
+      </div>
+      <div id="edv-aviso" style="display:none;margin-top:12px;font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;line-height:1.5;">
+        ⚠️ Al cambiar el nombre, los registros de días anteriores (historial, incidencias, documentos) seguirán guardados con el nombre antiguo.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button id="edv-cancel" style="padding:9px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
+        <button id="edv-guardar" style="padding:9px 20px;background:#3b5bdb;color:white;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">💾 Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const matInput = overlay.querySelector('#edv-mat');
+  const aviso = overlay.querySelector('#edv-aviso');
+  matInput.addEventListener('input', () => {
+    aviso.style.display = matInput.value.trim() !== v.matricula ? 'block' : 'none';
+  });
+  overlay.querySelector('#edv-cancel').onclick = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  overlay.querySelector('#edv-guardar').onclick = () => {
+    const nuevaMat  = matInput.value.trim().toUpperCase();
+    const nuevoTipo = overlay.querySelector('#edv-tipo').value;
+    const nuevaNave = overlay.querySelector('#edv-nave').value.trim().toUpperCase();
+    const nuevaNota = overlay.querySelector('#edv-nota').value.trim();
+
+    if (!nuevaMat)  { mostrarToast('El nombre/matrícula es obligatorio', 'error'); return; }
+    if (!nuevaNave) { mostrarToast('La nave es obligatoria', 'error'); return; }
+
+    const cambiaMat = nuevaMat !== v.matricula;
+    if (cambiaMat) {
+      if (GRUPOS.some(g => g.vehiculos.some(x => x !== v && x.matricula === nuevaMat))) {
+        mostrarToast('Ya existe un vehículo con ese nombre', 'error'); return;
+      }
+      if (_vehiculoTieneMovimientoActivo(v.matricula)) {
+        appAlert(`<strong>${esc(v.matricula)}</strong> tiene una asignación o repostaje en curso en el cuadrante.<br><br>Libéralo primero y vuelve a intentar el cambio de nombre.`,
+          { titulo: 'No se puede renombrar ahora', icono: '⚠️' });
+        return;
+      }
+    }
+
+    const antes = `${v.matricula} · ${v.tipo} · ${GRUPOS[gi].nombre}`;
+    v.matricula = nuevaMat;
+    v.tipo      = nuevoTipo;
+    v.nota      = nuevaNota;
+
+    // Cambio de nave: sacar del grupo actual y añadir al final del nuevo
+    const naveActual = GRUPOS[gi].nombre;
+    if (nuevaNave !== naveActual.toUpperCase()) {
+      GRUPOS[gi].vehiculos.splice(vi, 1);
+      let g = GRUPOS.find(x => x.nombre.toUpperCase() === nuevaNave);
+      if (!g) { g = { nombre: nuevaNave, vehiculos: [] }; GRUPOS.push(g); }
+      const maxOrden = g.vehiculos.reduce((m, x) => Math.max(m, Number(x.orden) || 0), 0);
+      v.orden = maxOrden + 1;
+      g.vehiculos.push(v);
+    }
+
+    overlay.remove();
+    renderAdminVehiculos(); renderAdminStats(); renderTabla();
+    sincronizarVehiculosConSheets();
+    registrarAccion('VEHICULO', 'Editar vehículo', `${antes} → ${v.matricula} · ${v.tipo} · ${nuevaNave}`);
+    mostrarToast(`✓ ${v.matricula} actualizado`, 'success');
   };
 }
 

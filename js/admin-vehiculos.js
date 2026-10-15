@@ -115,7 +115,9 @@ function renderAdminVehiculos() {
     </div>
   </div>`;
 
+  html += `<div id="adm-docs-migracion"></div>`;
   lista.innerHTML = html;
+  if (typeof pintarAvisoMigracionDocs === 'function') pintarAvisoMigracionDocs();
 }
 
 function _admFilasVehiculos(hoy) {
@@ -899,16 +901,26 @@ function abrirFichaVehiculo(matricula) {
 async function _fichaCargarDocs(matricula) {
   const cont = document.getElementById('ficha-docs-content');
   cont.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Cargando documentos…</div>`;
+  let docsSb = [];
   try {
-    const r = await fetch(`${APPS_SCRIPT_URL}?accion=cargarDocumentos&matricula=${encodeURIComponent(matricula)}`);
-    const d = await r.json();
-    _fichaRenderDocs(d.docs || []);
+    docsSb = await docsListarSupabase(matricula);
   } catch(e) {
     cont.innerHTML = `<div class="ficha-docs-loading" style="color:#e84545">Error al cargar documentos</div>`;
+    return;
+  }
+  if (_fichaMat !== matricula) return;
+  const conDrive = await docsDriveActivo();
+  _fichaRenderDocs(docsSb, conDrive);
+  if (!conDrive) return;
+  try {
+    const docsDrive = await docsListarDrive(matricula, docsSb.map(d => d.drive_id).filter(Boolean));
+    if (_fichaMat === matricula) _fichaRenderDocs(docsSb.concat(docsDrive), false);
+  } catch(e) {
+    if (_fichaMat === matricula) _fichaRenderDocs(docsSb, false);
   }
 }
 
-function _fichaRenderDocs(docs) {
+function _fichaRenderDocs(docs, buscandoDrive) {
   const cont = document.getElementById('ficha-docs-content');
   cont.innerHTML = '';
   // Agrupar por categoría
@@ -930,12 +942,18 @@ function _fichaRenderDocs(docs) {
               <div class="ficha-doc-nombre" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</div>
               <div class="ficha-doc-fecha">Subido: ${fecha} · ${esc(doc.subido_por || '—')}</div>
             </div>
-            <button class="ficha-doc-btn ver" onclick="event.stopPropagation();abrirVisorDoc('${esc(doc.url)}','${esc(doc.nombre||'')}','${esc(doc.formato||'')}')">👁 Ver</button>
+            <button class="ficha-doc-btn ver" onclick="event.stopPropagation();abrirVisorDoc('${esc(doc.ref)}','${esc(doc.nombre||'')}','${esc(doc.formato||'')}')">👁 Ver</button>
           </div>`;
       });
     }
     cont.appendChild(wrap);
   });
+  if (buscandoDrive) {
+    const w = document.createElement('div');
+    w.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Buscando documentos antiguos en Drive…</div>`;
+    cont.appendChild(w);
+    if (docs.length === 0) return;
+  }
   if (docs.length === 0) {
     cont.innerHTML = `<div class="ficha-doc-empty" style="padding:28px;font-size:13px">
       <div style="font-size:32px;margin-bottom:8px">📂</div>
@@ -990,10 +1008,28 @@ async function abrirVisorDoc(url, nombre, formato) {
 
   titulo.textContent = nombre || 'Documento';
 
-  // URL de descarga directa (Drive)
-  const fileIdMatch = url.match(/\/file\/d\/([^/]+)/);
-  const fileId      = fileIdMatch ? fileIdMatch[1] : null;
-  btnDl.href        = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+  // ── Documento en Supabase: enlace firmado directo (rápido) ──
+  const esSupabase = String(url).startsWith('sb:');
+  let fileId = null, urlDirecta = null;
+  if (esSupabase) {
+    const path = url.slice(3);
+    loading.classList.add('active');
+    modal.classList.add('visible');
+    try {
+      [urlDirecta, btnDl.href] = await Promise.all([docsUrlFirmada(path), docsUrlFirmada(path, nombre || 'documento')]);
+    } catch (e) {
+      loading.classList.remove('active');
+      pdfCont.innerHTML = '';
+      _visorMostrarErrorPdf('No se pudo abrir el documento: ' + esc(e.message), '#', null);
+      return;
+    }
+    _visorPrintUrl = urlDirecta;
+  } else {
+    // URL de descarga directa (Drive)
+    const fileIdMatch = url.match(/\/file\/d\/([^/]+)/);
+    fileId      = fileIdMatch ? fileIdMatch[1] : null;
+    btnDl.href  = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+  }
   btnDl.download    = nombre || 'documento';
 
   // Resetear UI
@@ -1009,30 +1045,43 @@ async function abrirVisorDoc(url, nombre, formato) {
   if (isPdf) {
     pdfControls.style.display = 'flex';
     if (zoomLabel) zoomLabel.textContent = '100%';
-    await _visorRenderPdf(url, fileId);
+    await _visorRenderPdf(url, fileId, urlDirecta);
   } else {
     imgControls.style.display = 'flex';
     imgEl.classList.add('active');
-    imgEl.src = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200` : url;
+    imgEl.src = urlDirecta || (fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200` : url);
     imgEl.onload  = () => loading.classList.remove('active');
     imgEl.onerror = () => loading.classList.remove('active');
   }
 }
 
-async function _visorRenderPdf(url, fileId) {
+async function _visorRenderPdf(url, fileId, urlDirecta) {
   const loading = document.getElementById('visor-loading');
   const pdfCont = document.getElementById('visor-pdf-container');
 
   // Esperar a que PDF.js esté disponible (carga async)
-  if (!window._pdfjs) {
-    await new Promise(r => setTimeout(r, 1000));
-  }
+  for (let i = 0; i < 25 && !window._pdfjs; i++) await new Promise(r => setTimeout(r, 200));
   if (!window._pdfjs) {
     _visorMostrarErrorPdf('PDF.js no disponible. Recarga la página e inténtalo de nuevo.', url, fileId);
     return;
   }
 
   const pdfjsLib = window._pdfjs;
+
+  // ── Supabase: PDF.js descarga el archivo directamente, por partes ──
+  if (urlDirecta) {
+    try {
+      _visorPdfDoc = await pdfjsLib.getDocument({ url: urlDirecta }).promise;
+      pdfCont.innerHTML = '';
+      pdfCont.classList.add('active');
+      await _visorRenderPaginas();
+      loading.classList.remove('active');
+    } catch (err) {
+      console.warn('[Visor PDF.js] Supabase:', err);
+      _visorMostrarErrorPdf('Error al abrir el PDF.', urlDirecta, null);
+    }
+    return;
+  }
 
   // ── Obtener el PDF a través del proxy GAS ──────────────────────────────────
   // El GAS corre con credenciales de desarrollador y tiene acceso a DriveApp,

@@ -948,6 +948,14 @@ function _fichaRenderDocs(docs, buscandoDrive) {
     }
     cont.appendChild(wrap);
   });
+  const fotos = docs.filter(d => d.categoria === 'fotos' && d.origen === 'supabase');
+  if (fotos.length && typeof docsHtmlFotos === 'function') {
+    const w = document.createElement('div');
+    w.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+    w.innerHTML = `<div class="ficha-docs-cat-title">📷 Fotos</div>` + docsHtmlFotos(fotos, _fichaMat, false);
+    cont.appendChild(w);
+    docsPintarMiniaturas(w);
+  }
   if (buscandoDrive) {
     const w = document.createElement('div');
     w.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Buscando documentos antiguos en Drive…</div>`;

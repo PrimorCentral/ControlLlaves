@@ -419,18 +419,54 @@ async function manejarPeticionSupabase(urlStr, options) {
     }
 
     case 'guardarFlota': {
+      // Upsert: inserta los vehículos nuevos y actualiza los existentes.
+      // Los campos de bloqueo e itv_aviso_enviado NO se tocan aquí: tienen
+      // sus propias acciones y así no se pisan con datos antiguos.
       const flota = params.flota || [];
-      for (const v of flota) {
-        const { error } = await sb.from('vehiculos').update({
-          grupo:        v.grupo || '',
-          tipo:         v.tipo  || '',
-          nota:         v.nota  || '',
-          orden:        (v.orden === '' || v.orden === undefined) ? null : v.orden,
-          restringido:  String(v.restringido || '').trim().toUpperCase() === 'SI',
-          itv_fin:      v.itv_fin || null
-        }).eq('matricula', v.matricula);
-        if (error) return { ok: false, error: error.message };
+      if (!flota.length) return { ok: true };
+      const SI = x => String(x || '').trim().toUpperCase() === 'SI' || x === true;
+      const fecha = x => (x && String(x).trim()) ? String(x).trim().substring(0, 10) : null;
+      const filas = flota.filter(v => v.matricula).map(v => ({
+        matricula:          v.matricula,
+        grupo:              v.grupo || '',
+        tipo:               v.tipo  || '',
+        nota:               v.nota  || '',
+        orden:              (v.orden === '' || v.orden === undefined || v.orden === null) ? null : Number(v.orden),
+        restringido:        SI(v.restringido),
+        itv_fin:            fecha(v.itv_fin),
+        archivado:          SI(v.archivado),
+        fecha_archivado:    SI(v.archivado) ? fecha(v.fecha_archivado) : null,
+        seguro_aseguradora: v.seguro_aseguradora || '',
+        seguro_nombre:      v.seguro_nombre || '',
+        seguro_cif:         v.seguro_cif || '',
+        seguro_poliza:      v.seguro_poliza || '',
+        seguro_vencimiento: fecha(v.seguro_vencimiento),
+        seguro_tel:         v.seguro_tel || '',
+        updated_at:         new Date().toISOString()
+      }));
+      const { error } = await sb.from('vehiculos').upsert(filas, { onConflict: 'matricula' });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+
+    case 'renombrarVehiculo': {
+      const anterior = String(params.anterior || '').trim();
+      const nueva    = String(params.nueva || '').trim().toUpperCase();
+      if (!anterior || !nueva) return { ok: false, error: 'Faltan datos para renombrar' };
+      if (anterior === nueva) return { ok: true };
+      const { data: existe, error: e1 } = await sb.from('vehiculos').select('matricula').eq('matricula', nueva).maybeSingle();
+      if (e1) return { ok: false, error: e1.message };
+      if (existe) return { ok: false, error: 'Ya existe un vehículo con la matrícula ' + nueva };
+      const { data, error } = await sb.from('vehiculos')
+        .update({ matricula: nueva, updated_at: new Date().toISOString() })
+        .eq('matricula', anterior).select('matricula');
+      if (error) {
+        if (error.code === '23503') {
+          return { ok: false, conHistorial: true, error: 'Este vehículo ya tiene registros (cuadrante, incidencias, repostajes o reasignaciones) con la matrícula ' + anterior + ', así que no se puede renombrar sin cambiar también ese historial.' };
+        }
+        return { ok: false, error: error.message };
       }
+      if (!data || !data.length) return { ok: false, error: 'No se encontró el vehículo ' + anterior + ' en la base de datos' };
       return { ok: true };
     }
 

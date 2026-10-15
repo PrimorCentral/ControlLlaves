@@ -527,11 +527,22 @@ async function sincronizarVehiculosConSheets() {
     flota.push({ grupo: g.nombre, matricula: v.matricula, tipo: v.tipo, nota: v.nota||'', orden: (v.orden ?? ''), restringido: v.restringido?'SI':'', itv_fin: v.itv_fin||'', itv_aviso_enviado: v.itv_aviso_enviado||'', archivado: v.archivado?'SI':'', fecha_archivado: v.fecha_archivado||'', bloqueado: v.bloqueado?'SI':'', motivo_bloqueo: v.motivo_bloqueo||'', bloqueado_por: v.bloqueado_por||'', fecha_bloqueo: v.fecha_bloqueo||'', seguro_aseguradora: v.seguro_aseguradora||'', seguro_nombre: v.seguro_nombre||'', seguro_cif: v.seguro_cif||'', seguro_poliza: v.seguro_poliza||'', seguro_vencimiento: v.seguro_vencimiento||'', seguro_tel: v.seguro_tel||'' });
   }));
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch(APPS_SCRIPT_URL, {
       method:'POST', headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({ accion:'guardarFlota', flota }), redirect:'follow'
     });
-  } catch(e) { console.warn('No se pudo sincronizar flota:', e); }
+    const json = await resp.json();
+    if (!json || !json.ok) {
+      console.warn('Fallo al guardar flota:', json && json.error);
+      mostrarToast('⚠️ No se pudo guardar la flota: ' + ((json && json.error) || 'error desconocido'), 'error');
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.warn('No se pudo sincronizar flota:', e);
+    mostrarToast('⚠️ No se pudo guardar la flota (sin conexión)', 'error');
+    return false;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════

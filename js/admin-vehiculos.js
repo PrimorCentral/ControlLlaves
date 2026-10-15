@@ -486,7 +486,7 @@ function editarVehiculo(gi, vi) {
         </div>
       </div>
       <div id="edv-aviso" style="display:none;margin-top:12px;font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;line-height:1.5;">
-        ⚠️ Al cambiar el nombre, los registros de días anteriores (historial, incidencias, documentos) seguirán guardados con el nombre antiguo.
+        ⚠️ El nombre solo se puede cambiar si el vehículo todavía no tiene registros (cuadrante, incidencias, repostajes o reasignaciones). Los documentos subidos seguirán guardados con el nombre antiguo.
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
         <button id="edv-cancel" style="padding:9px 18px;background:#f4f5f8;color:#556;border:none;border-radius:8px;font-family:Barlow,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancelar</button>
@@ -503,7 +503,7 @@ function editarVehiculo(gi, vi) {
   overlay.querySelector('#edv-cancel').onclick = () => overlay.remove();
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
-  overlay.querySelector('#edv-guardar').onclick = () => {
+  overlay.querySelector('#edv-guardar').onclick = async () => {
     const nuevaMat  = matInput.value.trim().toUpperCase();
     const nuevoTipo = overlay.querySelector('#edv-tipo').value;
     const nuevaNave = overlay.querySelector('#edv-nave').value.trim().toUpperCase();
@@ -524,7 +524,32 @@ function editarVehiculo(gi, vi) {
       }
     }
 
+    const btnG = overlay.querySelector('#edv-guardar');
+    btnG.disabled = true; btnG.textContent = 'Guardando…';
+    const restaurarBtn = () => { btnG.disabled = false; btnG.textContent = '💾 Guardar'; };
+
+    // El cambio de matrícula se hace primero en la base de datos (es la clave del vehículo)
+    if (cambiaMat) {
+      try {
+        const resp = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ accion: 'renombrarVehiculo', anterior: v.matricula, nueva: nuevaMat }), redirect: 'follow'
+        });
+        const json = await resp.json();
+        if (!json.ok) {
+          restaurarBtn();
+          appAlert(esc(json.error || 'Error desconocido'), { titulo: 'No se pudo cambiar el nombre', icono: '⚠️' });
+          return;
+        }
+      } catch (e) {
+        restaurarBtn();
+        mostrarToast('Error de conexión al cambiar el nombre', 'error');
+        return;
+      }
+    }
+
     const antes = `${v.matricula} · ${v.tipo} · ${GRUPOS[gi].nombre}`;
+    const matAnterior = v.matricula;
     v.matricula = nuevaMat;
     v.tipo      = nuevoTipo;
     v.nota      = nuevaNota;
@@ -540,9 +565,17 @@ function editarVehiculo(gi, vi) {
       g.vehiculos.push(v);
     }
 
+    // Mover también las claves del cuadrante en memoria (matricula|turno|fecha)
+    if (cambiaMat) {
+      Object.keys(datos || {}).forEach(k => {
+        if (k.startsWith(matAnterior + '|')) { datos[nuevaMat + k.slice(matAnterior.length)] = datos[k]; delete datos[k]; }
+      });
+    }
+
+    const ok = await sincronizarVehiculosConSheets();
+    if (!ok) { restaurarBtn(); renderAdminVehiculos(); renderAdminStats(); renderTabla(); return; }
     overlay.remove();
     renderAdminVehiculos(); renderAdminStats(); renderTabla();
-    sincronizarVehiculosConSheets();
     registrarAccion('VEHICULO', 'Editar vehículo', `${antes} → ${v.matricula} · ${v.tipo} · ${nuevaNave}`);
     mostrarToast(`✓ ${v.matricula} actualizado`, 'success');
   };
@@ -629,7 +662,7 @@ function abrirModalNuevoVehiculo() {
 function cerrarModalNuevoVehiculo() {
   document.getElementById('modal-nuevo-vehiculo').style.display = 'none';
 }
-function confirmarNuevoVehiculo() {
+async function confirmarNuevoVehiculo() {
   const mat     = document.getElementById('modal-add-matricula').value.trim().toUpperCase();
   const tipo    = document.getElementById('modal-add-tipo').value;
   const grupo   = document.getElementById('modal-add-grupo').value.trim().toUpperCase();
@@ -646,11 +679,27 @@ function confirmarNuevoVehiculo() {
   if (!itv_fin) { mostrarToast('La fecha de ITV es obligatoria', 'error'); return; }
   if (GRUPOS.some(g => g.vehiculos.some(v => v.matricula === mat))) { mostrarToast('Esa matrícula ya existe', 'error'); return; }
   let g = GRUPOS.find(g => g.nombre.toUpperCase() === grupo);
+  const grupoNuevo = !g;
   if (!g) { g = { nombre: grupo, vehiculos: [] }; GRUPOS.push(g); }
-  g.vehiculos.push({ matricula: mat, tipo, nota, restringido: false, itv_fin, seguro_aseguradora, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel });
+  const maxOrden = g.vehiculos.reduce((m, x) => Math.max(m, Number(x.orden) || 0), 0);
+  const nuevo = { matricula: mat, tipo, nota, orden: maxOrden + 1, restringido: false, itv_fin, seguro_aseguradora, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel };
+  g.vehiculos.push(nuevo);
+
+  const btn = document.querySelector('#modal-nuevo-vehiculo button[onclick*="confirmarNuevoVehiculo"]');
+  const txtBtn = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  const ok = await sincronizarVehiculosConSheets();
+  if (btn) { btn.disabled = false; btn.textContent = txtBtn; }
+
+  if (!ok) {
+    // No se guardó: lo quitamos para no mostrar un vehículo que no existe
+    g.vehiculos.splice(g.vehiculos.indexOf(nuevo), 1);
+    if (grupoNuevo && !g.vehiculos.length) GRUPOS.splice(GRUPOS.indexOf(g), 1);
+    return; // el modal sigue abierto con los datos para reintentar
+  }
   cerrarModalNuevoVehiculo();
   renderAdminVehiculos(); renderAdminStats(); renderTabla();
-  sincronizarVehiculosConSheets();
+  registrarAccion('VEHICULO', 'Añadir vehículo', `${mat} · ${tipo} · ${grupo}`);
   mostrarToast(`✓ ${mat} añadido`, 'success');
 }
 function añadirVehiculo() { abrirModalNuevoVehiculo(); }

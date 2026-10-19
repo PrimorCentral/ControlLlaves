@@ -1,0 +1,120 @@
+/* =====================================================================
+   FLOTA PRIMOR · css/mantenimiento.css
+   Pestaña "Mantenimiento" de la ficha, formularios y aviso del cuadrante.
+   Lógica en js/mantenimiento.js.
+   ===================================================================== */
+
+/* ── Aviso junto a la matrícula en el cuadrante ── */
+.mant-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 4px; border-radius: 50%;
+  vertical-align: middle; cursor: pointer; flex-shrink: 0;
+}
+.mant-badge.grave { background: #C93636; color: #fff; animation: mant-latido 1.8s ease-in-out infinite; }
+.mant-badge.aviso { background: #F59E0B; color: #fff; }
+.mant-badge:hover { transform: scale(1.15); }
+.mant-badge:focus-visible { outline: 2px solid #0E1726; outline-offset: 2px; }
+@keyframes mant-latido { 0%,100% { box-shadow: 0 0 0 0 rgba(201,54,54,.45); } 60% { box-shadow: 0 0 0 5px rgba(201,54,54,0); } }
+
+/* ── Pestaña de la ficha ── */
+.mant-panel { display: flex; flex-direction: column; gap: 14px; }
+.mant-sec-head { position: relative; }
+.mant-btn-head {
+  margin-left: auto; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.08); color: #fff;
+  border-radius: 7px; padding: 5px 11px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.mant-btn-head:hover { background: rgba(255,255,255,.18); }
+.mant-lista { padding: 6px 18px 12px; display: flex; flex-direction: column; }
+.mant-vacio { padding: 14px 0; font-size: 13px; color: #8899aa; font-style: italic; }
+.mant-km-actual { padding: 10px 0 4px; font-size: 13px; color: #3A4456; }
+.mant-km-actual span { color: #8899aa; }
+
+.mant-item { padding: 12px 0; border-bottom: 1px solid #eef1f7; display: flex; flex-direction: column; gap: 5px; }
+.mant-item:last-child { border-bottom: none; }
+.mant-item.cerrada { opacity: .78; }
+.mant-item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mant-item-tit { font-size: 14px; font-weight: 800; color: #0E1726; }
+.mant-item-fecha { margin-left: auto; font-size: 12px; font-weight: 700; color: #5B6576; font-family: 'JetBrains Mono', monospace; }
+.mant-item-txt { font-size: 14px; color: #0E1726; line-height: 1.45; }
+.mant-item-meta { font-size: 12px; color: #5B6576; }
+.mant-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.mant-btn {
+  border: 1px solid #D5DBE4; background: #fff; color: #0E1726; border-radius: 7px;
+  padding: 6px 12px; font-family: 'Barlow', sans-serif; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.mant-btn:hover { background: #F4F6F9; }
+.mant-btn.ok { background: #0E1726; border-color: #0E1726; color: #fff; }
+.mant-btn.ok:hover { background: #1F2C40; }
+
+.mant-pill { font-size: 11px; font-weight: 800; letter-spacing: .03em; padding: 2px 8px; border-radius: 6px; }
+.mant-pill.av-abierta    { background: #FDECEA; color: #B42318; }
+.mant-pill.av-taller     { background: #FFF4DD; color: #7A4800; }
+.mant-pill.av-reparada   { background: #E7F5EC; color: #166534; }
+.mant-pill.av-inmoviliza { background: #C93636; color: #fff; }
+.mant-pill.rev-vencida   { background: #C93636; color: #fff; }
+.mant-pill.rev-proxima   { background: #FFF4DD; color: #7A4800; }
+.mant-pill.rev-ok        { background: #E8EEFC; color: #1D3FA8; }
+
+.mant-historial { margin-top: 6px; border-top: 1px dashed #dde1ea; }
+.mant-historial > summary {
+  cursor: pointer; padding: 10px 0; font-size: 12.5px; font-weight: 700; color: #3A4456; list-style: none;
+}
+.mant-historial > summary::-webkit-details-marker { display: none; }
+.mant-historial > summary::before { content: '▸ '; }
+.mant-historial[open] > summary::before { content: '▾ '; }
+.mant-total { padding-top: 10px; border-top: 1px solid #eef1f7; font-size: 13px; color: #3A4456; text-align: right; }
+
+/* ── Formularios (por encima de la ficha) ── */
+.mant-modal-ov {
+  position: fixed; inset: 0; z-index: 10500; background: rgba(5,5,20,.6);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+}
+.mant-modal {
+  width: 480px; max-width: 100%; max-height: calc(100vh - 32px); overflow-y: auto;
+  background: #fff; border-radius: 16px; box-shadow: 0 32px 80px rgba(0,0,0,.45);
+  font-family: 'Barlow', sans-serif; animation: nv-in .2s cubic-bezier(.34,1.56,.64,1);
+}
+.mant-modal-head {
+  display: flex; align-items: center; gap: 12px; padding: 18px 22px;
+  background: #0E1726; color: #fff; font-size: 16px; font-weight: 800; border-radius: 16px 16px 0 0;
+}
+.mant-modal-ico {
+  width: 36px; height: 36px; border-radius: 9px; background: #C93636;
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.mant-modal-body { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 12px; }
+.mant-fila { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mant-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mant-lbl { font-size: 13px; font-weight: 700; color: #0E1726; }
+.mant-ayuda { font-size: 12px; color: #5B6576; }
+.mant-campo input, .mant-campo select, .mant-campo textarea {
+  width: 100%; box-sizing: border-box; padding: 9px 11px; border: 1.5px solid #D5DBE4; border-radius: 9px;
+  font-family: 'Barlow', sans-serif; font-size: 14px; font-weight: 600; color: #0E1726; background: #fff; outline: none;
+}
+.mant-campo textarea { resize: vertical; }
+.mant-campo input[type=file] { padding: 7px; font-weight: 500; }
+.mant-campo input:focus, .mant-campo select:focus, .mant-campo textarea:focus { border-color: #0E1726; box-shadow: 0 0 0 3px rgba(14,23,38,.1); }
+.mant-check {
+  display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 10px;
+  background: #FFF6F5; border: 1px solid #F5C9C5; font-size: 13px; color: #3A4456; cursor: pointer; line-height: 1.4;
+}
+.mant-check input { width: 18px; height: 18px; margin-top: 1px; accent-color: #C93636; flex-shrink: 0; }
+.mant-check strong { color: #8E1F1F; }
+.mant-prox { border: 1px solid #E3E7EE; border-radius: 10px; padding: 10px 12px 12px; margin: 0; }
+.mant-prox legend { font-size: 12px; font-weight: 700; color: #5B6576; padding: 0 6px; }
+.mant-resumen { padding: 10px 12px; background: #F4F6F9; border-radius: 9px; font-size: 13.5px; color: #0E1726; }
+.mant-nota { padding: 10px 12px; background: #E7F5EC; border-radius: 9px; font-size: 13px; color: #166534; }
+.mant-modal-error { padding: 10px 12px; background: #FDECEA; border-radius: 9px; font-size: 13px; font-weight: 600; color: #8E1F1F; }
+.mant-modal-error[hidden] { display: none; }
+.mant-modal-pie { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.mant-btn-cancel, .mant-btn-ok {
+  padding: 10px 20px; border-radius: 9px; border: none; cursor: pointer;
+  font-family: 'Barlow', sans-serif; font-size: 13.5px; font-weight: 800;
+}
+.mant-btn-cancel { background: #F0F2F5; color: #3A4456; }
+.mant-btn-ok { background: #C93636; color: #fff; }
+.mant-btn-ok:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 520px) { .mant-fila { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .mant-badge.grave { animation: none; } }

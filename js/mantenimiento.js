@@ -735,6 +735,13 @@ function mantPasarIncidenciaAAveria(inc) {
       ${bloqueadoPorEsta ? 'Ya está NO DISPONIBLE; volverá a estar disponible cuando se repare.' : 'Pasará a NO DISPONIBLE en el cuadrante hasta que se repare.'}</span></label>` +
     `<div class="mant-nota">Cuando la avería se marque como reparada, esta incidencia se resolverá sola.</div>`;
   _mantModal(`Pasar a avería · ${_fichaMatReal(inc.matricula)}`, '🔧', cuerpo, 'Pasar a avería', async form => {
+    // Evitar duplicados: una incidencia solo puede tener una avería
+    const { data: yaExiste } = await sb.from('averias').select('id').eq('incidencia_id', inc.id).limit(1);
+    if (yaExiste && yaExiste.length) {
+      _mantRefrescar(inc.matricula);
+      if (typeof cargarIncidenciasPendientesModal === 'function') cargarIncidenciasPendientesModal();
+      return 'Esta incidencia ya está pasada a avería.';
+    }
     const inmoviliza = form.inmoviliza.checked;
     let bloqueoAplicado = inmoviliza && !!(v && v.bloqueado);
     if (inmoviliza && v && !v.bloqueado) {
@@ -755,11 +762,13 @@ function mantPasarIncidenciaAAveria(inc) {
       reportado_por: inc.responsable || _mantUsuario(), incidencia_id: inc.id
     });
     if (error) return 'No se pudo guardar: ' + error.message;
-    await sb.from('incidencias').update({ tipo: 'averia' }).eq('id', inc.id);
+    // Solo se pone el tipo "Avería" si no tenía ninguno (un accidente sigue siendo accidente)
+    await sb.from('incidencias').update({ tipo: 'averia' }).eq('id', inc.id).is('tipo', null);
     registrarAccion('MANTENIMIENTO', 'Incidencia pasada a avería', `${inc.matricula} · ${(inc.descripcion || '').substring(0, 60)}`);
     mostrarToast('✓ Incidencia pasada a avería', 'success');
-    mantCargarResumen();
-    if (typeof cargarIncidenciasPendientesModal === 'function') cargarIncidenciasPendientesModal();
+    _mantRefrescar(inc.matricula);  // repinta la ficha (si está abierta) y el aviso del cuadrante
+    const modalInc = document.getElementById('modal-incidencias-pendientes');
+    if (modalInc && modalInc.classList.contains('open') && typeof cargarIncidenciasPendientesModal === 'function') cargarIncidenciasPendientesModal();
     return null;
   });
 }

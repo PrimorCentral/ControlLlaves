@@ -118,3 +118,79 @@
 .mant-btn-ok:disabled { opacity: .6; cursor: wait; }
 @media (max-width: 520px) { .mant-fila { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .mant-badge.grave { animation: none; } }
+
+/* ── Botón "Añadir Incidencia" y ventana "¿Qué quieres añadir?" ── */
+.btn-print-row.btn-anadir {
+  background: #f8f9fc; color: #8899aa; border-color: #dde1ea;
+  font-size: 10px; padding: 4px 8px; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.btn-print-row.btn-anadir:hover { background: #0E1726; color: #fff; border-color: #0E1726; }
+.btn-print-row.btn-anadir.solo-icono { padding: 4px 8px; font-size: 12px; line-height: 1; font-weight: 800; color: #3A4456; }
+.celda-incid { display: inline-flex; gap: 4px; align-items: center; }
+
+.mant-anadir-ov {
+  position: fixed; inset: 0; z-index: 4800; background: rgba(10,10,30,.62);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.mant-anadir {
+  width: 540px; max-width: 100%; background: #fff; border-radius: 18px; overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0,0,0,.45); font-family: 'Barlow', sans-serif;
+  animation: nv-in .25s cubic-bezier(.34,1.56,.64,1);
+}
+.mant-anadir-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 20px 22px 18px; background: #0E1726; color: #fff;
+}
+.mant-anadir-tit { font-size: 19px; font-weight: 800; }
+.mant-anadir-mat {
+  margin-top: 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: #E9EDF3;
+}
+.mant-anadir-mat span { font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 600; color: #9AA6B8; letter-spacing: .04em; text-transform: uppercase; }
+.mant-anadir-x {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px; border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06); color: #fff; font-size: 14px; cursor: pointer;
+}
+.mant-anadir-x:hover { background: rgba(255,255,255,.16); }
+.mant-anadir-body { padding: 20px 22px 6px; }
+.mant-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.mant-tiles.cuatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mant-tiles.cuatro .mant-tile-emoji { font-size: 30px; }
+.mant-tiles.cuatro .mant-tile-tit { font-size: 14px; }
+.mant-tiles.cuatro .mant-tile-sub { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mant-tile {
+  aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; border: 1.5px solid #E3E7EE; border-radius: 14px; background: #fff; cursor: pointer;
+  font-family: inherit; color: #0E1726; text-align: center;
+  transition: border-color .15s, box-shadow .15s, transform .12s, background .15s;
+}
+.mant-tile:hover:not([disabled]), .mant-tile:focus-visible {
+  border-color: #0E1726; box-shadow: 0 8px 22px -8px rgba(14,23,38,.35); transform: translateY(-2px); outline: none;
+}
+.mant-tile:active:not([disabled]) { transform: translateY(0); }
+.mant-tile-emoji { font-size: 34px; line-height: 1; margin-bottom: 4px; }
+.mant-tile-tit { font-size: 15px; font-weight: 800; }
+.mant-tile-sub { font-size: 11.5px; font-weight: 600; color: #5B6576; }
+.mant-tile[disabled] { cursor: not-allowed; background: #F6F7F9; border-style: dashed; }
+.mant-tile[disabled] .mant-tile-emoji { filter: grayscale(1); opacity: .45; }
+.mant-tile[disabled] .mant-tile-tit { color: #8899aa; }
+.mant-tile[disabled] .mant-tile-sub { color: #B42318; }
+.mant-anadir-pie {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 14px 22px 18px;
+}
+.mant-anadir-link {
+  border: none; background: transparent; padding: 8px 4px; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 700; color: #1D3FA8;
+}
+.mant-anadir-link:hover { text-decoration: underline; }
+.mant-anadir-cancel {
+  padding: 10px 22px; border: none; border-radius: 9px; background: #F0F2F5; color: #3A4456;
+  font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer;
+}
+.mant-anadir-cancel:hover { background: #E3E7EE; }
+@media (max-width: 460px) {
+  .mant-tiles, .mant-tiles.cuatro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

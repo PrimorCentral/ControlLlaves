@@ -171,25 +171,50 @@ document.querySelectorAll('.turno-btn').forEach(b => {
 
   actualizarHeader();
   actualizarBloqueoCuadrante();
-  await inicializarAppsScriptUrl();
-  verificarConfig();
+
+  // ── Arranque con splash animado: cada paso real mueve el camión ──
+  const _pausa   = ms => new Promise(r => setTimeout(r, ms));
+  const _limite  = (p, ms, porDefecto) => Promise.race([p, _pausa(ms).then(() => porDefecto)]);
+  const PASO_MIN = 380; // ms mínimos por paso para que la animación se lea
+
+  setSplashProgreso(8);
+  setSplashMsg('Cargando configuración…');
+  await Promise.all([inicializarAppsScriptUrl(), _pausa(PASO_MIN)]);
+  marcarSplashPaso('config');
+  setSplashProgreso(35);
+
+  setSplashMsg('Conectando con el servidor…');
+  const [servidorOk] = await Promise.all([_limite(verificarConfig(), 4000, false), _pausa(PASO_MIN)]);
+  marcarSplashPaso('servidor', servidorOk ? 'hecho' : 'aviso');
+  setSplashProgreso(65);
   initBuscadorOperario();
 
-  // Ocultar splash rápido y mostrar pantalla login
-  setSplashMsg('Listo…');
-  const splashBar = document.getElementById('splash-bar');
-  if (splashBar) { splashBar.style.width = '100%'; splashBar.style.transition = 'width 0.2s'; }
-  // Mostrar versión en pantalla login
+  setSplashMsg('Comprobando versión…');
+  const _versionLista = window.APP_VERSION ? Promise.resolve(true)
+    : new Promise(r => document.addEventListener('app-version', () => r(true), { once: true }));
+  await Promise.all([_limite(_versionLista, 2000, false), _pausa(PASO_MIN)]);
+  marcarSplashPaso('version');
+  setSplashProgreso(88);
+
+  // Datos de la pantalla de login: versión y fecha de hoy
   const _vBadge = document.getElementById('login-version-badge');
   if (_vBadge) {
     const _vMeta = document.querySelector('meta[name="app-version"]');
     if (_vMeta) _vBadge.textContent = 'v ' + _vMeta.getAttribute('content');
   }
+  const _fHoy = document.getElementById('login-fecha-hoy');
+  if (_fHoy) _fHoy.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
 
-  setTimeout(() => {
-    ocultarSplash();
-    mostrarPantallaLogin(true);
-  }, 350);
+  marcarSplashPaso('acceso');
+  setSplashProgreso(100);
+  setSplashMsg(servidorOk ? 'Todo listo' : 'Listo · sin conexión con el servidor', servidorOk);
+
+  // Duración mínima total para que la animación no parezca un parpadeo
+  const _resta = 2200 - (Date.now() - SPLASH_INICIO);
+  await _pausa(Math.max(450, _resta));
+
+  mostrarPantallaLogin(true);
+  ocultarSplash();
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -429,15 +454,17 @@ async function verificarConfig() {
 
   if (!APPS_SCRIPT_URL) {
     setStatus(false, 'Servidor', 'No iniciado');
-    return;
+    return false;
   }
   setStatus(false, 'Servidor', 'Conectando...');
   try {
     const resp = await fetch(APPS_SCRIPT_URL + '?accion=ping', { redirect: 'follow' });
     await resp.json();
     setStatus(true, 'Servidor', 'Conectado');
+    return true;
   } catch(e) {
-    setStatus(false, 'Servidor', '⚠️ Sin conexion');
+    setStatus(false, 'Servidor', 'Sin conexión');
+    return false;
   }
 }
 

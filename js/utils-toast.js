@@ -10,18 +10,58 @@ function mostrarToast(msg, tipo='info') {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-function ocultarSplash() {
-  const splash = document.getElementById('splash');
-  if (!splash) return;
-  const bar = document.getElementById('splash-bar');
-  if (bar) { bar.style.width = '100%'; bar.style.transition = 'width 0.3s ease'; }
-  setTimeout(() => { if (splash) splash.classList.add('oculto'); }, 300);
-  setTimeout(() => { if (splash && splash.parentNode) splash.remove(); }, 750);
+// ── SPLASH ANIMADO ──────────────────────────────────────────────────────────
+// Momento en que empezó a verse el splash (para garantizar una duración mínima)
+const SPLASH_INICIO = Date.now();
+let _splashSaliendo = false;
+
+// Mueve la barra y el camión al porcentaje indicado (0–100)
+function setSplashProgreso(pct) {
+  pct = Math.max(0, Math.min(100, pct));
+  const bar    = document.getElementById('splash-bar');
+  const camion = document.getElementById('splash-camion');
+  if (bar)    bar.style.width = pct + '%';
+  if (camion) camion.style.left = `calc(${pct}% - ${pct * 0.28}px)`; // 28px = ancho del camión
 }
 
-function setSplashMsg(msg) {
+// Marca un paso del splash: 'config' | 'servidor' | 'version' | 'acceso'
+// estado: 'hecho' (check verde) o 'aviso' (amarillo, p.ej. sin conexión)
+function marcarSplashPaso(paso, estado = 'hecho') {
+  const el = document.getElementById('splash-paso-' + paso);
+  if (el) { el.classList.remove('hecho', 'aviso'); el.classList.add(estado); }
+}
+
+function ocultarSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash || _splashSaliendo) return;
+  _splashSaliendo = true;
+  setSplashProgreso(100);
+
+  const login = document.getElementById('pantalla-login');
+  const brand = login && !login.classList.contains('oculto') ? login.querySelector('.login-brand') : null;
+  const anchoBrand = brand ? brand.getBoundingClientRect().width : 0;
+  const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 1) Desvanece el contenido del splash
+  setTimeout(() => splash.classList.add('saliendo'), 250);
+
+  if (anchoBrand > 0 && window.innerWidth > 768 && !reducido) {
+    // 2) El fondo azul se encoge hasta ocupar exactamente el panel de marca del login
+    setTimeout(() => { splash.style.width = anchoBrand + 'px'; }, 550);
+    // 3) Se funde con el panel (mismo color) y desaparece
+    setTimeout(() => splash.classList.add('oculto'), 1250);
+    setTimeout(() => { if (splash.parentNode) splash.remove(); }, 1600);
+  } else {
+    setTimeout(() => splash.classList.add('oculto'), 550);
+    setTimeout(() => { if (splash.parentNode) splash.remove(); }, 900);
+  }
+}
+
+function setSplashMsg(msg, ok = false) {
   const el = document.getElementById('splash-msg');
-  if (el) el.textContent = msg;
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('ok', !!ok);
 }
 
 async function hashStr(s) {

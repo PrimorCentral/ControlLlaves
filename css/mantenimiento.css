@@ -245,3 +245,31 @@
 .mant-pill.incid-accidente { background: #C93636; color: #fff; }
 .mant-pill.incid-revision  { background: #E8EEFC; color: #1D3FA8; }
 .mant-pill.incid-otro, .mant-pill.incid-sin { background: #EEF0F5; color: #3A4456; }
+
+/* ── Pestaña Mantenimiento sin scroll: dos columnas que ocupan toda la ficha ──
+   Cada bloque se reparte el alto de su columna; solo si un bloque tiene
+   muchos registros, ese bloque (no la ficha) se desplaza por dentro. */
+#ficha-panel-mant.active { height: 100%; box-sizing: border-box; padding: 14px; overflow: hidden; }
+.mant-panel { height: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mant-panel > .ficha-docs-loading { grid-column: 1 / -1; }
+.mant-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.mant-sec { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.mant-sec .ficha-section-header { padding: 9px 12px; gap: 8px; flex-shrink: 0; }
+.mant-sec .ficha-section-title { letter-spacing: 1.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mant-sec .mant-btn-head { padding: 4px 9px; font-size: 11.5px; white-space: nowrap; flex-shrink: 0; }
+.mant-sec .mant-lista {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 2px 14px 8px;
+  scrollbar-width: thin; scrollbar-color: #dde1ea transparent;
+}
+.mant-sec .mant-item { padding: 9px 0; gap: 4px; }
+.mant-sec .mant-item-txt { font-size: 13.5px; }
+.mant-sec .mant-acciones { margin-top: 2px; }
+.mant-sec .mant-btn { padding: 5px 10px; font-size: 12px; }
+.mant-sec .mant-vacio { padding: 10px 0; }
+.mant-sec .mant-km-actual { padding: 8px 0 2px; font-size: 12.5px; }
+@media (max-width: 768px) {
+  #ficha-panel-mant.active { height: auto; overflow: visible; }
+  .mant-panel { height: auto; grid-template-columns: 1fr; }
+  .mant-sec { flex: none; }
+  .mant-sec .mant-lista { overflow: visible; }
+}

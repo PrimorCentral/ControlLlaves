@@ -239,3 +239,9 @@
   font-family: 'Barlow', sans-serif; font-size: 11.5px; font-weight: 800; cursor: pointer; white-space: nowrap;
 }
 .incid-btn-averia:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* ── Incidencias pendientes dentro de la pestaña Mantenimiento ── */
+.mant-pill.incid-averia    { background: #FDECEA; color: #B42318; }
+.mant-pill.incid-accidente { background: #C93636; color: #fff; }
+.mant-pill.incid-revision  { background: #E8EEFC; color: #1D3FA8; }
+.mant-pill.incid-otro, .mant-pill.incid-sin { background: #EEF0F5; color: #3A4456; }

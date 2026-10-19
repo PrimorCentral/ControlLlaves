@@ -353,36 +353,57 @@ function mantAbrirFormAveria(matricula) {
     const descripcion = form.descripcion.value.trim();
     if (!descripcion) { form.descripcion.focus(); return 'Describe qué le pasa al vehículo.'; }
     const inmoviliza = form.inmoviliza.checked;
-    const fila = {
-      matricula, descripcion, inmoviliza, estado: 'abierta',
-      fecha: form.fecha.value || _mantHoyISO(),
-      km: _mantNum(form.km.value),
-      reportado_por: _mantUsuario()
-    };
-    const { data, error } = await sb.from('averias').insert(fila).select('id').single();
-    if (error) return 'No se pudo guardar: ' + error.message;
+    const fecha = form.fecha.value || _mantHoyISO();
+    const bloquearAhora = inmoviliza && !!v && !v.bloqueado;
 
-    let avisoCorreo = null;
-    if (inmoviliza && v && !v.bloqueado) {
-      // Mismo bloqueo que desde el Panel Admin (incluye el correo de aviso)
-      const resp = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
-        body: JSON.stringify({ accion: 'bloquearVehiculo', matricula, motivo: 'Avería: ' + descripcion, bloqueado_por: _mantUsuario() })
-      });
-      const json = await resp.json();
-      if (json.ok) {
-        v.bloqueado = true; v.motivo_bloqueo = 'Avería: ' + descripcion; v.bloqueado_por = _mantUsuario();
-        v.fecha_bloqueo = json.fecha_bloqueo || new Date().toISOString();
-        await sb.from('averias').update({ bloqueo_aplicado: true }).eq('id', data.id);
-        avisoCorreo = json.emailError || null;
-        if (typeof renderAdminVehiculos === 'function') { try { renderAdminVehiculos(); renderAdminStats(); } catch (e) {} }
-      } else {
-        mostrarToast('Avería guardada, pero no se pudo bloquear el vehículo: ' + (json.error || ''), 'error');
-      }
+    // 1) Incidencia de tipo Avería: así sale en "Incidencias pendientes", se
+    //    envía el correo de aviso de siempre y, si no puede circular, se
+    //    bloquea el vehículo (todo en la misma llamada que el formulario de
+    //    incidencias).
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
+      body: JSON.stringify({
+        accion: 'registrarIncidencia',
+        bloquearVehiculo: bloquearAhora,
+        incidencia: {
+          timestamp: new Date().toISOString(), fecha, turno: turnoActual, matricula,
+          descripcion, responsable: _mantUsuario(), estado: 'PENDIENTE', tipo: 'averia'
+        }
+      })
+    });
+    const json = await resp.json();
+    if (!json.ok) return 'No se pudo guardar: ' + (json.error || 'error desconocido');
+
+    // 2) La avería, enlazada a esa incidencia
+    const { error } = await sb.from('averias').insert({
+      matricula, descripcion, inmoviliza, estado: 'abierta', fecha,
+      km: _mantNum(form.km.value),
+      reportado_por: _mantUsuario(),
+      bloqueo_aplicado: bloquearAhora,
+      incidencia_id: json.id || null
+    });
+    if (error) {
+      mostrarToast('La incidencia se registró, pero no se pudo guardar la avería en Mantenimiento: ' + error.message, 'error');
+      return null;
     }
+
+    // Reflejarlo ya en pantalla, sin esperar a recargar
+    if (bloquearAhora) {
+      v.bloqueado = true; v.motivo_bloqueo = descripcion; v.bloqueado_por = _mantUsuario();
+      v.fecha_bloqueo = new Date().toISOString();
+      if (typeof renderAdminVehiculos === 'function') { try { renderAdminVehiculos(); renderAdminStats(); } catch (e) {} }
+    }
+    if (typeof datos !== 'undefined' && fecha === fechaActual) {
+      const key = `${matricula}|${turnoActual}|${fechaActual}`;
+      if (!datos[key]) datos[key] = {};
+      if (!datos[key].incidencias) datos[key].incidencias = descripcion;
+    }
+    if (typeof renderTabla === 'function') renderTabla();
+    if (typeof actualizarBotonIncidenciasPendientes === 'function') actualizarBotonIncidenciasPendientes();
+    const avisoCorreo = json.emailError || null;
     registrarAccion('MANTENIMIENTO', 'Parte de avería', `${matricula} · ${inmoviliza ? 'NO PUEDE CIRCULAR · ' : ''}${descripcion.substring(0, 80)}`);
     mostrarToast(inmoviliza ? `⛔ Avería registrada · ${_fichaMatReal(matricula)} no disponible` : '✓ Avería registrada', inmoviliza ? 'error' : 'success');
-    if (avisoCorreo) appAlert(`La avería se ha registrado y el vehículo está bloqueado, pero no se pudo enviar el correo de aviso.<br><br><span style="color:#8899aa;font-size:12px">${esc(avisoCorreo)}</span>`, { titulo: 'Fallo al enviar correo electrónico', icono: '✉️⚠️' });
+    if (avisoCorreo) appAlert(`La avería se ha registrado, pero no se pudo enviar el correo de aviso.<br><br><span style="color:#8899aa;font-size:12px">${esc(avisoCorreo)}</span>`, { titulo: 'Fallo al enviar correo electrónico', icono: '✉️⚠️' });
     _mantRefrescar(matricula);
     if (typeof abrirFichaVehiculo === 'function' && _fichaMat === matricula) _mantActualizarCabeceraFicha(matricula);
     return null;

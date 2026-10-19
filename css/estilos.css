@@ -744,8 +744,9 @@
     /* Panel izquierdo: marca */
     .login-brand {
       flex: 1 1 52%; background: #0E1726; color: #E9EDF3;
-      display: flex; flex-direction: column; gap: 40px;
-      padding: 48px 56px; position: relative; overflow: hidden;
+      display: flex; flex-direction: column; gap: 36px;
+      padding: 48px 56px calc(min(340px, 38vh) + 20px); /* abajo deja sitio a la escena animada */
+      position: relative; overflow: hidden;
     }
     .login-brand::before {
       content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -772,7 +773,7 @@
     .login-brand-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px; max-width: 540px; }
     .login-brand-hero h1 {
       margin: 0; font-family: 'Barlow Condensed', 'Barlow', sans-serif; font-weight: 700;
-      font-size: clamp(40px, 4.2vw, 60px); line-height: 1.02; color: #fff;
+      font-size: clamp(34px, min(4.2vw, 6vh), 60px); line-height: 1.02; color: #fff;
     }
     .login-brand-hero p { margin: 0; font-size: 17px; line-height: 1.55; color: #B7C1D0; max-width: 460px; }
     .login-brand-fichas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 580px; }
@@ -787,6 +788,52 @@
     }
     .login-brand-ficha-mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
     .login-brand-badge-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #e84545; animation: blink 1.2s infinite; }
+
+    /* ── Escena animada del panel de marca: camión circulando de noche ──
+       Capas con distinta velocidad (efecto profundidad):
+       puerto al fondo (lento) · farolas y líneas de la carretera (rápido) · camión fijo con traqueteo */
+    .login-brand .login-escena {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 0;
+      height: min(340px, 38vh); overflow: hidden; pointer-events: none;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 90px);
+              mask-image: linear-gradient(to bottom, transparent 0, #000 90px);
+    }
+    .esc-lejos {
+      position: absolute; left: 0; right: 0; bottom: 64px; height: 170px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='170' viewBox='0 0 1200 170'%3E %3Cg fill='%2316243B'%3E %3Crect x='0' y='120' width='170' height='50'/%3E%3Crect x='20' y='105' width='120' height='15'/%3E %3Crect x='190' y='132' width='60' height='38'/%3E%3Crect x='252' y='132' width='60' height='38'/%3E%3Crect x='190' y='96' width='60' height='34'/%3E%3Crect x='252' y='110' width='60' height='20'/%3E %3Crect x='330' y='40' width='8' height='130'/%3E%3Crect x='380' y='40' width='8' height='130'/%3E%3Crect x='300' y='34' width='170' height='10'/%3E%3Crect x='300' y='44' width='10' height='14'/%3E%3Cpath d='M334 40 L360 10 L384 40Z'/%3E %3Crect x='490' y='140' width='120' height='30'/%3E%3Crect x='520' y='118' width='90' height='22'/%3E %3Crect x='640' y='70' width='70' height='100'/%3E%3Crect x='650' y='60' width='50' height='10'/%3E %3Crect x='730' y='126' width='58' height='44'/%3E%3Crect x='790' y='126' width='58' height='44'/%3E%3Crect x='730' y='92' width='58' height='32'/%3E %3Crect x='880' y='54' width='8' height='116'/%3E%3Crect x='926' y='54' width='8' height='116'/%3E%3Crect x='860' y='48' width='160' height='9'/%3E%3Cpath d='M884 54 L906 26 L930 54Z'/%3E %3Crect x='1040' y='110' width='160' height='60'/%3E%3Crect x='1070' y='96' width='100' height='14'/%3E %3C/g%3E %3Cg fill='%2322324D'%3E%3Crect x='30' y='132' width='6' height='4'/%3E%3Crect x='60' y='132' width='6' height='4'/%3E%3Crect x='110' y='140' width='6' height='4'/%3E%3Crect x='655' y='84' width='5' height='4'/%3E%3Crect x='675' y='100' width='5' height='4'/%3E%3Crect x='690' y='120' width='5' height='4'/%3E%3Crect x='1090' y='124' width='6' height='4'/%3E%3Crect x='1150' y='136' width='6' height='4'/%3E%3C/g%3E %3Cg fill='%23C93636' opacity='0.8'%3E%3Ccircle cx='364' cy='12' r='2'/%3E%3Ccircle cx='908' cy='28' r='2'/%3E%3Ccircle cx='675' cy='58' r='2'/%3E%3C/g%3E %3C/svg%3E") repeat-x 0 100% / 1200px 170px;
+      animation: esc-mover-lejos 50s linear infinite;
+    }
+    .esc-farolas {
+      position: absolute; left: 0; right: 0; bottom: 62px; height: 190px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='230' viewBox='0 0 300 230'%3E %3Cdefs%3E%3CradialGradient id='g'%3E%3Cstop offset='0' stop-color='%23FFC46B' stop-opacity='0.45'/%3E%3Cstop offset='1' stop-color='%23FFC46B' stop-opacity='0'/%3E%3C/radialGradient%3E %3ClinearGradient id='c' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23FFC46B' stop-opacity='0.16'/%3E%3Cstop offset='1' stop-color='%23FFC46B' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E %3Cpath d='M76 34 L46 230 L126 230Z' fill='url(%23c)'/%3E %3Ccircle cx='86' cy='34' r='26' fill='url(%23g)'/%3E %3Crect x='38' y='30' width='5' height='200' fill='%231E2C44'/%3E%3Cpath d='M40 32 Q40 24 52 24 L88 24' stroke='%231E2C44' stroke-width='4' fill='none'/%3E %3Crect x='76' y='26' width='22' height='6' rx='2' fill='%23FFE2A8'/%3E %3C/svg%3E") repeat-x 0 100% / 250px 190px;
+      animation: esc-mover-farolas 1.25s linear infinite;
+    }
+    .esc-carretera {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 66px;
+      background: linear-gradient(#0A111D, #070C16); border-top: 2px solid #243246;
+    }
+    .esc-lineas {
+      position: absolute; left: 0; right: 0; top: 30px; height: 6px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='6'%3E%3Crect x='0' y='1' width='46' height='4' rx='2' fill='%23FFFFFF' fill-opacity='0.32'/%3E%3C/svg%3E") repeat-x 0 0 / 90px 6px;
+      animation: esc-mover-lineas 0.45s linear infinite;
+    }
+    .esc-camion {
+      position: absolute; right: 4%; bottom: 26px; width: 600px; max-width: 78%;
+      animation: esc-vaiven 7s ease-in-out infinite;
+    }
+    .esc-camion svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .esc-carroceria { animation: esc-traqueteo 0.5s ease-in-out infinite; }
+    .esc-rueda { transform-box: fill-box; transform-origin: center; animation: spin 0.35s linear infinite; }
+    @keyframes esc-mover-lejos   { to { background-position-x: -1200px; } }
+    @keyframes esc-mover-farolas { to { background-position-x: -250px; } }
+    @keyframes esc-mover-lineas  { to { background-position-x: -90px; } }
+    @keyframes esc-traqueteo { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+    @keyframes esc-vaiven    { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-28px); } }
+    /* Las fichas quedan por encima de la escena con fondo propio para leerse bien */
+    .login-brand-ficha { background: rgba(14,23,38,0.82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    @media (prefers-reduced-motion: reduce) {
+      .login-escena * { animation: none !important; }
+    }
 
     /* Panel derecho: formulario */
     .login-form-panel {
@@ -1227,7 +1274,7 @@
         flex: 0 0 auto !important; width: 100% !important;
         padding: 14px 20px !important; gap: 0 !important;
       }
-      .login-brand-hero, .login-brand-fichas { display: none !important; }
+      .login-brand-hero, .login-brand-fichas, .login-escena { display: none !important; }
       .login-form-panel { flex: 1; width: 100%; padding: 24px 20px; justify-content: center; }
       .login-form-title { font-size: 26px; }
       .login-preload-bar { display: none !important; }

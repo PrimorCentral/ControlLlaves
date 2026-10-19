@@ -966,29 +966,21 @@ function renderTabla() {
         // ── Campo INCIDENCIAS: solo botón "Ver" si tiene incidencia (solo editable si es hoy) ─
         if (col.key === 'incidencias') {
           const tieneIncid = val && val.trim();
+          // Botón "Añadir Incidencia" → ventana "¿Qué quieres añadir?" (js/mantenimiento.js):
+          // incidencia del turno, avería, fotos, documentos y, para admin, mantenimiento y revisión.
+          const btnAnadir = `<button class="btn-print-row btn-anadir" type="button" aria-haspopup="dialog"
+              onclick="event.stopPropagation();mantMenuAnadir(this,'${esc(v.matricula)}')"
+              title="Añadir incidencia, avería, fotos…">Añadir Incidencia</button>`;
           if (tieneIncid) {
-            // Siempre mostrar "Ver" si hay incidencia registrada
-            html += `<td><button class="btn-print-row" style="background:#fff8ec;color:#c47d00;border-color:#fde68a;font-size:10px;padding:4px 8px;"
+            // Siempre mostrar "Ver" si hay incidencia registrada, y al lado el menú
+            html += `<td><div class="celda-incid"><button class="btn-print-row" style="background:#fff8ec;color:#c47d00;border-color:#fde68a;font-size:10px;padding:4px 8px;"
               onclick="abrirModalIncidencia('${esc(v.matricula)}')"
               title="${esc(val)}">
               ⚠️ INCIDENCIA
-            </button></td>`;
-          } else if (esHoy && esBloqueado) {
-            // Vehículo bloqueado (NO DISPONIBLE): no tiene sentido añadir incidencias nuevas
-            html += `<td><button class="btn-print-row" disabled style="background:#f1f2f5;color:#b0b6c1;border-color:#e5e8ee;font-size:10px;padding:4px 8px;cursor:not-allowed;opacity:0.55;"
-              title="Vehículo bloqueado — no se pueden añadir incidencias">
-              Añadir Incidencia
-            </button></td>`;
-          } else if (esHoy) {
-            // Solo mostrar botón "+ Incidencia" si es hoy y no hay incidencia
-            html += `<td><button class="btn-print-row" style="background:#f8f9fc;color:#8899aa;border-color:#dde1ea;font-size:10px;padding:4px 8px;"
-              onclick="abrirModalIncidencia('${esc(v.matricula)}')"
-              title="Registrar incidencia">
-              Añadir Incidencia
-            </button></td>`;
+            </button><button class="btn-print-row btn-anadir solo-icono" type="button" aria-haspopup="dialog" aria-label="Añadir"
+              onclick="event.stopPropagation();mantMenuAnadir(this,'${esc(v.matricula)}')" title="Añadir avería, fotos…">+</button></div></td>`;
           } else {
-            // Cuadrante de otro día y sin incidencia: celda vacía
-            html += `<td></td>`;
+            html += `<td>${btnAnadir}</td>`;
           }
           return;
         }

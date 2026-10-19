@@ -231,13 +231,13 @@ async function docsEliminarSupabase(id, path) {
 }
 
 // ── Gestor de documentos y fotos (Panel Admin) ───────────────────────────────
-async function abrirGestorDocumentos(matricula, pestana) {
+async function abrirGestorDocumentos(matricula, pestana, opciones) {
   document.getElementById('overlay-docs')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'overlay-docs';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,20,0.72);z-index:6000;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;font-family:Barlow,sans-serif;color:#1a1a2e;';
   overlay._g = { mat: matricula, tab: pestana || 'docs', vista: 'carpetas', sel: null, docsSb: [], docsDrive: [], filas: [], sinTabla: false,
-                 cargando: true, nueva: { nombre: DOCS_CARPETA_DEFECTO, otro: false, comentario: '', files: [] }, ocupado: false };
+                 cargando: true, puedeBorrar: !(opciones && opciones.puedeBorrar === false), nueva: { nombre: DOCS_CARPETA_DEFECTO, otro: false, comentario: '', files: [] }, ocupado: false };
   overlay.innerHTML = `<section role="dialog" aria-modal="true" aria-label="Documentos y fotos de ${esc(matricula)}"
       style="width:1080px;max-width:100%;height:88vh;max-height:860px;background:#fff;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;"></section>`;
   document.body.appendChild(overlay);
@@ -335,7 +335,7 @@ function _gHtmlDocs(g, docs) {
           <div style="font-size:14px;color:#5b6475;margin-top:2px;">${_dFecha(d.fecha)} · ${esc(d.subido_por || '—')}${d.origen === 'drive' ? ' · <strong style="color:#93370d;">en Drive</strong>' : ''}</div>
         </div>
         <button type="button" onclick="abrirVisorDoc('${esc(d.ref)}','${esc(d.nombre || '')}','${esc(d.formato || '')}')" style="${_dBtn}height:42px;">Ver</button>
-        <button type="button" onclick="${borrar}" aria-label="Eliminar ${esc(d.nombre || '')}" style="${_dBtn}height:42px;color:#b42318;border-color:#fecdca;">Eliminar</button>
+        ${g.puedeBorrar ? `<button type="button" onclick="${borrar}" aria-label="Eliminar ${esc(d.nombre || '')}" style="${_dBtn}height:42px;color:#b42318;border-color:#fecdca;">Eliminar</button>` : ''}
       </div>`;
     });
   });
@@ -417,14 +417,14 @@ function _gHtmlCarpeta(g, c) {
         ${c.fotos.map(f => `<div style="position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#f1f3f6;">
           <button type="button" onclick="abrirVisorDoc('${esc(f.ref)}','${esc(f.nombre || '')}','imagen')" aria-label="Ver ${esc(f.nombre || 'foto')}" style="all:unset;display:block;width:100%;height:100%;cursor:zoom-in;">
             <img data-path="${esc(f.path)}" alt="${esc(f.nombre || '')}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></button>
-          <button type="button" data-acc="borrarFoto" data-id="${esc(f.id)}" data-path="${esc(f.path)}" aria-label="Eliminar foto"
-            style="position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:9px;border:none;background:rgba(17,17,34,.75);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;">${_dIco('papelera', 18, 2)}</button>
+          ${g.puedeBorrar ? `<button type="button" data-acc="borrarFoto" data-id="${esc(f.id)}" data-path="${esc(f.path)}" aria-label="Eliminar foto"
+            style="position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:9px;border:none;background:rgba(17,17,34,.75);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;">${_dIco('papelera', 18, 2)}</button>` : ''}
         </div>`).join('')}
       </div>
       ${c.fotos.length ? '' : `<p style="margin:0;color:#5b6475;font-size:16px;">Esta carpeta no tiene fotos todavía.</p>`}
-      <div style="border-top:1px solid #eef0f3;padding-top:16px;display:flex;justify-content:flex-end;">
+      ${g.puedeBorrar ? `<div style="border-top:1px solid #eef0f3;padding-top:16px;display:flex;justify-content:flex-end;">
         <button type="button" data-acc="borrarCarpeta" data-nombre="${esc(c.nombre)}" style="${_dBtn}height:42px;color:#b42318;border-color:#fecdca;">${_dIco('papelera', 18, 2)}Eliminar carpeta</button>
-      </div>
+      </div>` : ''}
     </div>`;
 }
 
@@ -509,12 +509,14 @@ async function _gAccion(overlay, acc, ds, btn) {
       return;
     }
     case 'borrarFoto': {
+      if (!g.puedeBorrar) return;
       if (!(await appConfirm('La foto se eliminará permanentemente.', { titulo: '¿Eliminar foto?', icono: '🗑️', labelOk: 'Sí, eliminar', peligro: true }))) return;
       try { await docsEliminarSupabase(ds.id, ds.path); mostrarToast('Foto eliminada', 'success'); await _gCargar(overlay); }
       catch (e) { mostrarToast('Error al eliminar: ' + e.message, 'error'); }
       return;
     }
     case 'borrarCarpeta': {
+      if (!g.puedeBorrar) return;
       const c = _gCarpetas(g).find(x => x.nombre === ds.nombre);
       if (!c) return;
       const n = c.fotos.length;

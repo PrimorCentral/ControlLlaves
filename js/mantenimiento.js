@@ -592,3 +592,119 @@ function _mantActualizarCabeceraFicha(matricula) {
 
 // Refresco periódico del aviso del cuadrante (por si otro equipo registra algo)
 setInterval(() => { if (usuarioActual && !document.hidden) mantCargarResumen(); }, 5 * 60 * 1000);
+
+// ── Avería registrada desde el formulario de incidencia ("Es una avería") ────
+async function mantRegistrarAveriaDesdeIncidencia(matricula, descripcion, bloqueado) {
+  try {
+    const { error } = await sb.from('averias').insert({
+      matricula, descripcion, inmoviliza: !!bloqueado, bloqueo_aplicado: !!bloqueado,
+      fecha: _mantHoyISO(), reportado_por: _mantUsuario()
+    });
+    if (error) throw error;
+    registrarAccion('MANTENIMIENTO', 'Parte de avería', `${matricula} · desde incidencia${bloqueado ? ' · NO PUEDE CIRCULAR' : ''} · ${descripcion.substring(0, 60)}`);
+    mantCargarResumen();
+  } catch (e) {
+    mostrarToast('La incidencia se guardó, pero no se pudo registrar la avería en Mantenimiento', 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// VENTANA "¿QUÉ QUIERES AÑADIR?" (botón "Añadir Incidencia" del cuadrante)
+// Permite registrar desde el cuadrante, sin entrar al Panel Admin:
+//   · Todos: incidencia del turno, avería, fotos y documentos (sin poder borrar).
+//   · Admin: además, mantenimiento realizado y programar revisión.
+// ════════════════════════════════════════════════════════════════════════════
+let _mantMenuAbierto = null;
+
+function _mantCerrarMenu(devolverFoco) {
+  if (!_mantMenuAbierto) return;
+  const b = _mantMenuAbierto._boton;
+  _mantMenuAbierto.remove();
+  _mantMenuAbierto = null;
+  if (devolverFoco && b && document.body.contains(b)) b.focus();
+}
+
+function mantMenuAnadir(boton, matricula) {
+  _mantCerrarMenu();
+  if (!usuarioActual) { mostrarToast('Inicia sesión para añadir', 'error'); return; }
+
+  const admin = _mantEsAdmin();
+  const v = _getVehiculo(matricula);
+  const d = (typeof getDato === 'function') ? getDato(matricula) : {};
+  const esHoy = typeof esFechaHoy === 'function' ? esFechaHoy() : true;
+  const yaTieneIncid = !!(d.incidencias && String(d.incidencias).trim());
+
+  let motivoIncid = '';
+  if (!esHoy) motivoIncid = 'Solo hoy';
+  else if (v?.bloqueado) motivoIncid = 'No disponible';
+  else if (yaTieneIncid) motivoIncid = 'Ya registrada';
+
+  const tile = (accion, emoji, titulo, sub, deshabilitado) =>
+    `<button type="button" class="mant-tile" data-accion="${accion}"${deshabilitado ? ' disabled' : ''}>
+      <span class="mant-tile-emoji" aria-hidden="true">${emoji}</span>
+      <span class="mant-tile-tit">${titulo}</span>
+      <span class="mant-tile-sub">${sub}</span>
+    </button>`;
+
+  const ov = document.createElement('div');
+  ov.className = 'mant-anadir-ov';
+  ov.innerHTML = `
+    <div class="mant-anadir" role="dialog" aria-modal="true" aria-labelledby="mant-anadir-tit">
+      <div class="mant-anadir-head">
+        <div>
+          <div class="mant-anadir-tit" id="mant-anadir-tit">¿Qué quieres añadir?</div>
+          <div class="mant-anadir-mat">${esc(_fichaMatReal(matricula))}<span>${esc(v ? v.tipo + (v.nota ? ' · ' + v.nota : '') : '')}</span></div>
+        </div>
+        <button type="button" class="mant-anadir-x" data-accion="cerrar" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="mant-anadir-body">
+        <div class="mant-tiles${admin ? '' : ' cuatro'}">
+          ${tile('incidencia', '⚠️', 'Incidencia', motivoIncid || 'Del turno de hoy', !!motivoIncid)}
+          ${tile('averia', '🔧', 'Avería', 'Dar parte')}
+          ${tile('fotos', '📷', 'Fotos', 'Entrega, daños…')}
+          ${tile('docs', '📄', 'Documento', 'Permiso, ITV…')}
+          ${admin ? tile('mant', '🛠️', 'Mantenimiento', 'Ya realizado') + tile('revision', '📅', 'Revisión', 'Programar aviso') : ''}
+        </div>
+      </div>
+      <div class="mant-anadir-pie">
+        <button type="button" class="mant-anadir-link" data-accion="ficha">🗂️ Ver mantenimiento del vehículo</button>
+        <button type="button" class="mant-anadir-cancel" data-accion="cerrar">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  ov._boton = boton;
+  _mantMenuAbierto = ov;
+
+  ov.addEventListener('click', e => {
+    if (e.target === ov) { _mantCerrarMenu(true); return; }
+    const b = e.target.closest('[data-accion]');
+    if (!b || b.disabled) return;
+    const accion = b.dataset.accion;
+    _mantCerrarMenu(accion === 'cerrar');
+    switch (accion) {
+      case 'incidencia': abrirModalIncidencia(matricula); break;
+      case 'averia':     mantAbrirFormAveria(matricula); break;
+      case 'fotos':      abrirGestorDocumentos(matricula, 'fotos', { puedeBorrar: admin }); break;
+      case 'docs':       abrirGestorDocumentos(matricula, 'docs', { puedeBorrar: admin }); break;
+      case 'mant':       mantAbrirFormMantenimiento(matricula); break;
+      case 'revision':   mantAbrirFormRevision(matricula); break;
+      case 'ficha':      abrirFichaVehiculo(matricula); fichaTabSwitch('mant'); break;
+    }
+  });
+  const primero = ov.querySelector('.mant-tile:not([disabled])');
+  if (primero) primero.focus();
+}
+
+// Escape cierra la ventana; con las flechas se pasa de una opción a otra
+window.addEventListener('keydown', e => {
+  if (!_mantMenuAbierto) return;
+  if (e.key === 'Escape') { e.stopImmediatePropagation(); e.preventDefault(); _mantCerrarMenu(true); return; }
+  if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+    const ops = [..._mantMenuAbierto.querySelectorAll('.mant-tile:not([disabled])')];
+    const i = ops.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const paso = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+    ops[(i + paso + ops.length) % ops.length].focus();
+  }
+}, true);

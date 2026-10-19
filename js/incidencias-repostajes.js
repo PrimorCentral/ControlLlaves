@@ -72,6 +72,14 @@ function abrirModalIncidencia(matricula) {
           </div>
         </label>` : ''}
 
+        ${textoActual ? '' : `<label style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border:1.5px solid #dde1ea;border-radius:11px;background:#f8f9fc;cursor:pointer;">
+          <input type="checkbox" id="incid-es-averia" style="width:18px;height:18px;accent-color:#1a1a2e;flex-shrink:0;cursor:pointer;">
+          <div>
+            <div style="font-size:12px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;">🔧 Es una avería</div>
+            <div style="font-size:10px;color:#8899aa;margin-top:1px;font-weight:600;">Se registra también en Mantenimiento (ficha del vehículo) para seguir su reparación</div>
+          </div>
+        </label>`}
+
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
           <button onclick="this.closest('div[style*=fixed]').remove()"
             style="padding:10px 22px;background:#f4f5f8;color:#667;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s;"
@@ -169,6 +177,14 @@ function abrirModalIncidencia(matricula) {
 
     // Guardar en hoja Incidencias (historial, correo y bloqueo si aplica, todo en una sola llamada)
     await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear);
+
+    // "Es una avería": se registra también en Mantenimiento (js/mantenimiento.js).
+    // Si además se bloqueó, la avería queda como causante del bloqueo para que
+    // el vehículo vuelva a estar disponible al marcarla como reparada.
+    const cbAveria = overlay.querySelector('#incid-es-averia');
+    if (cbAveria && cbAveria.checked && typeof mantRegistrarAveriaDesdeIncidencia === 'function') {
+      await mantRegistrarAveriaDesdeIncidencia(matricula, texto, quiereBloquear);
+    }
 
     // Si se bloqueó el vehículo, reflejarlo YA en memoria local para que
     // la fila se pinte en rojo sin esperar a un "Recargar" manual.

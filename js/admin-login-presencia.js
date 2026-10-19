@@ -1,7 +1,16 @@
 // ════════════════════════════════════════════════════════════════════════════
 // ADMIN LOGIN
 // ════════════════════════════════════════════════════════════════════════════
+// ¿El usuario que ha iniciado sesión tiene permiso de administrador?
+function usuarioEsAdmin() {
+  return !!usuarioActual && String(usuarioActual.admin || '').trim().toUpperCase() === 'SI';
+}
+
 function abrirLoginAdmin() {
+  // El botón del panel solo se muestra a los usuarios con permiso de admin,
+  // así que entran directamente, sin pedir contraseña.
+  if (usuarioEsAdmin()) { abrirAdmin(); return; }
+  // Seguridad: si alguien sin permiso llegara aquí, se sigue pidiendo la contraseña
   document.getElementById('inp-admin-password').value = '';
   document.getElementById('admin-error-msg').style.display = 'none';
   document.getElementById('modal-login-admin').classList.add('open');

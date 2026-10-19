@@ -1,6 +1,14 @@
 // ════════════════════════════════════════════════════════════════════════════
 // INCIDENCIAS
 // ════════════════════════════════════════════════════════════════════════════
+// Tipos de incidencia (columna incidencias.tipo)
+const INCID_TIPOS = [
+  { id: 'averia',    emoji: '🔧', txt: 'Avería' },
+  { id: 'accidente', emoji: '💥', txt: 'Accidente' },
+  { id: 'revision',  emoji: '📅', txt: 'Revisión' },
+  { id: 'otro',      emoji: '📝', txt: 'Otro' }
+];
+
 function abrirModalIncidencia(matricula) {
   const d = getDato(matricula);
   const textoActual = d.incidencias || '';
@@ -72,13 +80,13 @@ function abrirModalIncidencia(matricula) {
           </div>
         </label>` : ''}
 
-        ${textoActual ? '' : `<label style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border:1.5px solid #dde1ea;border-radius:11px;background:#f8f9fc;cursor:pointer;">
-          <input type="checkbox" id="incid-es-averia" style="width:18px;height:18px;accent-color:#1a1a2e;flex-shrink:0;cursor:pointer;">
-          <div>
-            <div style="font-size:12px;font-weight:800;color:#1a1a2e;letter-spacing:0.3px;">🔧 Es una avería</div>
-            <div style="font-size:10px;color:#8899aa;margin-top:1px;font-weight:600;">Se registra también en Mantenimiento (ficha del vehículo) para seguir su reparación</div>
+        ${textoActual ? '' : `<fieldset class="incid-tipo-grupo">
+          <legend>Tipo de incidencia *</legend>
+          <div class="incid-tipo-opciones">
+            ${INCID_TIPOS.map(t => `<label class="incid-tipo-op"><input type="radio" name="incid-tipo" value="${t.id}"><span><b aria-hidden="true">${t.emoji}</b>${t.txt}</span></label>`).join('')}
           </div>
-        </label>`}
+          <div class="incid-tipo-nota" id="incid-tipo-nota" hidden>🔧 Se registrará también como avería en Mantenimiento para seguir su reparación.</div>
+        </fieldset>`}
 
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
           <button onclick="this.closest('div[style*=fixed]').remove()"
@@ -111,10 +119,26 @@ function abrirModalIncidencia(matricula) {
     });
   }
 
+  // Nota "se registrará también como avería" al elegir ese tipo
+  overlay.querySelectorAll('input[name="incid-tipo"]').forEach(r => r.addEventListener('change', () => {
+    const nota = overlay.querySelector('#incid-tipo-nota');
+    if (nota) nota.hidden = r.value !== 'averia' || !r.checked;
+    const grupo = overlay.querySelector('.incid-tipo-grupo');
+    if (grupo) grupo.classList.remove('falta');
+  }));
+
   const btnGuardar = overlay.querySelector('#btn-guardar-incidencia');
   if (btnGuardar) btnGuardar.onclick = async () => {
     const texto = document.getElementById('incid-texto').value.trim();
     if (!texto) { mostrarToast('Escribe la incidencia antes de guardar', 'error'); return; }
+    const tipoSel = overlay.querySelector('input[name="incid-tipo"]:checked');
+    if (!tipoSel) {
+      const grupo = overlay.querySelector('.incid-tipo-grupo');
+      if (grupo) { grupo.classList.add('falta'); grupo.scrollIntoView({ block: 'nearest' }); }
+      mostrarToast('Elige el tipo de incidencia', 'error');
+      return;
+    }
+    const tipoIncid = tipoSel.value;
 
     // ── Confirmar bloqueo si está activado ──
     const quiereBloquear = cbBloqueo && cbBloqueo.checked;
@@ -176,14 +200,14 @@ function abrirModalIncidencia(matricula) {
     datos[key].incidencias = texto;
 
     // Guardar en hoja Incidencias (historial, correo y bloqueo si aplica, todo en una sola llamada)
-    await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear);
+    const resInc = await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear, tipoIncid);
 
-    // "Es una avería": se registra también en Mantenimiento (js/mantenimiento.js).
-    // Si además se bloqueó, la avería queda como causante del bloqueo para que
-    // el vehículo vuelva a estar disponible al marcarla como reparada.
-    const cbAveria = overlay.querySelector('#incid-es-averia');
-    if (cbAveria && cbAveria.checked && typeof mantRegistrarAveriaDesdeIncidencia === 'function') {
-      await mantRegistrarAveriaDesdeIncidencia(matricula, texto, quiereBloquear);
+    // Tipo "Avería": se registra también en Mantenimiento (js/mantenimiento.js),
+    // enlazada a esta incidencia. Si además se bloqueó, la avería queda como
+    // causante del bloqueo: al marcarla como reparada el vehículo vuelve a estar
+    // disponible y la incidencia se resuelve sola.
+    if (tipoIncid === 'averia' && typeof mantRegistrarAveriaDesdeIncidencia === 'function') {
+      await mantRegistrarAveriaDesdeIncidencia(matricula, texto, quiereBloquear, resInc && resInc.id);
     }
 
     // Si se bloqueó el vehículo, reflejarlo YA en memoria local para que
@@ -207,7 +231,7 @@ function abrirModalIncidencia(matricula) {
   };
 }
 
-async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
+async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear, tipo) {
   if (!APPS_SCRIPT_URL) return;
   try {
     const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
@@ -224,7 +248,8 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
           matricula:   matricula,
           descripcion: descripcion,
           responsable: respUsuario,
-          estado:      'PENDIENTE'
+          estado:      'PENDIENTE',
+          tipo:        tipo || null
         }
       })
     });
@@ -237,6 +262,7 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear) {
     } else {
       registrarAccion('INCIDENCIA', 'Registrar incidencia', `${matricula} · ${descripcion.substring(0,80)}`);
     }
+    return json;
   } catch(e) { console.warn('No se pudo guardar incidencia en Sheets:', e); }
   actualizarBotonIncidenciasPendientes();
 }

@@ -686,13 +686,19 @@ async function cargarIncidenciasPendientesModal() {
     const filtradas = incidPendModalState.verResueltas
       ? todas.filter(f => (f.estado||'').toUpperCase() === 'COMPLETADO')
       : todas.filter(f => (f.estado||'').toUpperCase() !== 'COMPLETADO');
-    renderListaIncidenciasPendientes(filtradas, incidPendModalState.verResueltas);
+    // Averías enlazadas (js/mantenimiento.js) para mostrar su estado en cada tarjeta
+    let averiasMap = {};
+    try {
+      if (typeof mantAveriasPorIncidencia === 'function') averiasMap = await mantAveriasPorIncidencia(filtradas.map(f => f.id));
+    } catch (e) { /* sin enlace de averías: la lista se muestra igual */ }
+    renderListaIncidenciasPendientes(filtradas, incidPendModalState.verResueltas, averiasMap);
   } catch (e) {
     lista.innerHTML = `<div style="text-align:center;padding:40px;color:#e84545;font-size:13px">⚠️ Error al cargar las incidencias</div>`;
   }
 }
 
-function renderListaIncidenciasPendientes(filas, modoResueltas) {
+function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
+  averiasMap = averiasMap || {};
   const lista = document.getElementById('incidencias-pendientes-lista');
   const subt  = document.getElementById('incid-pend-subtitulo');
 
@@ -745,6 +751,23 @@ function renderListaIncidenciasPendientes(filas, modoResueltas) {
 
     const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
 
+    // Tipo de incidencia (editable mientras está pendiente) y avería enlazada
+    const tiposIncid = (typeof MANT_TIPOS_INCID !== 'undefined') ? MANT_TIPOS_INCID : {};
+    let tipoIncidHtml = '';
+    if (!modoResueltas && f.id) {
+      tipoIncidHtml = `<select class="incid-tipo-sel${f.tipo ? '' : ' sin-tipo'}" aria-label="Tipo de incidencia" data-tipo="${esc(f.tipo || '')}"
+          onchange="this.classList.toggle('sin-tipo', !this.value); mantCambiarTipoIncidencia('${esc(f.id)}', this.value, this)">
+          <option value=""${f.tipo ? '' : ' selected'}>Sin tipo</option>
+          ${Object.keys(tiposIncid).map(k => `<option value="${k}"${f.tipo === k ? ' selected' : ''}>${tiposIncid[k].emoji} ${tiposIncid[k].txt}</option>`).join('')}
+        </select>`;
+    } else if (f.tipo && tiposIncid[f.tipo]) {
+      tipoIncidHtml = `<span class="incid-tipo-pill">${tiposIncid[f.tipo].emoji} ${tiposIncid[f.tipo].txt}</span>`;
+    }
+    const av = averiasMap[f.id];
+    const estadosAv = { abierta: 'Abierta', en_taller: 'En taller', reparada: 'Reparada' };
+    const averiaHtml = av ? `<button type="button" class="incid-averia-pill est-${esc(av.estado)}" title="Ver en Mantenimiento"
+        onclick="abrirFichaVehiculo('${esc(f.matricula)}');fichaTabSwitch('mant')">🔧 Avería · ${estadosAv[av.estado] || 'Abierta'}</button>` : '';
+
     let footer;
     if (modoResueltas) {
       let fechaResLabel = '—';
@@ -761,10 +784,14 @@ function renderListaIncidenciasPendientes(filas, modoResueltas) {
       footer = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap;">
           <div style="font-size:11px;color:#8899aa;">Registrada por: <strong style="color:#556">${esc(f.responsable||'—')}</strong></div>
-          <button id="btn-resolver-${idx}" onclick="mostrarFormResolverModal(${idx})"
-            style="padding:7px 16px;background:#eafaf1;color:#1a6635;border:1.5px solid #a9dfbf;border-radius:8px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;white-space:nowrap;">✓ Resolver</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${!av && f.id && typeof mantPasarIncidenciaAAveria === 'function' ? `<button type="button" class="incid-btn-averia" onclick="mantPasarIncidenciaAAveria(incidPendModalFilas[${idx}])">🔧 Pasar a avería</button>` : ''}
+            <button id="btn-resolver-${idx}" onclick="mostrarFormResolverModal(${idx})"
+              style="padding:7px 16px;background:#eafaf1;color:#1a6635;border:1.5px solid #a9dfbf;border-radius:8px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;white-space:nowrap;">✓ Resolver</button>
+          </div>
         </div>
         <div id="form-resolver-${idx}" style="display:none;margin-top:10px;padding:12px;background:#f9faff;border:1.5px solid #e3e8f5;border-radius:10px;">
+          ${av && av.estado !== 'reparada' ? `<div style="font-size:11.5px;color:#7A4800;background:#FFF4DD;border-radius:7px;padding:7px 10px;margin-bottom:8px;font-weight:600;">La avería enlazada seguirá abierta en Mantenimiento. Lo normal es marcarla como reparada allí: así esta incidencia se resuelve sola.</div>` : ''}
           <textarea id="comentario-resolver-${idx}" rows="2" placeholder="Comentario opcional al resolver la incidencia…"
             style="width:100%;border:1.5px solid #e0e4ee;border-radius:8px;padding:8px 10px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;resize:vertical;box-sizing:border-box;"></textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -782,6 +809,8 @@ function renderListaIncidenciasPendientes(filas, modoResueltas) {
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="background:#1a1a2e;color:#fff;border-radius:7px;padding:3px 11px;font-size:12.5px;font-weight:900;letter-spacing:0.3px;">${esc(f.matricula||'—')}</span>
             ${tipoPill}
+            ${tipoIncidHtml}
+            ${averiaHtml}
             <span style="font-size:11px;color:#8899aa;font-weight:600;">${esc(fechaLabel)} · Turno ${esc(turnoLabel)}</span>
           </div>
           ${badgeAntig}

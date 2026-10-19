@@ -354,7 +354,7 @@ function mantAbrirFormAveria(matricula) {
     if (!descripcion) { form.descripcion.focus(); return 'Describe qué le pasa al vehículo.'; }
     const inmoviliza = form.inmoviliza.checked;
     const fila = {
-      matricula, descripcion, inmoviliza,
+      matricula, descripcion, inmoviliza, estado: 'abierta',
       fecha: form.fecha.value || _mantHoyISO(),
       km: _mantNum(form.km.value),
       reportado_por: _mantUsuario()
@@ -420,7 +420,8 @@ async function mantAbrirFormReparada(matricula, id) {
     `</div>` +
     _mantCampo('Taller', `<input type="text" name="taller" value="${esc(a.taller || '')}" placeholder="Opcional">`) +
     _mantCampo('Qué se ha hecho', `<textarea name="comentario" rows="2" placeholder="Opcional"></textarea>`) +
-    (desbloquear ? `<div class="mant-nota">El vehículo volverá a estar <strong>disponible</strong> en el cuadrante.</div>` : '');
+    (desbloquear ? `<div class="mant-nota">El vehículo volverá a estar <strong>disponible</strong> en el cuadrante.</div>` : '') +
+    (a.incidencia_id ? `<div class="mant-nota">La incidencia del cuadrante de la que viene esta avería se marcará como <strong>resuelta</strong>.</div>` : '');
   _mantModal('Marcar avería como reparada', '✅', cuerpo, 'Marcar reparada', async form => {
     const { error: e1 } = await sb.from('averias').update({
       estado: 'reparada',
@@ -452,8 +453,25 @@ async function mantAbrirFormReparada(matricula, id) {
         mostrarToast('Sigue NO DISPONIBLE: tiene otra avería que le impide circular', 'info');
       }
     }
-    registrarAccion('MANTENIMIENTO', 'Avería reparada', `${matricula}${desbloqueado ? ' · vuelve a estar disponible' : ''} · ${a.descripcion.substring(0, 60)}`);
-    mostrarToast(desbloqueado ? `✓ Reparada · ${_fichaMatReal(matricula)} disponible de nuevo` : '✓ Avería reparada', 'success');
+    // Resolver la incidencia de la que viene la avería (si sigue pendiente)
+    let incidenciaResuelta = false;
+    if (a.incidencia_id) {
+      const comentario = form.comentario.value.trim();
+      const { data: incs, error: e3 } = await sb.from('incidencias').update({
+        estado: 'COMPLETADO',
+        resuelto_por: _mantUsuario(),
+        fecha_resolucion: new Date().toISOString(),
+        comentario_resolucion: 'Avería reparada' + (comentario ? ': ' + comentario : '')
+      }).eq('id', a.incidencia_id).neq('estado', 'COMPLETADO').select('id');
+      incidenciaResuelta = !e3 && incs && incs.length > 0;
+      if (incidenciaResuelta) {
+        if (typeof actualizarBotonIncidenciasPendientes === 'function') actualizarBotonIncidenciasPendientes();
+        const modalInc = document.getElementById('modal-incidencias-pendientes');
+        if (modalInc && modalInc.classList.contains('open') && typeof cargarIncidenciasPendientesModal === 'function') cargarIncidenciasPendientesModal();
+      }
+    }
+    registrarAccion('MANTENIMIENTO', 'Avería reparada', `${matricula}${desbloqueado ? ' · vuelve a estar disponible' : ''}${incidenciaResuelta ? ' · incidencia resuelta' : ''} · ${a.descripcion.substring(0, 60)}`);
+    mostrarToast((desbloqueado ? `✓ Reparada · ${_fichaMatReal(matricula)} disponible de nuevo` : '✓ Avería reparada') + (incidenciaResuelta ? ' · incidencia resuelta' : ''), 'success');
     _mantRefrescar(matricula);
     _mantActualizarCabeceraFicha(matricula);
     return null;
@@ -594,11 +612,11 @@ function _mantActualizarCabeceraFicha(matricula) {
 setInterval(() => { if (usuarioActual && !document.hidden) mantCargarResumen(); }, 5 * 60 * 1000);
 
 // ── Avería registrada desde el formulario de incidencia ("Es una avería") ────
-async function mantRegistrarAveriaDesdeIncidencia(matricula, descripcion, bloqueado) {
+async function mantRegistrarAveriaDesdeIncidencia(matricula, descripcion, bloqueado, incidenciaId) {
   try {
     const { error } = await sb.from('averias').insert({
-      matricula, descripcion, inmoviliza: !!bloqueado, bloqueo_aplicado: !!bloqueado,
-      fecha: _mantHoyISO(), reportado_por: _mantUsuario()
+      matricula, descripcion, estado: 'abierta', inmoviliza: !!bloqueado, bloqueo_aplicado: !!bloqueado,
+      fecha: _mantHoyISO(), reportado_por: _mantUsuario(), incidencia_id: incidenciaId || null
     });
     if (error) throw error;
     registrarAccion('MANTENIMIENTO', 'Parte de avería', `${matricula} · desde incidencia${bloqueado ? ' · NO PUEDE CIRCULAR' : ''} · ${descripcion.substring(0, 60)}`);
@@ -606,6 +624,74 @@ async function mantRegistrarAveriaDesdeIncidencia(matricula, descripcion, bloque
   } catch (e) {
     mostrarToast('La incidencia se guardó, pero no se pudo registrar la avería en Mantenimiento', 'error');
   }
+}
+
+// ── Incidencias ↔ averías (lista de Incidencias pendientes) ──────────────────
+const MANT_TIPOS_INCID = {
+  averia:    { emoji: '🔧', txt: 'Avería' },
+  accidente: { emoji: '💥', txt: 'Accidente' },
+  revision:  { emoji: '📅', txt: 'Revisión' },
+  otro:      { emoji: '📝', txt: 'Otro' }
+};
+
+/** Averías enlazadas a esas incidencias: { incidencia_id: { id, estado } } */
+async function mantAveriasPorIncidencia(ids) {
+  const res = {};
+  ids = (ids || []).filter(Boolean);
+  if (!ids.length) return res;
+  const { data, error } = await sb.from('averias').select('id, incidencia_id, estado').in('incidencia_id', ids);
+  if (!error) (data || []).forEach(a => { res[a.incidencia_id] = a; });
+  return res;
+}
+
+/** Cambia el tipo de una incidencia ya registrada (p. ej. las antiguas, sin tipo). */
+async function mantCambiarTipoIncidencia(incidenciaId, tipo, selectEl) {
+  const { error } = await sb.from('incidencias').update({ tipo: tipo || null }).eq('id', incidenciaId);
+  if (error) { mostrarToast('No se pudo cambiar el tipo: ' + error.message, 'error'); return; }
+  if (selectEl) selectEl.dataset.tipo = tipo || '';
+  mostrarToast('✓ Tipo actualizado', 'success');
+}
+
+/** Crea una avería a partir de una incidencia pendiente y las deja enlazadas. */
+function mantPasarIncidenciaAAveria(inc) {
+  if (!usuarioActual || !inc) return;
+  const v = _getVehiculo(inc.matricula);
+  const bloqueadoPorEsta = !!(v && v.bloqueado);
+  const cuerpo =
+    `<div class="mant-resumen">${esc(inc.descripcion || '')}</div>` +
+    `<div class="mant-item-meta" style="margin-top:-4px">Incidencia del ${_mantFecha(inc.fecha)} · ${esc(inc.responsable || '—')}</div>` +
+    `<label class="mant-check"><input type="checkbox" name="inmoviliza"${bloqueadoPorEsta ? ' checked' : ''}>
+      <span><strong>El vehículo no puede circular</strong><br>
+      ${bloqueadoPorEsta ? 'Ya está NO DISPONIBLE; volverá a estar disponible cuando se repare.' : 'Pasará a NO DISPONIBLE en el cuadrante hasta que se repare.'}</span></label>` +
+    `<div class="mant-nota">Cuando la avería se marque como reparada, esta incidencia se resolverá sola.</div>`;
+  _mantModal(`Pasar a avería · ${_fichaMatReal(inc.matricula)}`, '🔧', cuerpo, 'Pasar a avería', async form => {
+    const inmoviliza = form.inmoviliza.checked;
+    let bloqueoAplicado = inmoviliza && !!(v && v.bloqueado);
+    if (inmoviliza && v && !v.bloqueado) {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
+        body: JSON.stringify({ accion: 'bloquearVehiculo', matricula: inc.matricula, motivo: 'Avería: ' + (inc.descripcion || ''), bloqueado_por: _mantUsuario() })
+      });
+      const json = await resp.json();
+      if (!json.ok) return 'No se pudo bloquear el vehículo: ' + (json.error || '');
+      v.bloqueado = true; v.motivo_bloqueo = 'Avería: ' + (inc.descripcion || ''); v.bloqueado_por = _mantUsuario();
+      v.fecha_bloqueo = json.fecha_bloqueo || new Date().toISOString();
+      bloqueoAplicado = true;
+      if (typeof renderTabla === 'function') renderTabla();
+    }
+    const { error } = await sb.from('averias').insert({
+      matricula: inc.matricula, descripcion: inc.descripcion || '(sin descripción)', estado: 'abierta',
+      fecha: inc.fecha || _mantHoyISO(), inmoviliza, bloqueo_aplicado: bloqueoAplicado,
+      reportado_por: inc.responsable || _mantUsuario(), incidencia_id: inc.id
+    });
+    if (error) return 'No se pudo guardar: ' + error.message;
+    await sb.from('incidencias').update({ tipo: 'averia' }).eq('id', inc.id);
+    registrarAccion('MANTENIMIENTO', 'Incidencia pasada a avería', `${inc.matricula} · ${(inc.descripcion || '').substring(0, 60)}`);
+    mostrarToast('✓ Incidencia pasada a avería', 'success');
+    mantCargarResumen();
+    if (typeof cargarIncidenciasPendientesModal === 'function') cargarIncidenciasPendientesModal();
+    return null;
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

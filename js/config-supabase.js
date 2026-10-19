@@ -571,15 +571,16 @@ async function manejarPeticionSupabase(urlStr, options) {
 
     case 'registrarIncidencia': {
       const inc = params.incidencia || {};
-      const { error } = await sb.from('incidencias').insert({
+      const { data: incGuardada, error } = await sb.from('incidencias').insert({
         timestamp:   inc.timestamp || new Date().toISOString(),
         fecha:       inc.fecha,
         turno:       inc.turno,
         matricula:   inc.matricula,
         descripcion: inc.descripcion || '',
         responsable: inc.responsable || '',
-        estado:      inc.estado || 'PENDIENTE'
-      });
+        estado:      inc.estado || 'PENDIENTE',
+        tipo:        inc.tipo || null      // averia | accidente | revision | otro
+      }).select('id').single();
       if (error) return { ok: false, error: error.message };
 
       // Si se pidió bloquear el vehículo, actualizamos también su ficha
@@ -606,7 +607,7 @@ async function manejarPeticionSupabase(urlStr, options) {
           bloqueado:   !!params.bloquearVehiculo
         });
       }
-      return { ok: true, emailError };
+      return { ok: true, emailError, id: incGuardada ? incGuardada.id : null };
     }
 
     case 'resolverIncidencia': {

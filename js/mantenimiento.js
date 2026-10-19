@@ -32,6 +32,16 @@ const MANT_ESTADOS = {
 // Resumen por matrícula para el aviso del cuadrante:
 // { 'IVECO 5118 JZC': { averias: 1, inmoviliza: true, revVencida: false, revProxima: true } }
 let mantResumen = {};
+let _mantIncidsFicha = []; // incidencias pendientes mostradas en la ficha abierta
+
+/** Abre "Incidencias pendientes" filtrado por la matrícula. */
+function mantVerIncidenciasDe(matricula) {
+  if (typeof abrirModalIncidenciasPendientes !== 'function') return;
+  cerrarFichaVehiculo();
+  abrirModalIncidenciasPendientes();
+  const f = document.getElementById('incid-pend-filtro-matricula');
+  if (f) { f.value = matricula; if (typeof cargarIncidenciasPendientesModal === 'function') cargarIncidenciasPendientesModal(); }
+}
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 function _mantEsAdmin() {
@@ -94,14 +104,22 @@ function _mantEstadoRevision(r, kmActual) {
 // ── Resumen para el cuadrante ────────────────────────────────────────────────
 async function mantCargarResumen() {
   try {
-    const [av, rev] = await Promise.all([
+    const [av, rev, inc, enl] = await Promise.all([
       sb.from('averias').select('matricula, inmoviliza').neq('estado', 'reparada'),
-      sb.from('revisiones_programadas').select('matricula, fecha_limite, km_limite').eq('activa', true)
+      sb.from('revisiones_programadas').select('matricula, fecha_limite, km_limite').eq('activa', true),
+      sb.from('incidencias').select('id, matricula, tipo').neq('estado', 'COMPLETADO'),
+      sb.from('averias').select('incidencia_id').not('incidencia_id', 'is', null)
     ]);
     if (av.error || rev.error) return;
     const res = {};
-    const obtener = m => (res[m] = res[m] || { averias: 0, inmoviliza: false, revVencida: false, revProxima: false });
+    const obtener = m => (res[m] = res[m] || { averias: 0, inmoviliza: false, revVencida: false, revProxima: false, incid: 0, incidTipos: [] });
     (av.data || []).forEach(a => { const r = obtener(a.matricula); r.averias++; if (a.inmoviliza) r.inmoviliza = true; });
+    // Incidencias pendientes que no tienen avería (las que sí, ya cuentan como avería)
+    const conAveria = new Set(((enl && enl.data) || []).map(x => x.incidencia_id));
+    ((inc && !inc.error && inc.data) || []).filter(i => !conAveria.has(i.id)).forEach(i => {
+      const r = obtener(i.matricula); r.incid++;
+      if (i.tipo && !r.incidTipos.includes(i.tipo)) r.incidTipos.push(i.tipo);
+    });
 
     // Kilometraje actual solo de los vehículos con revisiones por km
     const conKm = [...new Set((rev.data || []).filter(r => r.km_limite != null).map(r => r.matricula))];
@@ -122,11 +140,15 @@ function mantIconoCuadrante(matricula) {
   const r = mantResumen[matricula];
   if (!r) return '';
   let cls = '', titulo = '';
-  if (r.averias) {
-    cls = 'grave';
-    titulo = r.averias === 1 ? 'Avería abierta' : `${r.averias} averías abiertas`;
-    if (r.revVencida) titulo += ' · revisión vencida';
-  } else if (r.revVencida) { cls = 'grave'; titulo = 'Revisión vencida'; }
+  const partes = [];
+  if (r.averias) partes.push(r.averias === 1 ? 'Avería abierta' : `${r.averias} averías abiertas`);
+  if (r.incid) {
+    const tipos = (r.incidTipos || []).map(t => (MANT_TIPOS_INCID[t] || {}).txt).filter(Boolean).join(', ');
+    partes.push((r.incid === 1 ? 'Incidencia pendiente' : `${r.incid} incidencias pendientes`) + (tipos ? ` (${tipos.toLowerCase()})` : ''));
+  }
+  if (r.revVencida) partes.push('revisión vencida');
+  if (r.averias || r.incid) { cls = 'grave'; titulo = partes.join(' · '); }
+  else if (r.revVencida) { cls = 'grave'; titulo = 'Revisión vencida'; }
   else if (r.revProxima)   { cls = 'aviso'; titulo = 'Revisión próxima'; }
   else return '';
   return `<span class="mant-badge ${cls}" title="${esc(titulo)} · ver mantenimiento" role="button" tabindex="0"
@@ -139,26 +161,32 @@ async function mantCargarFicha(matricula) {
   const cont = document.getElementById('ficha-mant-content');
   if (!cont) return;
   cont.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Cargando mantenimiento…</div>`;
-  let averias, mants, revs, kmActual;
+  let averias, mants, revs, kmActual, incids = [];
   try {
-    const [a, m, r, km] = await Promise.all([
+    const [a, m, r, km, inc] = await Promise.all([
       sb.from('averias').select('*').eq('matricula', matricula).order('fecha', { ascending: false }).order('created_at', { ascending: false }),
       sb.from('mantenimientos').select('*').eq('matricula', matricula).order('fecha', { ascending: false }).order('created_at', { ascending: false }),
       sb.from('revisiones_programadas').select('*').eq('matricula', matricula).eq('activa', true).order('fecha_limite', { ascending: true, nullsFirst: false }),
-      _mantKmActual(matricula)
+      _mantKmActual(matricula),
+      sb.from('incidencias').select('*').eq('matricula', matricula).neq('estado', 'COMPLETADO').order('timestamp', { ascending: false })
     ]);
     if (a.error || m.error || r.error) throw new Error((a.error || m.error || r.error).message);
     averias = a.data || []; mants = m.data || []; revs = r.data || []; kmActual = km;
+    // Las incidencias que ya tienen avería se ven en el bloque Averías
+    const conAveria = new Set(averias.map(x => x.incidencia_id).filter(Boolean));
+    incids = ((inc && !inc.error && inc.data) || []).filter(i => !conAveria.has(i.id));
   } catch (e) {
     if (_fichaMat === matricula)
       cont.innerHTML = `<div class="ficha-docs-loading" style="color:#C93636">No se pudo cargar el mantenimiento. Revisa la conexión.</div>`;
     return;
   }
   if (_fichaMat !== matricula) return; // se cambió de vehículo mientras cargaba
-  _mantRenderFicha(matricula, averias, mants, revs, kmActual);
+  _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids);
 }
 
-function _mantRenderFicha(matricula, averias, mants, revs, kmActual) {
+function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
+  incids = incids || [];
+  _mantIncidsFicha = incids;
   const cont  = document.getElementById('ficha-mant-content');
   const admin = _mantEsAdmin();
   const mat   = esc(matricula);
@@ -175,10 +203,40 @@ function _mantRenderFicha(matricula, averias, mants, revs, kmActual) {
   } else if (abiertas.length) {
     html += `<div class="ficha-alert warn"><span class="ficha-alert-icon">⚠️</span><span class="ficha-alert-text">Tiene <strong>${abiertas.length} avería${abiertas.length > 1 ? 's' : ''} abierta${abiertas.length > 1 ? 's' : ''}</strong>.</span></div>`;
   }
+  if (incids.length) {
+    html += `<div class="ficha-alert warn"><span class="ficha-alert-icon">🚨</span><span class="ficha-alert-text">Tiene <strong>${incids.length} incidencia${incids.length > 1 ? 's' : ''} pendiente${incids.length > 1 ? 's' : ''}</strong> de resolver.</span></div>`;
+  }
   if (vencidas) {
     html += `<div class="ficha-alert bad"><span class="ficha-alert-icon">🛠️</span><span class="ficha-alert-text"><strong>${vencidas} revisión${vencidas > 1 ? 'es' : ''} vencida${vencidas > 1 ? 's' : ''}</strong>.</span></div>`;
   } else if (proximas) {
     html += `<div class="ficha-alert warn"><span class="ficha-alert-icon">🛠️</span><span class="ficha-alert-text"><strong>${proximas} revisión${proximas > 1 ? 'es' : ''} próxima${proximas > 1 ? 's' : ''}</strong>.</span></div>`;
+  }
+
+  // ── Incidencias pendientes (accidentes, revisiones… que no son averías) ──
+  if (incids.length) {
+    html += `<div class="ficha-section">
+      <div class="ficha-section-header mant-sec-head">
+        <span class="ficha-section-icon">🚨</span><span class="ficha-section-title">Incidencias pendientes</span>
+        <button type="button" class="mant-btn-head" onclick="mantVerIncidenciasDe('${mat}')">Ver en Incidencias pendientes</button>
+      </div>
+      <div class="mant-lista">`;
+    incids.forEach((i, idx) => {
+      const t = MANT_TIPOS_INCID[i.tipo];
+      const dias = i.fecha ? -_mantDias(i.fecha) : null;
+      html += `<div class="mant-item">
+        <div class="mant-item-top">
+          <span class="mant-pill ${t ? 'incid-' + i.tipo : 'incid-sin'}">${t ? t.emoji + ' ' + t.txt : 'Sin tipo'}</span>
+          ${dias != null && dias > 0 ? `<span class="mant-item-meta">hace ${dias} día${dias === 1 ? '' : 's'}</span>` : ''}
+          <span class="mant-item-fecha">${_mantFecha(i.fecha)}</span>
+        </div>
+        <div class="mant-item-txt">${esc(i.descripcion || '—')}</div>
+        <div class="mant-item-meta">Registrada por ${esc(i.responsable || '—')}</div>
+        <div class="mant-acciones">
+          <button type="button" class="mant-btn" onclick="mantPasarIncidenciaAAveria(_mantIncidsFicha[${idx}])">🔧 Pasar a avería</button>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
   }
 
   // ── Averías ──

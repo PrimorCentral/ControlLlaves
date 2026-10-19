@@ -810,7 +810,8 @@ function abrirFichaVehiculo(matricula) {
   // Avería abierta / revisión vencida (js/mantenimiento.js)
   const _mr = (typeof mantResumen !== 'undefined') ? mantResumen[matricula] : null;
   if (_mr && _mr.averias) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🔧 Avería abierta</span>`;
-  else if (_mr && _mr.revVencida) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🛠️ Revisión vencida</span>`;
+  if (_mr && _mr.incid) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-warn">🚨 Incidencia pendiente</span>`;
+  if (_mr && !_mr.averias && _mr.revVencida) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🛠️ Revisión vencida</span>`;
   // ITV badge en header
   const itv = v?.itv_fin || '';
   if (itv) {

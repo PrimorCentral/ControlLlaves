@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Flota Primor">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- Cliente Supabase (sustituye a Google Apps Script como backend) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -104,16 +104,38 @@
 </div>
 
 <!-- SPLASH -->
-<div id="splash">
-  <div class="splash-logo">
-    <div class="splash-icon">🚛</div>
-    <div>
-      <div class="splash-title">GESTIÓN<br>DE FLOTA</div>
-      <div class="splash-sub">Primor · Control diario</div>
+<div id="splash" role="status" aria-live="polite">
+  <div class="splash-rejilla" aria-hidden="true"></div>
+  <div class="splash-brillo" aria-hidden="true"></div>
+  <div class="splash-contenido">
+    <div class="splash-logo">
+      <div class="splash-icon">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg>
+      </div>
+      <div class="splash-textos">
+        <div class="splash-title">GESTIÓN<br>DE FLOTA</div>
+        <div class="splash-sub">PRIMOR · CONTROL DIARIO</div>
+      </div>
+    </div>
+
+    <!-- Barra de progreso en forma de carretera: el camión avanza con la carga -->
+    <div class="splash-carretera" aria-hidden="true">
+      <div class="splash-bar-wrap"><div class="splash-bar" id="splash-bar"></div></div>
+      <div class="splash-lineas"></div>
+      <div class="splash-camion" id="splash-camion">
+        <svg width="28" height="24" viewBox="0 0 28 24" fill="none"><rect x="1" y="4" width="16" height="12" rx="2" fill="#fff"/><path d="M17 8h5l4 4v4h-9z" fill="#C93636"/><path d="M19 9.5h3l2.2 2.5H19z" fill="#0E1726"/><circle class="splash-rueda" cx="6.5" cy="18.5" r="3" fill="#0E1726" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 2"/><circle class="splash-rueda" cx="21" cy="18.5" r="3" fill="#0E1726" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 2"/></svg>
+      </div>
+    </div>
+
+    <div class="splash-msg" id="splash-msg">Iniciando…</div>
+
+    <div class="splash-pasos">
+      <span class="splash-paso" id="splash-paso-config"><i></i>Configuración</span>
+      <span class="splash-paso" id="splash-paso-servidor"><i></i>Servidor</span>
+      <span class="splash-paso" id="splash-paso-version"><i></i>Versión</span>
+      <span class="splash-paso" id="splash-paso-acceso"><i></i>Acceso</span>
     </div>
   </div>
-  <div class="splash-bar-wrap"><div class="splash-bar" id="splash-bar"></div></div>
-  <div class="splash-msg" id="splash-msg">Iniciando…</div>
 </div>
 
 <!-- SIDEBAR -->
@@ -257,15 +279,33 @@
 
   <!-- Panel izquierdo: marca -->
   <div class="login-brand">
-    <div class="login-brand-icon">🚛</div>
-    <div class="login-brand-title">GESTIÓN<br>DE FLOTA</div>
-    <div class="login-brand-sub">Primor</div>
-    <div style="margin-top:10px;font-size:10px;font-weight:700;color:#3b5bdb;background:#eef2ff;border:1px solid #c5d0ff;border-radius:6px;padding:3px 10px;display:inline-block;letter-spacing:0.5px;" id="login-version-badge">v —</div>
-    <div class="login-brand-badge">
-      <div class="login-brand-badge-dot"></div>
-      <div class="login-brand-status">
-        <strong id="login-status-title">Conectando…</strong>
-        <span id="login-status-sub">Verificando servidor</span>
+    <div class="login-brand-cabecera">
+      <div class="login-brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg>
+      </div>
+      <div>
+        <div class="login-brand-title">GESTIÓN DE FLOTA</div>
+        <div class="login-brand-sub">PRIMOR · CONTROL DIARIO</div>
+      </div>
+    </div>
+
+    <div class="login-brand-hero">
+      <h1>Cada llave,<br>cada vehículo,<br>cada turno.</h1>
+      <p>Asigna conductores, registra entregas y devoluciones y controla incidencias desde un único cuadrante.</p>
+    </div>
+
+    <div class="login-brand-fichas">
+      <div class="login-brand-ficha login-brand-badge">
+        <span class="login-brand-ficha-lbl" id="login-status-title">Servidor</span>
+        <span class="login-brand-ficha-val"><span class="login-brand-badge-dot"></span><span id="login-status-sub">Conectando…</span></span>
+      </div>
+      <div class="login-brand-ficha">
+        <span class="login-brand-ficha-lbl">Hoy</span>
+        <span class="login-brand-ficha-val" id="login-fecha-hoy">—</span>
+      </div>
+      <div class="login-brand-ficha">
+        <span class="login-brand-ficha-lbl">Versión</span>
+        <span class="login-brand-ficha-val login-brand-ficha-mono" id="login-version-badge">v —</span>
       </div>
     </div>
   </div>
@@ -273,14 +313,14 @@
   <!-- Panel derecho: formulario -->
   <div class="login-form-panel">
     <div class="login-form-box">
-      <div class="login-form-eyebrow">GESTOR DE FLOTA - LLAVES</div>
+      <div class="login-form-eyebrow">ACCESO RESPONSABLES</div>
       <div class="login-form-title">Bienvenido/a</div>
-      <div class="login-form-sub">Identifícate para acceder gestor de llaves</div>
+      <div class="login-form-sub">Identifícate para abrir el cuadrante del turno.</div>
 
-      <div class="login-error" id="mlr-error">Usuario o clave incorrectos</div>
+      <div class="login-error" id="mlr-error" role="alert">Usuario o clave incorrectos</div>
 
       <div class="login-field">
-        <label>Número de usuario</label>
+        <label for="mlr-num">Número de usuario</label>
         <input type="text" id="mlr-num" placeholder="Tu número de usuario" maxlength="10"
           inputmode="numeric" pattern="[0-9]*"
           autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
@@ -288,27 +328,31 @@
           onkeydown="if(event.key==='Enter') document.getElementById('mlr-clave').focus()">
       </div>
       <div class="login-field">
-        <label>Clave de acceso</label>
+        <label for="mlr-clave">Clave de acceso</label>
         <input type="text" class="inp-clave" id="mlr-clave" placeholder="••••••" maxlength="20"
           autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
           onkeydown="if(event.key==='Enter') loginResponsable()">
       </div>
 
-      <button class="login-btn" id="btn-mlr-entrar" onclick="loginResponsable()">Entrar →</button>
+      <button class="login-btn" id="btn-mlr-entrar" onclick="loginResponsable()">
+        Entrar al cuadrante
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
 
       <div class="login-loading" id="mlr-loading">
         <div class="login-loading-inner">
-          <svg width="16" height="16" viewBox="0 0 16 16" style="animation:spin 0.7s linear infinite;flex-shrink:0"><circle cx="8" cy="8" r="6" fill="none" stroke="#dde1e8" stroke-width="2.5"/><path d="M8 2 A6 6 0 0 1 14 8" fill="none" stroke="#e84545" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <svg width="16" height="16" viewBox="0 0 16 16" style="animation:spin 0.7s linear infinite;flex-shrink:0"><circle cx="8" cy="8" r="6" fill="none" stroke="#dde1e8" stroke-width="2.5"/><path d="M8 2 A6 6 0 0 1 14 8" fill="none" stroke="#C93636" stroke-width="2.5" stroke-linecap="round"/></svg>
           <span id="mlr-loading-msg">Verificando identidad…</span>
         </div>
       </div>
 
+      <div class="login-preload-bar">
+        <div class="login-preload-fill" id="login-preload-fill"></div>
+      </div>
+      <div class="login-preload-msg" id="login-preload-msg"></div>
 
+      <p class="login-ayuda">¿Problemas para entrar? Avisa a tu responsable de turno o a administración.</p>
     </div>
-    <div class="login-preload-bar" style="width:calc(100% - 0px);max-width:360px">
-      <div class="login-preload-fill" id="login-preload-fill"></div>
-    </div>
-    <div style="margin-top:10px;font-size:10px;color:#c0c8d4;font-weight:600;text-align:center;max-width:360px" id="login-preload-msg"></div>
   </div>
 
 </div>

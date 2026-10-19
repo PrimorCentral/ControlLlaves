@@ -748,6 +748,10 @@ function _matBadgeEstado(matricula) {
   return 'none';
 }
 function _matBadgeInfoHtml(matricula) {
+  const mant = (typeof mantIconoCuadrante === 'function') ? mantIconoCuadrante(matricula) : '';
+  return _matBadgeInfoHtmlBase(matricula) + mant;
+}
+function _matBadgeInfoHtmlBase(matricula) {
   const estado = _matBadgeEstado(matricula);
   if (estado === 'expirado') return `<span class="mat-badge-info has-alerta-expirado" title="Seguro o ITV caducados">!</span>`;
   if (estado === 'aviso')    return `<span class="mat-badge-info has-alerta-aviso" title="Seguro o ITV vencen en menos de 30 días">!</span>`;
@@ -781,6 +785,7 @@ function fichaTabSwitch(tab) {
   document.querySelector(`.ficha-tab[data-tab="${tab}"]`).classList.add('active');
   document.getElementById(`ficha-panel-${tab}`).classList.add('active');
   if (tab === 'docs') _fichaCargarDocs(_fichaMat);
+  if (tab === 'mant' && typeof mantCargarFicha === 'function') mantCargarFicha(_fichaMat);
 }
 
 function abrirFichaVehiculo(matricula) {
@@ -802,6 +807,10 @@ function abrirFichaVehiculo(matricula) {
   if (v?.archivado) {
     badgesEl.innerHTML += `<span class="ficha-meta-badge archivado">📦 Archivado</span>`;
   }
+  // Avería abierta / revisión vencida (js/mantenimiento.js)
+  const _mr = (typeof mantResumen !== 'undefined') ? mantResumen[matricula] : null;
+  if (_mr && _mr.averias) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🔧 Avería abierta</span>`;
+  else if (_mr && _mr.revVencida) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🛠️ Revisión vencida</span>`;
   // ITV badge en header
   const itv = v?.itv_fin || '';
   if (itv) {
@@ -888,6 +897,8 @@ function abrirFichaVehiculo(matricula) {
   // ── PANEL DOCS — se carga al abrir la pestaña ──
   document.getElementById('ficha-docs-content').innerHTML =
     `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Carga la pestaña para ver los documentos</div>`;
+  const _mantCont = document.getElementById('ficha-mant-content');
+  if (_mantCont) _mantCont.innerHTML = '';
 
   // Activar primera pestaña (seguro)
   document.querySelectorAll('.ficha-tab').forEach(t => t.classList.remove('active'));

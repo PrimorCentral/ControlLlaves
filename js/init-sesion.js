@@ -282,6 +282,7 @@ async function loginResponsable() {
 
       // Cargar todo (flota, conductores, cuadrante, etc.) ahora que el usuario ha entrado
       await cargarCuadrante();
+      if (typeof mantCargarResumen === 'function') mantCargarResumen(); // aviso de averías y revisiones
       actualizarBotonIncidenciasPendientes();
       mostrarToast(`✓ Bienvenido, ${loginResp.responsable.nombre.split(' ')[0]}`, 'success');
       registrarAccion('SESION', 'Login', `Acceso correcto · Usuario ${loginResp.responsable.numUsuario}`);

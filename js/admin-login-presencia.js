@@ -76,6 +76,7 @@ async function verificarPasswordAdmin() {
       document.getElementById('user-pill-sub').textContent  = 'Admin';
       mostrarPantallaLogin(false);
       await cargarCuadrante();
+      if (typeof mantCargarResumen === 'function') mantCargarResumen();
       iniciarSync();
       iniciarTemporizadorSesion();
       abrirAdmin();

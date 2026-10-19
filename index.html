@@ -1216,6 +1216,7 @@
                   <option value="CUADRANTE">📅 Cuadrante</option>
                   <option value="INCIDENCIA">⚠️ Incidencias</option>
                   <option value="VEHICULO">🚛 Vehículos</option>
+                  <option value="MANTENIMIENTO">🛠️ Mantenimiento</option>
                   <option value="REPOSTAJE">⛽ Repostajes</option>
                   <option value="ADMIN">👤 Admin</option>
                 </select>
@@ -2291,6 +2292,9 @@
         <button class="ficha-tab" data-tab="docs" onclick="fichaTabSwitch('docs')">
           <span class="ficha-tab-icon">📂</span>Documentos
         </button>
+        <button class="ficha-tab" data-tab="mant" onclick="fichaTabSwitch('mant')">
+          <span class="ficha-tab-icon">🛠️</span>Mantenimiento
+        </button>
       </div>
     </div>
 
@@ -2359,6 +2363,11 @@
         </div>
       </div>
 
+      <!-- PANEL MANTENIMIENTO (js/mantenimiento.js) -->
+      <div class="ficha-panel" id="ficha-panel-mant">
+        <div id="ficha-mant-content" class="mant-panel"></div>
+      </div>
+
     </div><!-- /ficha-body -->
   </div><!-- /ficha-box -->
 </div>
@@ -2413,5 +2422,7 @@
 <link rel="stylesheet" href="css/acerca-de.css">
 <script src="js/changelog.js"></script>
 <script src="js/acerca-de.js"></script>
+<link rel="stylesheet" href="css/mantenimiento.css">
+<script src="js/mantenimiento.js"></script>
 </body>
 </html>

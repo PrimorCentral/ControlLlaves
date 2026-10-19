@@ -194,3 +194,48 @@
 @media (max-width: 460px) {
   .mant-tiles, .mant-tiles.cuatro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ── Tipo de incidencia (formulario "Registrar incidencia") ── */
+.incid-tipo-grupo { margin: 14px 0 0; padding: 0; border: none; }
+.incid-tipo-grupo legend {
+  padding: 0; margin-bottom: 8px; font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #8899aa;
+}
+.incid-tipo-grupo.falta legend { color: #C93636; }
+.incid-tipo-grupo.falta .incid-tipo-op span { border-color: #F5C9C5; background: #FFF6F5; }
+.incid-tipo-opciones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.incid-tipo-op { position: relative; cursor: pointer; }
+.incid-tipo-op input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.incid-tipo-op span {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px;
+  border: 1.5px solid #dde1ea; border-radius: 10px; background: #fff;
+  font-size: 12px; font-weight: 800; color: #1a1a2e; text-align: center; transition: all .15s;
+}
+.incid-tipo-op span b { font-size: 20px; line-height: 1; font-weight: 400; }
+.incid-tipo-op:hover span { border-color: #1a1a2e; }
+.incid-tipo-op input:checked + span { border-color: #1a1a2e; background: #1a1a2e; color: #fff; box-shadow: 0 4px 12px rgba(26,26,46,.25); }
+.incid-tipo-op input:focus-visible + span { outline: 2px solid #C93636; outline-offset: 2px; }
+.incid-tipo-nota { margin-top: 8px; padding: 8px 11px; border-radius: 8px; background: #E8EEFC; color: #1D3FA8; font-size: 11.5px; font-weight: 600; }
+.incid-tipo-nota[hidden] { display: none; }
+@media (max-width: 460px) { .incid-tipo-opciones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ── Lista de Incidencias pendientes: tipo, avería enlazada y "Pasar a avería" ── */
+.incid-tipo-sel {
+  appearance: auto; height: 24px; padding: 0 6px; border-radius: 6px; border: 1.5px solid #c9d1dd;
+  background: #fff; color: #1a1a2e; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800; cursor: pointer;
+}
+.incid-tipo-sel.sin-tipo { border-style: dashed; color: #8899aa; }
+.incid-tipo-pill { background: #eef0f5; color: #1a1a2e; border-radius: 6px; padding: 2px 9px; font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.incid-averia-pill {
+  border: none; border-radius: 6px; padding: 3px 9px; font-family: 'Barlow', sans-serif;
+  font-size: 10.5px; font-weight: 800; cursor: pointer; white-space: nowrap;
+}
+.incid-averia-pill.est-abierta   { background: #FDECEA; color: #B42318; }
+.incid-averia-pill.est-en_taller { background: #FFF4DD; color: #7A4800; }
+.incid-averia-pill.est-reparada  { background: #E7F5EC; color: #166534; }
+.incid-averia-pill:hover { filter: brightness(.96); text-decoration: underline; }
+.incid-btn-averia {
+  padding: 7px 14px; background: #fff; color: #1a1a2e; border: 1.5px solid #c9d1dd; border-radius: 8px;
+  font-family: 'Barlow', sans-serif; font-size: 11.5px; font-weight: 800; cursor: pointer; white-space: nowrap;
+}
+.incid-btn-averia:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }

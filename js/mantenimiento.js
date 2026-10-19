@@ -196,28 +196,16 @@ function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
   const vencidas = revsEst.filter(r => r.estado === 'vencida').length;
   const proximas = revsEst.filter(r => r.estado === 'proxima').length;
 
-  // Avisos arriba
-  let html = '';
-  if (abiertas.some(a => a.inmoviliza)) {
-    html += `<div class="ficha-alert bad"><span class="ficha-alert-icon">⛔</span><span class="ficha-alert-text">Tiene una avería que <strong>impide circular</strong>.</span></div>`;
-  } else if (abiertas.length) {
-    html += `<div class="ficha-alert warn"><span class="ficha-alert-icon">⚠️</span><span class="ficha-alert-text">Tiene <strong>${abiertas.length} avería${abiertas.length > 1 ? 's' : ''} abierta${abiertas.length > 1 ? 's' : ''}</strong>.</span></div>`;
-  }
-  if (incids.length) {
-    html += `<div class="ficha-alert warn"><span class="ficha-alert-icon">🚨</span><span class="ficha-alert-text">Tiene <strong>${incids.length} incidencia${incids.length > 1 ? 's' : ''} pendiente${incids.length > 1 ? 's' : ''}</strong> de resolver.</span></div>`;
-  }
-  if (vencidas) {
-    html += `<div class="ficha-alert bad"><span class="ficha-alert-icon">🛠️</span><span class="ficha-alert-text"><strong>${vencidas} revisión${vencidas > 1 ? 'es' : ''} vencida${vencidas > 1 ? 's' : ''}</strong>.</span></div>`;
-  } else if (proximas) {
-    html += `<div class="ficha-alert warn"><span class="ficha-alert-icon">🛠️</span><span class="ficha-alert-text"><strong>${proximas} revisión${proximas > 1 ? 'es' : ''} próxima${proximas > 1 ? 's' : ''}</strong>.</span></div>`;
-  }
+  // Dos columnas que ocupan toda la ficha, sin scroll: a la izquierda lo que
+  // hay que resolver (incidencias y averías), a la derecha revisiones y mantenimientos.
+  let html = '<div class="mant-col">';
 
   // ── Incidencias pendientes (accidentes, revisiones… que no son averías) ──
   if (incids.length) {
-    html += `<div class="ficha-section">
+    html += `<div class="ficha-section mant-sec">
       <div class="ficha-section-header mant-sec-head">
         <span class="ficha-section-icon">🚨</span><span class="ficha-section-title">Incidencias pendientes</span>
-        <button type="button" class="mant-btn-head" onclick="mantVerIncidenciasDe('${mat}')">Ver en Incidencias pendientes</button>
+        <button type="button" class="mant-btn-head" onclick="mantVerIncidenciasDe('${mat}')">Ver todas</button>
       </div>
       <div class="mant-lista">`;
     incids.forEach((i, idx) => {
@@ -240,10 +228,10 @@ function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
   }
 
   // ── Averías ──
-  html += `<div class="ficha-section">
+  html += `<div class="ficha-section mant-sec">
     <div class="ficha-section-header mant-sec-head">
       <span class="ficha-section-icon">⚠️</span><span class="ficha-section-title">Averías</span>
-      <button type="button" class="mant-btn-head" onclick="mantAbrirFormAveria('${mat}')">+ Dar parte de avería</button>
+      <button type="button" class="mant-btn-head" onclick="mantAbrirFormAveria('${mat}')">+ Dar parte</button>
     </div>
     <div class="mant-lista">`;
   if (!abiertas.length) html += `<div class="mant-vacio">Sin averías abiertas.</div>`;
@@ -255,8 +243,10 @@ function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
   }
   html += `</div></div>`;
 
+  html += '</div><div class="mant-col">';
+
   // ── Próximas revisiones ──
-  html += `<div class="ficha-section">
+  html += `<div class="ficha-section mant-sec">
     <div class="ficha-section-header mant-sec-head">
       <span class="ficha-section-icon">📅</span><span class="ficha-section-title">Próximas revisiones</span>
       ${admin ? `<button type="button" class="mant-btn-head" onclick="mantAbrirFormRevision('${mat}')">+ Programar</button>` : ''}
@@ -283,7 +273,7 @@ function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
 
   // ── Mantenimientos realizados ──
   const total = mants.reduce((s, m) => s + (m.coste != null ? Number(m.coste) : 0), 0);
-  html += `<div class="ficha-section">
+  html += `<div class="ficha-section mant-sec">
     <div class="ficha-section-header mant-sec-head">
       <span class="ficha-section-icon">🛠️</span><span class="ficha-section-title">Mantenimientos realizados</span>
       ${admin ? `<button type="button" class="mant-btn-head" onclick="mantAbrirFormMantenimiento('${mat}')">+ Registrar</button>` : ''}
@@ -308,6 +298,7 @@ function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
   if (mants.length && total > 0) html += `<div class="mant-total">Gasto total registrado: <strong>${_mantEuros(total)}</strong></div>`;
   html += `</div></div>`;
 
+  html += '</div>';
   cont.innerHTML = html;
 }
 

@@ -1,0 +1,480 @@
+// ════════════════════════════════════════════════════════════════════════════
+// FLOTA PRIMOR · js/ficha-vehiculo.js — FICHA DEL VEHÍCULO
+//
+// Ventana que se abre al pulsar una matrícula. Menú lateral con:
+//   Resumen · Seguro · ITV · Documentos · Mantenimiento
+// · Resumen: bloqueo, tarjetas de ITV / Seguro / Mantenimiento, qué
+//   documentación falta y acciones rápidas.
+// · Mantenimiento: lo pinta js/mantenimiento.js (mantCargarFicha).
+// · Los datos del vehículo salen de GRUPOS (ya cargados); documentos,
+//   kilometraje y mantenimiento se piden a Supabase al abrir la ficha.
+// Funciones públicas (las usan otros archivos): abrirFichaVehiculo,
+// fichaTabSwitch, cerrarFichaVehiculo, fichaRefrescar, _fichaMatReal, _fichaMat.
+// ════════════════════════════════════════════════════════════════════════════
+
+let _fichaMat = '';          // matrícula de la ficha abierta
+let _fichaTab = 'resumen';   // sección activa
+let _fichaDatos = null;      // { docs, docsDrive, fotos, km, averias, revisiones, incid, cargado }
+
+// Documentos que debe tener todo vehículo (los que falten se avisan)
+const FICHA_DOCS_OBLIGATORIOS = [
+  { id: 'ficha_tecnica',       label: 'Ficha técnica' },
+  { id: 'permiso_circulacion', label: 'Permiso de circulación' },
+  { id: 'informe_itv',         label: 'Informe ITV' },
+  { id: 'poliza_seguro',       label: 'Póliza de seguro' }
+];
+const FICHA_DOC_LABELS = {
+  ficha_tecnica: 'Ficha técnica', permiso_circulacion: 'Permiso de circulación',
+  informe_itv: 'Informe ITV', poliza_seguro: 'Póliza de seguro', otros: 'Otros'
+};
+const FICHA_SECCIONES = [
+  { id: 'resumen', label: 'Resumen' },
+  { id: 'seguro',  label: 'Seguro' },
+  { id: 'itv',     label: 'ITV' },
+  { id: 'docs',    label: 'Documentos' },
+  { id: 'mant',    label: 'Mantenimiento' }
+];
+
+// ── Utilidades ───────────────────────────────────────────────────────────────
+function _fichaMatReal(m) {
+  const m1 = m.match(/\b(\d{4}\s?[A-Z]{3})\b/);
+  if (m1) return m1[1];
+  const m2 = m.match(/\b([A-Z]{1,2}\s?\d{3,4}\s?[A-Z]{1,2})\b/);
+  if (m2) return m2[1];
+  return m;
+}
+function _fvMarca(m) {
+  const real = _fichaMatReal(m);
+  const marca = m.replace(real, '').trim();
+  return marca && /^[A-ZÁÉÍÓÚÑ ]+$/i.test(marca) ? marca : '';
+}
+function _fvTipo(t) {
+  if (!t) return '';
+  let s = String(t).toLowerCase().replace(/\bcamion\b/, 'camión').replace(/\b(\d+)\s*p\b/, '$1 palets');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function _fvCap(t) {
+  t = String(t || '').toLowerCase();
+  return t.replace(/(^|\s|-)([a-záéíóúñ])/g, (a, b, c) => b + c.toUpperCase());
+}
+function _fvGrupo(matricula) {
+  for (const g of GRUPOS) if (g.vehiculos.some(x => x.matricula === matricula)) return g.nombre;
+  return '';
+}
+function _fvDias(iso) {
+  if (!iso) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return Math.ceil((new Date(String(iso).substring(0, 10) + 'T00:00:00') - hoy) / 86400000);
+}
+function _fvFecha(iso) {
+  if (!iso) return '—';
+  const p = String(iso).substring(0, 10).split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+}
+function _fvFechaHora(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' a las ' +
+           d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return ''; }
+}
+function _fvKm(n) { return n == null ? 'Sin datos' : Math.round(n).toLocaleString('es-ES') + ' km'; }
+function _fvEsAdmin() { return typeof usuarioEsAdmin === 'function' && usuarioEsAdmin(); }
+function _fvTel(t) { return String(t || '').replace(/[^\d+]/g, ''); }
+
+/** Estado de una fecha de caducidad: { cls: ok|aviso|mal|nada, txt, dias } */
+function _fvVencimiento(iso, avisoDias) {
+  const dias = _fvDias(iso);
+  if (dias === null) return { cls: 'nada', txt: 'Sin datos', dias: null };
+  if (dias < 0)  return { cls: 'mal', txt: 'Caducado', dias };
+  if (dias === 0) return { cls: 'mal', txt: 'Caduca hoy', dias };
+  if (dias <= (avisoDias || 30)) return { cls: 'aviso', txt: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, dias };
+  return { cls: 'ok', txt: 'En vigor', dias };
+}
+
+// ── Abrir / cerrar ───────────────────────────────────────────────────────────
+function abrirFichaVehiculo(matricula) {
+  _fichaMat = matricula;
+  _fichaTab = 'resumen';
+  _fichaDatos = { cargado: false, docs: [], docsDrive: [], fotos: [], km: null, averias: [], revisiones: [], incid: [] };
+  const modal = document.getElementById('modal-ficha-vehiculo');
+  modal.classList.add('visible');
+  _fichaPintarTodo();
+  _fichaCargarDatos(matricula);
+  setTimeout(() => { const b = modal.querySelector('.fv-cerrar'); if (b) b.focus(); }, 50);
+}
+
+function cerrarFichaVehiculo() {
+  document.getElementById('modal-ficha-vehiculo').classList.remove('visible');
+  _fichaMat = '';
+}
+
+/** Vuelve a pedir los datos de la ficha abierta (tras una avería, un documento…). */
+function fichaRefrescar(matricula) {
+  if (!_fichaMat || (matricula && matricula !== _fichaMat)) return;
+  _fichaCargarDatos(_fichaMat);
+}
+
+function fichaTabSwitch(tab) {
+  if (!FICHA_SECCIONES.some(s => s.id === tab)) tab = 'resumen';
+  _fichaTab = tab;
+  document.querySelectorAll('#modal-ficha-vehiculo .fv-nav-op').forEach(b => {
+    const activa = b.dataset.tab === tab;
+    b.classList.toggle('activa', activa);
+    b.setAttribute('aria-current', activa ? 'page' : 'false');
+  });
+  document.querySelectorAll('#modal-ficha-vehiculo .fv-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === tab));
+  if (tab === 'mant' && typeof mantCargarFicha === 'function') mantCargarFicha(_fichaMat);
+  else _fichaPintarPanel(tab);
+}
+
+// ── Carga de datos ───────────────────────────────────────────────────────────
+async function _fichaCargarDatos(matricula) {
+  const d = { cargado: true, docs: [], docsDrive: [], fotos: [], km: null, averias: [], revisiones: [], incid: [] };
+  const tareas = [];
+  // Documentos (Supabase) y, si sigue activo, los antiguos de Drive
+  tareas.push((async () => {
+    try {
+      const todos = await docsListarSupabase(matricula);
+      d.docs = todos.filter(x => x.categoria !== 'fotos');
+      d.fotos = todos.filter(x => x.categoria === 'fotos');
+      if (await docsDriveActivo()) {
+        try { d.docsDrive = await docsListarDrive(matricula, todos.map(x => x.drive_id).filter(Boolean)); } catch (e) {}
+      }
+    } catch (e) { d.errorDocs = true; }
+  })());
+  if (typeof _mantKmActual === 'function') tareas.push(_mantKmActual(matricula).then(km => { d.km = km; }).catch(() => {}));
+  tareas.push((async () => {
+    try {
+      const [av, rev, inc, enl] = await Promise.all([
+        sb.from('averias').select('id, descripcion, fecha, inmoviliza, estado, incidencia_id').eq('matricula', matricula).neq('estado', 'reparada').order('fecha', { ascending: false }),
+        sb.from('revisiones_programadas').select('*').eq('matricula', matricula).eq('activa', true),
+        sb.from('incidencias').select('id, descripcion, fecha, tipo').eq('matricula', matricula).neq('estado', 'COMPLETADO'),
+        sb.from('averias').select('incidencia_id').eq('matricula', matricula).not('incidencia_id', 'is', null)
+      ]);
+      d.averias = av.data || [];
+      d.revisiones = rev.data || [];
+      const conAveria = new Set((enl.data || []).map(x => x.incidencia_id));
+      d.incid = (inc.data || []).filter(i => !conAveria.has(i.id));
+    } catch (e) { /* sin conexión: el resumen sale sin estos datos */ }
+  })());
+  await Promise.all(tareas);
+  if (_fichaMat !== matricula) return; // se cerró o se cambió de vehículo
+  // Estado de cada revisión (vencida / próxima) con el kilometraje actual
+  if (typeof _mantEstadoRevision === 'function') {
+    d.revisiones = d.revisiones.map(r => Object.assign({}, r, _mantEstadoRevision(r, d.km)));
+  }
+  _fichaDatos = d;
+  _fichaPintarTodo();
+}
+
+// ── Pintado ──────────────────────────────────────────────────────────────────
+function _fichaPintarTodo() {
+  const v = _getVehiculo(_fichaMat);
+  if (!v) return;
+  _fichaPintarCabecera(v);
+  _fichaPintarNav(v);
+  // Paneles: el activo se pinta; Mantenimiento lo pinta mantenimiento.js
+  document.querySelectorAll('#modal-ficha-vehiculo .fv-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === _fichaTab));
+  if (_fichaTab === 'mant') { if (typeof mantCargarFicha === 'function' && !document.querySelector('#ficha-mant-content .mant-col')) mantCargarFicha(_fichaMat); }
+  else _fichaPintarPanel(_fichaTab);
+}
+
+function _fichaEstado(v) {
+  const d = _fichaDatos || {};
+  const itv = _fvVencimiento(v.itv_fin, 30);
+  const seg = _fvVencimiento(v.seguro_vencimiento, 30);
+  const faltan = FICHA_DOCS_OBLIGATORIOS.filter(o => !(d.docs || []).concat(d.docsDrive || []).some(x => x.categoria === o.id));
+  const averias = d.averias || [];
+  const revs = d.revisiones || [];
+  const revVencida = revs.some(r => r.estado === 'vencida');
+  const revProxima = revs.some(r => r.estado === 'proxima');
+  return { itv, seg, faltan, averias, revs, revVencida, revProxima, incid: d.incid || [] };
+}
+
+function _fichaPintarCabecera(v) {
+  const e = _fichaEstado(v);
+  const chips = [];
+  const chip = (cls, txt) => `<span class="fv-chip ${cls}"><i aria-hidden="true"></i>${esc(txt)}</span>`;
+  if (v.archivado) chips.push(chip('gris', 'De baja'));
+  if (v.bloqueado) chips.push(chip('mal', 'No disponible'));
+  if (e.itv.cls === 'mal') chips.push(chip('mal', 'ITV caducada'));
+  else if (e.itv.cls === 'aviso') chips.push(chip('aviso', `ITV en ${e.itv.dias} d`));
+  if (e.seg.cls === 'mal') chips.push(chip('mal', 'Seguro caducado'));
+  else if (e.seg.cls === 'aviso') chips.push(chip('aviso', `Seguro en ${e.seg.dias} d`));
+  if (e.averias.length) chips.push(chip('aviso', e.averias.length === 1 ? '1 avería abierta' : `${e.averias.length} averías abiertas`));
+  if (e.incid.length) chips.push(chip('aviso', e.incid.length === 1 ? '1 incidencia pendiente' : `${e.incid.length} incidencias pendientes`));
+  if (!chips.length && _fichaDatos && _fichaDatos.cargado) chips.push(chip('ok', 'Todo en regla'));
+
+  const marca = _fvMarca(_fichaMat);
+  const grupo = _fvGrupo(_fichaMat);
+  const desc = [marca, _fvTipo(v.tipo)].filter(Boolean).join(' · ');
+  const extra = [_fvCap(v.nota), _fvCap(grupo)].filter(Boolean).join(' · ');
+  document.getElementById('fv-cabecera').innerHTML = `
+    <div class="fv-placa" aria-label="Matrícula ${esc(_fichaMatReal(_fichaMat))}">
+      <span class="fv-placa-eu" aria-hidden="true">★★★<b>E</b></span>
+      <span class="fv-placa-txt">${esc(_fichaMatReal(_fichaMat))}</span>
+    </div>
+    <div class="fv-titulo">
+      <span class="fv-eyebrow" id="fv-titulo">FICHA DEL VEHÍCULO</span>
+      <span class="fv-desc">${esc(desc || _fichaMat)}${extra ? ` <span>· ${esc(extra)}</span>` : ''}</span>
+    </div>
+    <div class="fv-chips">${chips.join('')}</div>
+    <button type="button" class="fv-cerrar" onclick="cerrarFichaVehiculo()" aria-label="Cerrar la ficha">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>`;
+}
+
+function _fichaPintarNav(v) {
+  const e = _fichaEstado(v);
+  const d = _fichaDatos || {};
+  const nDocs = (d.docs || []).length + (d.docsDrive || []).length;
+  const info = {
+    resumen: { dot: (v.bloqueado || e.itv.cls === 'mal' || e.seg.cls === 'mal') ? 'mal' : ((e.averias.length || e.incid.length || e.itv.cls === 'aviso' || e.seg.cls === 'aviso' || e.faltan.length) ? 'aviso' : 'ok'), txt: '' },
+    seguro:  { dot: e.seg.cls, txt: e.seg.cls === 'nada' ? '—' : (e.seg.cls === 'mal' ? 'Caducado' : `${e.seg.dias} d`) },
+    itv:     { dot: e.itv.cls, txt: e.itv.cls === 'nada' ? '—' : (e.itv.cls === 'mal' ? 'Caducada' : `${e.itv.dias} d`) },
+    docs:    { dot: e.faltan.length ? 'aviso' : 'ok', txt: d.cargado ? String(nDocs) : '…' },
+    mant:    { dot: (e.averias.some(a => a.inmoviliza) || e.revVencida) ? 'mal' : ((e.averias.length || e.incid.length || e.revProxima) ? 'aviso' : 'ok'),
+               txt: e.averias.length ? (e.averias.length === 1 ? '1 avería' : `${e.averias.length} averías`) : (e.incid.length ? `${e.incid.length} pend.` : '') }
+  };
+  if (!d.cargado) { info.docs.dot = 'nada'; info.mant.dot = 'nada'; info.resumen.dot = 'nada'; }
+  document.getElementById('fv-nav-ops').innerHTML = FICHA_SECCIONES.map(s => `
+    <button type="button" class="fv-nav-op${s.id === _fichaTab ? ' activa' : ''}" data-tab="${s.id}" aria-current="${s.id === _fichaTab ? 'page' : 'false'}" onclick="fichaTabSwitch('${s.id}')">
+      <i class="fv-dot ${info[s.id].dot}" aria-hidden="true"></i>
+      <span class="fv-nav-txt">${s.label}</span>
+      <span class="fv-nav-info ${info[s.id].dot}">${esc(info[s.id].txt)}</span>
+    </button>`).join('');
+  document.getElementById('fv-km').innerHTML = `
+    <span class="fv-km-lbl">Kilometraje</span>
+    <span class="fv-km-val">${d.cargado ? _fvKm(d.km) : '…'}</span>
+    <span class="fv-km-sub">Según el último repostaje</span>`;
+}
+
+function _fichaPintarPanel(tab) {
+  const v = _getVehiculo(_fichaMat);
+  const cont = document.querySelector(`#modal-ficha-vehiculo .fv-panel[data-tab="${tab}"]`);
+  if (!v || !cont) return;
+  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, docs: _fichaHtmlDocs }[tab];
+  if (html) cont.innerHTML = html(v);
+}
+
+function _fvCargando() {
+  return `<div class="fv-cargando"><div class="ficha-spinner"></div>Cargando…</div>`;
+}
+
+function _fvDocFila(doc, accion) {
+  const pdf = (doc.formato || '').toLowerCase() === 'pdf' || /\.pdf$/i.test(doc.nombre || '');
+  const ver = `abrirVisorDoc('${esc(doc.ref)}','${esc(doc.nombre || '')}','${esc(doc.formato || '')}')`;
+  return `
+    <div class="fv-doc">
+      <span class="fv-doc-ico ${pdf ? 'pdf' : 'img'}" aria-hidden="true">${pdf ? 'PDF' : 'IMG'}</span>
+      <div class="fv-doc-info">
+        ${accion === 'cat' ? `<span class="fv-doc-cat">${esc(FICHA_DOC_LABELS[doc.categoria] || 'Otros')}</span>` : ''}
+        <span class="fv-doc-nombre" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</span>
+        <span class="fv-doc-meta">${_fvFecha(doc.fecha)} · ${esc(_fvCap(doc.subido_por || '—'))}${doc.origen === 'drive' ? ' · en Drive' : ''}</span>
+      </div>
+      <button type="button" class="fv-btn" onclick="${ver}">Ver</button>
+    </div>`;
+}
+
+// ── Resumen ──
+function _fichaHtmlResumen(v) {
+  const d = _fichaDatos || {};
+  const e = _fichaEstado(v);
+  const admin = _fvEsAdmin();
+  const mat = esc(_fichaMat);
+  let h = '';
+
+  if (v.bloqueado) {
+    h += `<div class="fv-bloqueo">
+      <span class="fv-bloqueo-ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M7 12h10"/></svg></span>
+      <div class="fv-bloqueo-txt">
+        <strong>No disponible para asignar</strong>
+        <span>Motivo: <b>${esc(v.motivo_bloqueo || 'sin indicar')}</b>${v.bloqueado_por ? ` · bloqueado por ${esc(_fvCap(v.bloqueado_por))}` : ''}${v.fecha_bloqueo ? ` el ${esc(_fvFechaHora(v.fecha_bloqueo))}` : ''}</span>
+      </div>
+      ${admin ? `<button type="button" class="fv-btn fv-btn-rojo" onclick="fichaDesbloquear()">Desbloquear</button>` : ''}
+    </div>`;
+  }
+
+  // Tarjetas ITV / Seguro / Mantenimiento
+  const pctSeg = e.seg.dias != null && e.seg.dias > 0 ? Math.max(4, Math.min(100, Math.round(e.seg.dias / 365 * 100))) : 0;
+  const itvTitulo = { mal: 'Caducada', aviso: `Vence en ${e.itv.dias} d`, ok: 'En vigor', nada: 'Sin fecha' }[e.itv.cls];
+  const itvSub = v.itv_fin ? (e.itv.dias < 0 ? `Venció el ${_fvFecha(v.itv_fin)}` : e.itv.dias === 0 ? `Vence hoy, ${_fvFecha(v.itv_fin)}` : `Hasta el ${_fvFecha(v.itv_fin)}`) : 'No hay fecha registrada';
+  const informeItv = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'informe_itv')[0];
+  const segTitulo = { mal: 'Caducado', aviso: `Vence en ${e.seg.dias} d`, ok: 'En vigor', nada: 'Sin datos' }[e.seg.cls];
+
+  let mantTitulo = 'Sin pendientes', mantCls = 'ok', mantSub = 'No hay averías abiertas';
+  if (!d.cargado) { mantTitulo = '…'; mantCls = 'nada'; mantSub = 'Cargando…'; }
+  else if (e.averias.length) {
+    mantTitulo = e.averias.length === 1 ? '1 avería' : `${e.averias.length} averías`;
+    mantCls = e.averias.some(a => a.inmoviliza) ? 'mal' : 'aviso';
+    const a = e.averias[0];
+    const dias = -_fvDias(a.fecha);
+    mantSub = `«${a.descripcion}» · ${dias <= 0 ? 'abierta desde hoy' : `abierta hace ${dias} día${dias === 1 ? '' : 's'}`}`;
+  } else if (e.incid.length) {
+    mantTitulo = e.incid.length === 1 ? '1 incidencia' : `${e.incid.length} incidencias`; mantCls = 'aviso';
+    mantSub = `Pendiente: «${e.incid[0].descripcion}»`;
+  }
+  const proxRev = (e.revs || []).slice().sort((a, b) => ({ vencida: 0, proxima: 1, ok: 2 }[a.estado] - { vencida: 0, proxima: 1, ok: 2 }[b.estado]) || String(a.fecha_limite || '9').localeCompare(String(b.fecha_limite || '9')))[0];
+  const revTxt = proxRev ? `${proxRev.estado === 'vencida' ? 'Revisión vencida' : 'Próxima revisión'}: ${esc(proxRev.tipo)}${proxRev.fecha_limite ? ', ' + _fvFecha(proxRev.fecha_limite) : ''}${proxRev.km_limite != null ? ' o ' + _fvKm(Number(proxRev.km_limite)) : ''}` : 'Sin revisiones programadas';
+
+  h += `<div class="fv-grid3">
+    <button type="button" class="fv-card fv-card-link" onclick="fichaTabSwitch('itv')">
+      <span class="fv-card-lbl">ITV</span>
+      <span class="fv-card-big ${e.itv.cls}">${itvTitulo}</span>
+      <span class="fv-card-sub">${itvSub}</span>
+      ${informeItv ? `<span class="fv-card-pie">Informe: ${esc(informeItv.nombre)}</span>` : ''}
+    </button>
+    <button type="button" class="fv-card fv-card-link" onclick="fichaTabSwitch('seguro')">
+      <span class="fv-card-lbl">SEGURO</span>
+      <span class="fv-card-big ${e.seg.cls}">${segTitulo}</span>
+      <span class="fv-card-sub">${esc(_fvCap(v.seguro_aseguradora || 'Sin aseguradora'))}${v.seguro_vencimiento ? ` · vence el ${_fvFecha(v.seguro_vencimiento)}` : ''}</span>
+      ${v.seguro_vencimiento ? `<span class="fv-barra"><i class="${e.seg.cls}" style="width:${pctSeg}%"></i></span><span class="fv-card-pie">${e.seg.dias > 0 ? `Quedan ${e.seg.dias} días` : 'Hay que renovarlo'}</span>` : ''}
+    </button>
+    <button type="button" class="fv-card fv-card-link" onclick="fichaTabSwitch('mant')">
+      <span class="fv-card-lbl">MANTENIMIENTO</span>
+      <span class="fv-card-big ${mantCls}">${mantTitulo}</span>
+      <span class="fv-card-sub">${esc(mantSub)}</span>
+      <span class="fv-card-pie">${revTxt}</span>
+    </button>
+  </div>`;
+
+  // Documentación + acciones rápidas
+  const docsTodos = (d.docs || []).concat(d.docsDrive || []);
+  const otros = docsTodos.filter(x => !FICHA_DOCS_OBLIGATORIOS.some(o => o.id === x.categoria)).length;
+  let docsHtml;
+  if (!d.cargado) docsHtml = _fvCargando();
+  else {
+    docsHtml = `<ul class="fv-check">` + FICHA_DOCS_OBLIGATORIOS.map(o => {
+      const tiene = docsTodos.some(x => x.categoria === o.id);
+      return `<li class="${tiene ? 'ok' : 'falta'}"><b aria-hidden="true">${tiene ? '✓' : '!'}</b>${tiene ? o.label : 'Falta ' + o.label.toLowerCase()}</li>`;
+    }).join('') + (otros ? `<li class="ok"><b aria-hidden="true">✓</b>${otros} documento${otros === 1 ? '' : 's'} más</li>` : '') +
+      ((d.fotos || []).length ? `<li class="ok"><b aria-hidden="true">✓</b>${d.fotos.length} foto${d.fotos.length === 1 ? '' : 's'}</li>` : '') + `</ul>`;
+  }
+  const tel = _fvTel(v.seguro_tel);
+  h += `<div class="fv-grid2">
+    <div class="fv-card">
+      <div class="fv-card-cab"><span class="fv-card-lbl">DOCUMENTACIÓN</span>${d.cargado ? `<span class="fv-card-nota">${FICHA_DOCS_OBLIGATORIOS.length - e.faltan.length} de ${FICHA_DOCS_OBLIGATORIOS.length} obligatorios</span>` : ''}</div>
+      ${docsHtml}
+    </div>
+    <div class="fv-card">
+      <span class="fv-card-lbl">ACCIONES RÁPIDAS</span>
+      <div class="fv-acciones">
+        <button type="button" class="fv-btn fv-btn-gr" onclick="mantAbrirFormAveria('${mat}')">Dar parte de avería</button>
+        <button type="button" class="fv-btn fv-btn-gr" onclick="abrirGestorDocumentos('${mat}','docs',{puedeBorrar:${admin}})">Subir documento</button>
+        <button type="button" class="fv-btn fv-btn-gr" onclick="abrirGestorDocumentos('${mat}','fotos',{puedeBorrar:${admin}})">Añadir fotos</button>
+        ${tel ? `<a class="fv-btn fv-btn-gr fv-btn-oscuro" href="tel:${esc(tel)}">Llamar asistencia</a>` : `<button type="button" class="fv-btn fv-btn-gr" disabled title="Sin teléfono de asistencia">Llamar asistencia</button>`}
+      </div>
+    </div>
+  </div>`;
+  return h;
+}
+
+// ── Seguro ──
+function _fichaHtmlSeguro(v) {
+  const d = _fichaDatos || {};
+  const e = _fichaEstado(v);
+  const campo = (lbl, val, mono) => `<div class="fv-campo"><span class="fv-campo-lbl">${lbl}</span><span class="fv-campo-val${mono ? ' mono' : ''}${val ? '' : ' vacio'}">${val ? esc(val) : 'Sin datos'}</span></div>`;
+  const tel = _fvTel(v.seguro_tel);
+  const pct = e.seg.dias != null && e.seg.dias > 0 ? Math.max(4, Math.min(100, Math.round(e.seg.dias / 365 * 100))) : 0;
+  const polizas = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'poliza_seguro');
+  let h = `<h2 class="fv-h2">Seguro</h2>
+    <div class="fv-card fv-campos">
+      ${campo('Aseguradora', _fvCap(v.seguro_aseguradora))}
+      ${campo('Nº de póliza', v.seguro_poliza, true)}
+      ${campo('Tomador', _fvCap(v.seguro_nombre))}
+      ${campo('CIF', v.seguro_cif, true)}
+    </div>
+    <div class="fv-grid2">
+      <div class="fv-card">
+        <span class="fv-card-lbl">VENCIMIENTO</span>
+        <span class="fv-card-big ${e.seg.cls}">${v.seguro_vencimiento ? _fvFecha(v.seguro_vencimiento) : 'Sin fecha'}</span>
+        ${v.seguro_vencimiento ? `<span class="fv-barra grande"><i class="${e.seg.cls}" style="width:${pct}%"></i></span>` : ''}
+        <span class="fv-card-sub">${e.seg.cls === 'nada' ? 'No hay fecha de vencimiento registrada' : e.seg.cls === 'mal' ? 'Caducado: hay que renovarlo' : `${e.seg.txt} · quedan ${e.seg.dias} días`}</span>
+      </div>
+      <div class="fv-card fv-card-oscura">
+        <span class="fv-card-lbl">ASISTENCIA EN CARRETERA</span>
+        <span class="fv-tel">${v.seguro_tel ? esc(v.seguro_tel) : 'Sin teléfono'}</span>
+        ${tel ? `<a class="fv-btn fv-btn-rojo-lleno" href="tel:${esc(tel)}">Llamar ahora</a>` : ''}
+      </div>
+    </div>`;
+  if (!d.cargado) h += _fvCargando();
+  else if (polizas.length) h += `<div class="fv-docs-lista">${polizas.map(p => _fvDocFila(p)).join('')}</div>`;
+  else h += _fvHuecoDoc('poliza_seguro', 'Póliza de seguro');
+  return h;
+}
+
+// ── ITV ──
+function _fichaHtmlItv(v) {
+  const d = _fichaDatos || {};
+  const e = _fichaEstado(v);
+  const informes = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'informe_itv');
+  const titulo = { mal: e.itv.dias === 0 ? 'Caduca hoy' : 'Caducada', aviso: `Vence en ${e.itv.dias} días`, ok: 'En vigor', nada: 'Sin fecha registrada' }[e.itv.cls];
+  const sub = !v.itv_fin ? 'Añade la fecha desde Panel Admin › Vehículos.'
+    : e.itv.dias < 0 ? `Venció el ${_fvFecha(v.itv_fin)}, hace ${-e.itv.dias} día${e.itv.dias === -1 ? '' : 's'}. El vehículo no debe circular.`
+    : e.itv.dias === 0 ? `Vence hoy, ${_fvFecha(v.itv_fin)}. El vehículo no debe circular a partir de mañana.`
+    : `Válida hasta el ${_fvFecha(v.itv_fin)}.`;
+  let h = `<h2 class="fv-h2">ITV</h2>
+    <div class="fv-card fv-itv ${e.itv.cls}">
+      <span class="fv-itv-sem" aria-hidden="true"></span>
+      <div class="fv-itv-txt">
+        <span class="fv-card-lbl">PRÓXIMA ITV</span>
+        <span class="fv-itv-fecha">${v.itv_fin ? _fvFecha(v.itv_fin) : '—'}</span>
+        <span class="fv-itv-estado ${e.itv.cls}">${titulo}</span>
+        <span class="fv-card-sub">${sub}</span>
+      </div>
+    </div>
+    <h3 class="fv-h3">Informes de ITV</h3>`;
+  if (!d.cargado) h += _fvCargando();
+  else if (informes.length) h += `<div class="fv-docs-lista">${informes.map(p => _fvDocFila(p)).join('')}</div>`;
+  else h += _fvHuecoDoc('informe_itv', 'Informe ITV');
+  return h;
+}
+
+function _fvHuecoDoc(cat, label) {
+  const admin = _fvEsAdmin();
+  return `<div class="fv-doc fv-doc-falta">
+    <span class="fv-doc-ico falta" aria-hidden="true">!</span>
+    <div class="fv-doc-info">
+      <span class="fv-doc-cat">${esc(label.toUpperCase())}</span>
+      <span class="fv-doc-nombre">Falta subirlo</span>
+      <span class="fv-doc-meta">Debería estar en la ficha del vehículo</span>
+    </div>
+    <button type="button" class="fv-btn" onclick="abrirGestorDocumentos('${esc(_fichaMat)}','docs',{puedeBorrar:${admin}})">Subir</button>
+  </div>`;
+}
+
+// ── Documentos ──
+function _fichaHtmlDocs(v) {
+  const d = _fichaDatos || {};
+  const admin = _fvEsAdmin();
+  const mat = esc(_fichaMat);
+  const todos = (d.docs || []).concat(d.docsDrive || []);
+  let h = `<div class="fv-docs-cab">
+      <h2 class="fv-h2">Documentos</h2>
+      <span class="fv-card-nota">${d.cargado ? `${todos.length} archivo${todos.length === 1 ? '' : 's'}${(d.fotos || []).length ? ` · ${d.fotos.length} foto${d.fotos.length === 1 ? '' : 's'}` : ''}` : ''}</span>
+      <button type="button" class="fv-btn" onclick="abrirGestorDocumentos('${mat}','fotos',{puedeBorrar:${admin}})">Fotos</button>
+      <button type="button" class="fv-btn fv-btn-oscuro" onclick="abrirGestorDocumentos('${mat}','docs',{puedeBorrar:${admin}})">+ Subir documento</button>
+    </div>`;
+  if (!d.cargado) return h + _fvCargando();
+  if (d.errorDocs) return h + `<div class="fv-cargando" style="color:#B42318">No se pudieron cargar los documentos. Revisa la conexión.</div>`;
+  // Primero los obligatorios (o su hueco), luego el resto
+  let tarjetas = '';
+  FICHA_DOCS_OBLIGATORIOS.forEach(o => {
+    const de = todos.filter(x => x.categoria === o.id);
+    if (de.length) de.forEach(x => { tarjetas += _fvDocFila(x, 'cat'); });
+    else tarjetas += _fvHuecoDoc(o.id, o.label);
+  });
+  todos.filter(x => !FICHA_DOCS_OBLIGATORIOS.some(o => o.id === x.categoria)).forEach(x => { tarjetas += _fvDocFila(Object.assign({}, x, { categoria: 'otros' }), 'cat'); });
+  return h + `<div class="fv-docs-grid">${tarjetas}</div>`;
+}
+
+// ── Acciones ──
+function fichaDesbloquear() {
+  if (!_fvEsAdmin()) return;
+  for (let gi = 0; gi < GRUPOS.length; gi++) {
+    const vi = GRUPOS[gi].vehiculos.findIndex(x => x.matricula === _fichaMat);
+    if (vi >= 0) { desbloquearVehiculoAdmin(gi, vi); return; }
+  }
+}

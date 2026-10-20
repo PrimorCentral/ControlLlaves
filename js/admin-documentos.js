@@ -235,7 +235,7 @@ async function abrirGestorDocumentos(matricula, pestana, opciones) {
   document.getElementById('overlay-docs')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'overlay-docs';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,20,0.72);z-index:6000;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;font-family:Barlow,sans-serif;color:#1a1a2e;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,20,0.72);z-index:10300;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;font-family:Barlow,sans-serif;color:#1a1a2e;';
   overlay._g = { mat: matricula, tab: pestana || 'docs', vista: 'carpetas', sel: null, docsSb: [], docsDrive: [], filas: [], sinTabla: false,
                  cargando: true, puedeBorrar: !(opciones && opciones.puedeBorrar === false), nueva: { nombre: DOCS_CARPETA_DEFECTO, otro: false, comentario: '', files: [] }, ocupado: false };
   overlay.innerHTML = `<section role="dialog" aria-modal="true" aria-label="Documentos y fotos de ${esc(matricula)}"
@@ -263,6 +263,7 @@ function _gCerrar(overlay) {
   if (overlay._g.ocupado && !confirm('Se están subiendo fotos. ¿Cerrar igualmente?')) return;
   overlay._g.nueva.files.forEach(f => URL.revokeObjectURL(f.url));
   overlay.remove();
+  if (typeof fichaRefrescar === 'function') fichaRefrescar(overlay._g.mat); // la ficha abierta muestra lo nuevo
 }
 
 async function _gCargar(overlay) {

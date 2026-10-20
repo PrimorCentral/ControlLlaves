@@ -380,7 +380,7 @@ function _mantCampo(label, html, ayuda) {
 }
 
 function _mantRefrescar(matricula) {
-  if (_fichaMat === matricula) mantCargarFicha(matricula);
+  if (_fichaMat === matricula) { mantCargarFicha(matricula); if (typeof fichaRefrescar === 'function') fichaRefrescar(matricula); }
   mantCargarResumen();
 }
 
@@ -670,12 +670,7 @@ async function mantQuitarRevision(matricula, id) {
 // Repinta las etiquetas de la cabecera de la ficha (Bloqueado, Avería…) sin
 // cambiar de pestaña.
 function _mantActualizarCabeceraFicha(matricula) {
-  if (_fichaMat !== matricula) return;
-  const v = _getVehiculo(matricula);
-  const el = document.getElementById('ficha-header-badges');
-  if (!el) return;
-  el.querySelectorAll('.ficha-meta-badge.bloqueado').forEach(b => b.remove());
-  if (v?.bloqueado) el.insertAdjacentHTML('afterbegin', `<span class="ficha-meta-badge bloqueado">⛔ Bloqueado</span>`);
+  if (typeof fichaRefrescar === 'function') fichaRefrescar(matricula);
 }
 
 // Refresco periódico del aviso del cuadrante (por si otro equipo registra algo)

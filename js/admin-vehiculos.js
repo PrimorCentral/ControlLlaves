@@ -353,7 +353,7 @@ function abrirModalBloqueo(gi, vi) {
 function desbloquearVehiculoAdmin(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10600;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:16px;padding:28px 24px 22px;width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
       <div style="font-size:36px;text-align:center;margin-bottom:10px;">🔓</div>
@@ -399,6 +399,7 @@ function desbloquearVehiculoAdmin(gi, vi) {
         actualizarBotonIncidenciasPendientes();
         registrarAccion('VEHICULO', 'Desbloquear vehículo', `${v.matricula} · ${motivo.substring(0,80)}`);
         mostrarToast(`✓ ${v.matricula} desbloqueado`, 'success');
+        if (typeof fichaRefrescar === 'function') fichaRefrescar(v.matricula);
       } else {
         mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');
         btnOk.textContent = '✓ Desbloquear'; btnOk.disabled = false;
@@ -758,249 +759,14 @@ function _matBadgeInfoHtmlBase(matricula) {
   if (estado === 'ok')       return `<span class="mat-badge-info has-data" title="Ver ficha del vehículo">i</span>`;
   return `<span class="mat-badge-info" title="Ver ficha del vehículo">i</span>`;
 }
-// ── FICHA TÉCNICA PRO ────────────────────────────────────────────────────────
-// Google Drive — documentos gestionados via GAS
-
-const FICHA_DOC_CATEGORIAS = [
-  { id: 'ficha_tecnica',       label: 'Ficha técnica',         icon: '📄' },
-  { id: 'permiso_circulacion', label: 'Permiso de circulación',icon: '🎟' },
-  { id: 'informe_itv',         label: 'Informe ITV',           icon: '🔧' },
-  { id: 'poliza_seguro',       label: 'Póliza de seguro',      icon: '🛡️' },
-  { id: 'otros',               label: 'Otros',                 icon: '📎' },
-];
-
-let _fichaMat = ''; // matrícula activa en la ficha
-
-function _fichaMatReal(m) {
-  const m1 = m.match(/\b(\d{4}\s?[A-Z]{3})\b/);
-  if (m1) return m1[1];
-  const m2 = m.match(/\b([A-Z]{1,2}\s?\d{3,4}\s?[A-Z]{1,2})\b/);
-  if (m2) return m2[1];
-  return m;
-}
-
-function fichaTabSwitch(tab) {
-  document.querySelectorAll('.ficha-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.ficha-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.ficha-tab[data-tab="${tab}"]`).classList.add('active');
-  document.getElementById(`ficha-panel-${tab}`).classList.add('active');
-  if (tab === 'docs') _fichaCargarDocs(_fichaMat);
-  if (tab === 'mant' && typeof mantCargarFicha === 'function') mantCargarFicha(_fichaMat);
-}
-
-function abrirFichaVehiculo(matricula) {
-  _fichaMat = matricula;
-  const v = _getVehiculo(matricula);
-  const matReal = _fichaMatReal(matricula);
-
-  // ── HEADER ──
-  document.getElementById('ficha-mat').textContent = matReal;
-  const tipoEl = document.getElementById('ficha-tipo');
-  tipoEl.textContent = v ? (v.tipo + (v.nota ? ' · ' + v.nota : '')) : '—';
-
-  // Pills de estado
-  const badgesEl = document.getElementById('ficha-header-badges');
-  badgesEl.innerHTML = '';
-  if (v?.bloqueado) {
-    badgesEl.innerHTML += `<span class="ficha-meta-badge bloqueado">⛔ Bloqueado</span>`;
-  }
-  if (v?.archivado) {
-    badgesEl.innerHTML += `<span class="ficha-meta-badge archivado">📦 Archivado</span>`;
-  }
-  // Avería abierta / revisión vencida (js/mantenimiento.js)
-  const _mr = (typeof mantResumen !== 'undefined') ? mantResumen[matricula] : null;
-  if (_mr && _mr.averias) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🔧 Avería abierta</span>`;
-  if (_mr && _mr.incid) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-warn">🚨 Incidencia pendiente</span>`;
-  if (_mr && !_mr.averias && _mr.revVencida) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">🛠️ Revisión vencida</span>`;
-  // ITV badge en header
-  const itv = v?.itv_fin || '';
-  if (itv) {
-    const hoy  = new Date(); hoy.setHours(0,0,0,0);
-    const dias = Math.ceil((new Date(itv + 'T00:00:00') - hoy) / 86400000);
-    if (dias <= 0)       badgesEl.innerHTML += `<span class="ficha-meta-badge itv-bad">⛔ ITV Caducada</span>`;
-    else if (dias <= 30) badgesEl.innerHTML += `<span class="ficha-meta-badge itv-warn">⚠️ ITV ${dias}d</span>`;
-  }
-
-  // ── PANEL SEGURO ──
-  function setVal(id, val) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (val && String(val).trim()) {
-      el.textContent = val; el.className = 'ficha-val';
-    } else {
-      el.textContent = 'Sin datos'; el.className = 'ficha-val vacio';
-    }
-  }
-  setVal('ficha-seg-aseguradora', v?.seguro_aseguradora);
-  setVal('ficha-seg-nombre',      v?.seguro_nombre);
-  setVal('ficha-seg-cif',         v?.seguro_cif);
-  setVal('ficha-seg-poliza',      v?.seguro_poliza);
-
-  // Vencimiento seguro
-  const vencEl = document.getElementById('ficha-seg-vencimiento');
-  const venc   = v?.seguro_vencimiento || '';
-  const alertaEl = document.getElementById('ficha-seg-alerta');
-  alertaEl.style.display = 'none';
-  if (venc) {
-    const hoy  = new Date(); hoy.setHours(0,0,0,0);
-    const dias = Math.ceil((new Date(venc + 'T00:00:00') - hoy) / 86400000);
-    const txt  = venc.split('-').reverse().join('/');
-    if (dias <= 0) {
-      vencEl.textContent = txt + ' ⛔'; vencEl.className = 'ficha-val itv-bad';
-      alertaEl.style.display = 'flex'; alertaEl.className = 'ficha-alert bad';
-      alertaEl.innerHTML = `<span class="ficha-alert-icon">⛔</span><span class="ficha-alert-text">El seguro está <strong>vencido</strong>. Contacta con la aseguradora.</span>`;
-    } else if (dias <= 30) {
-      vencEl.textContent = txt + ` ⚠️ ${dias}d`; vencEl.className = 'ficha-val itv-warn';
-      alertaEl.style.display = 'flex'; alertaEl.className = 'ficha-alert warn';
-      alertaEl.innerHTML = `<span class="ficha-alert-icon">⚠️</span><span class="ficha-alert-text">El seguro vence en <strong>${dias} días</strong>. Renuévalo pronto.</span>`;
-    } else {
-      vencEl.textContent = txt; vencEl.className = 'ficha-val itv-ok';
-    }
-  } else {
-    vencEl.textContent = 'Sin datos'; vencEl.className = 'ficha-val vacio';
-  }
-
-  // Tel
-  const telEl = document.getElementById('ficha-seg-tel');
-  const tel   = v?.seguro_tel || '';
-  if (tel) {
-    telEl.innerHTML = `<a class="ficha-tel-link" href="tel:${tel.replace(/\s/g,'')}" onclick="event.stopPropagation()">📞 ${tel}</a>`;
-    telEl.className = 'ficha-val';
-  } else {
-    telEl.textContent = 'Sin datos'; telEl.className = 'ficha-val vacio';
-  }
-
-  // ── PANEL ITV ──
-  const itvBig = document.getElementById('ficha-itv-big');
-  if (itv) {
-    const hoy  = new Date(); hoy.setHours(0,0,0,0);
-    const dias = Math.ceil((new Date(itv + 'T00:00:00') - hoy) / 86400000);
-    const txt  = itv.split('-').reverse().join('/');
-    let semaforoClass = 'ok', semaforoEmoji = '✅', diasClass = 'ok', diasTxt = `${dias} días restantes`;
-    if (dias <= 0)       { semaforoClass = 'bad';  semaforoEmoji = '⛔'; diasClass = 'bad';  diasTxt = 'CADUCADA'; }
-    else if (dias <= 30) { semaforoClass = 'warn'; semaforoEmoji = '⚠️'; diasClass = 'warn'; diasTxt = `${dias} días restantes`; }
-    itvBig.innerHTML = `
-      <div class="ficha-itv-semaforo ${semaforoClass}">${semaforoEmoji}</div>
-      <div class="ficha-itv-info">
-        <div class="ficha-itv-fecha">${txt}</div>
-        <div class="ficha-itv-desc">Próxima ITV</div>
-        <div class="ficha-itv-dias ${diasClass}">${diasTxt}</div>
-      </div>`;
-  } else {
-    itvBig.innerHTML = `
-      <div class="ficha-itv-semaforo bad">—</div>
-      <div class="ficha-itv-info">
-        <div class="ficha-itv-fecha" style="color:#b0bac8;font-size:15px;font-style:italic">Sin registrar</div>
-        <div class="ficha-itv-desc">No hay fecha de ITV en el sistema</div>
-      </div>`;
-  }
-
-  // ── PANEL DOCS — se carga al abrir la pestaña ──
-  document.getElementById('ficha-docs-content').innerHTML =
-    `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Carga la pestaña para ver los documentos</div>`;
-  const _mantCont = document.getElementById('ficha-mant-content');
-  if (_mantCont) _mantCont.innerHTML = '';
-
-  // Activar primera pestaña (seguro)
-  document.querySelectorAll('.ficha-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.ficha-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector('.ficha-tab[data-tab="seguro"]').classList.add('active');
-  document.getElementById('ficha-panel-seguro').classList.add('active');
-
-  document.getElementById('modal-ficha-vehiculo').classList.add('visible');
-}
-
-async function _fichaCargarDocs(matricula) {
-  const cont = document.getElementById('ficha-docs-content');
-  cont.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Cargando documentos…</div>`;
-  let docsSb = [];
-  try {
-    docsSb = await docsListarSupabase(matricula);
-  } catch(e) {
-    cont.innerHTML = `<div class="ficha-docs-loading" style="color:#e84545">Error al cargar documentos</div>`;
-    return;
-  }
-  if (_fichaMat !== matricula) return;
-  const conDrive = await docsDriveActivo();
-  _fichaRenderDocs(docsSb, conDrive);
-  if (!conDrive) return;
-  try {
-    const docsDrive = await docsListarDrive(matricula, docsSb.map(d => d.drive_id).filter(Boolean));
-    if (_fichaMat === matricula) _fichaRenderDocs(docsSb.concat(docsDrive), false);
-  } catch(e) {
-    if (_fichaMat === matricula) _fichaRenderDocs(docsSb, false);
-  }
-}
-
-function _fichaRenderDocs(docs, buscandoDrive) {
-  const cont = document.getElementById('ficha-docs-content');
-  cont.innerHTML = '';
-  // Agrupar por categoría
-  FICHA_DOC_CATEGORIAS.forEach(cat => {
-    const catDocs = docs.filter(d => d.categoria === cat.id);
-    const wrap = document.createElement('div');
-    wrap.innerHTML = `<div class="ficha-docs-cat-title">${cat.icon} ${cat.label}</div>`;
-    if (catDocs.length === 0) {
-      wrap.innerHTML += `<div class="ficha-doc-empty">Sin documentos en esta categoría</div>`;
-    } else {
-      catDocs.forEach(doc => {
-        const isPdf = (doc.formato || '').toLowerCase() === 'pdf' || (doc.nombre || '').toLowerCase().endsWith('.pdf');
-        const icono = isPdf ? '📄' : '🖼️';
-        const fecha = doc.fecha ? new Date(doc.fecha).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
-        wrap.innerHTML += `
-          <div class="ficha-doc-card">
-            <div class="ficha-doc-icon">${icono}</div>
-            <div class="ficha-doc-info">
-              <div class="ficha-doc-nombre" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</div>
-              <div class="ficha-doc-fecha">Subido: ${fecha} · ${esc(doc.subido_por || '—')}</div>
-            </div>
-            <button class="ficha-doc-btn ver" onclick="event.stopPropagation();abrirVisorDoc('${esc(doc.ref)}','${esc(doc.nombre||'')}','${esc(doc.formato||'')}')">👁 Ver</button>
-          </div>`;
-      });
-    }
-    cont.appendChild(wrap);
-  });
-  const fotos = docs.filter(d => d.categoria === 'fotos' && d.origen === 'supabase');
-  if (fotos.length && typeof docsHtmlFotos === 'function') {
-    const w = document.createElement('div');
-    w.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
-    const mat = _fichaMat;
-    w.innerHTML = `<div class="ficha-docs-cat-title">📷 Fotos</div>` + docsHtmlFotos(fotos, mat, false);
-    cont.appendChild(w);
-    docsPintarMiniaturas(w);
-    // Comentarios de las carpetas (se añaden en cuanto llegan)
-    docsListarCarpetas(mat).then(filas => {
-      if (!filas || !filas.length || _fichaMat !== mat || !document.body.contains(w)) return;
-      w.innerHTML = `<div class="ficha-docs-cat-title">📷 Fotos</div>` + docsHtmlFotos(fotos, mat, false, filas);
-      docsPintarMiniaturas(w);
-    });
-  }
-  if (buscandoDrive) {
-    const w = document.createElement('div');
-    w.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Buscando documentos antiguos en Drive…</div>`;
-    cont.appendChild(w);
-    if (docs.length === 0) return;
-  }
-  if (docs.length === 0) {
-    cont.innerHTML = `<div class="ficha-doc-empty" style="padding:28px;font-size:13px">
-      <div style="font-size:32px;margin-bottom:8px">📂</div>
-      No hay documentos asociados a este vehículo.<br>
-      <span style="font-size:11px;color:#c0cad8">Puedes añadirlos desde el Panel Admin.</span>
-    </div>`;
-  }
-}
-
-function cerrarFichaVehiculo() {
-  document.getElementById('modal-ficha-vehiculo').classList.remove('visible');
-  _fichaMat = '';
-}
+// ── FICHA DEL VEHÍCULO: ahora en js/ficha-vehiculo.js ─────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     // Primero cierra el visor si está abierto, luego la ficha
     const visor = document.getElementById('modal-visor-doc');
     if (visor && visor.classList.contains('visible')) {
       cerrarVisorDoc();
-    } else {
+    } else if (!document.getElementById('overlay-docs')) {
       cerrarFichaVehiculo();
     }
   }

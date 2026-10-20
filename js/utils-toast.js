@@ -40,12 +40,11 @@ function ocultarSplash() {
   const login = document.getElementById('pantalla-login');
   const brand = login && !login.classList.contains('oculto') ? login.querySelector('.login-brand') : null;
   const anchoBrand = brand ? brand.getBoundingClientRect().width : 0;
-  const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // 1) Desvanece el contenido del splash
   setTimeout(() => splash.classList.add('saliendo'), 250);
 
-  if (anchoBrand > 0 && window.innerWidth > 768 && !reducido) {
+  if (anchoBrand > 0 && window.innerWidth > 768) {  // sin mirar "reducir movimiento": en los PCs del trabajo viene activado y no se animaba
     // 2) El fondo azul se encoge hasta ocupar exactamente el panel de marca del login
     setTimeout(() => { splash.style.width = anchoBrand + 'px'; }, 550);
     // 3) Se funde con el panel (mismo color) y desaparece

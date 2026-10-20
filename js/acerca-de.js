@@ -157,7 +157,7 @@ const ACERCA_DE_FLOTA = {
     overlay.addEventListener('click', function (ev) {
       if (ev.target !== overlay) return;
       const box = overlay.querySelector('.acerca-de-box');
-      if (box && box.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (box && box.animate) {
         box.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.02)' }, { transform: 'scale(1)' }], { duration: 240, easing: 'ease-out' });
       }
     });

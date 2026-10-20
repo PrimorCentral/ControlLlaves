@@ -804,7 +804,7 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
           </div>
         </div>
         <div id="form-resolver-${idx}" style="display:none;margin-top:10px;padding:12px;background:#f9faff;border:1.5px solid #e3e8f5;border-radius:10px;">
-          ${av && av.estado !== 'reparada' ? `<div style="font-size:11.5px;color:#7A4800;background:#FFF4DD;border-radius:7px;padding:7px 10px;margin-bottom:8px;font-weight:600;">La avería enlazada seguirá abierta en Mantenimiento. Lo normal es marcarla como reparada allí: así esta incidencia se resuelve sola.</div>` : ''}
+          ${av && av.estado !== 'reparada' ? `<div style="font-size:11.5px;color:#166534;background:#E7F5EC;border-radius:7px;padding:7px 10px;margin-bottom:8px;font-weight:600;">🔧 La avería enlazada se marcará también como reparada en Mantenimiento, con este comentario.</div>` : ''}
           <textarea id="comentario-resolver-${idx}" rows="2" placeholder="Comentario opcional al resolver la incidencia…"
             style="width:100%;border:1.5px solid #e0e4ee;border-radius:8px;padding:8px 10px;font-family:Barlow,sans-serif;font-size:12px;color:#1a1a2e;resize:vertical;box-sizing:border-box;"></textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -882,7 +882,8 @@ async function confirmarResolverModal(idx) {
     }
 
     const desbloqueado = _aplicarDesbloqueoTrasResolver(json, inc.matricula);
-    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
+    if (json.averiaCerrada && !desbloqueado && typeof mantCargarResumen === 'function') mantCargarResumen();
+    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta${json.averiaCerrada ? ' · avería reparada' : ''}${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
     registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}${desbloqueado ? ' · desbloqueado' : ''}`);
     actualizarBotonIncidenciasPendientes();
     cargarIncidenciasPendientesModal();

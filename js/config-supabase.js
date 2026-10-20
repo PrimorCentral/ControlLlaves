@@ -20,6 +20,22 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // de las funciones que ya llaman a fetch(APPS_SCRIPT_URL, ...).
 // Se amplía accion a accion según se van migrando endpoints.
 // ════════════════════════════════════════════════════════════════════════════
+// Al resolver una incidencia, su avería enlazada (js/mantenimiento.js) se marca
+// también como reparada, para no tener que cerrar las dos cosas por separado.
+async function cerrarAveriaDeIncidencia(incidenciaId, quien, comentario) {
+  if (!incidenciaId) return false;
+  try {
+    const { data, error } = await sb.from('averias').update({
+      estado: 'reparada',
+      fecha_cierre: new Date().toISOString().substring(0, 10),
+      cerrado_por: quien || '',
+      comentario_cierre: comentario || 'Incidencia resuelta',
+      updated_at: new Date().toISOString()
+    }).eq('incidencia_id', incidenciaId).neq('estado', 'reparada').select('id');
+    return !error && !!(data && data.length);
+  } catch (e) { return false; }
+}
+
 async function obtenerDestinatariosPorTipo(tipo) {
   const { data, error } = await sb.from('destinatarios_email').select('email').eq('tipo', tipo);
   if (error || !data) return [];
@@ -354,7 +370,10 @@ async function manejarPeticionSupabase(urlStr, options) {
           })
             .eq('timestamp', inc.timestamp)
             .eq('matricula', inc.matricula);
-          if (!errRes) incidenciaResuelta = inc.timestamp;
+          if (!errRes) {
+            incidenciaResuelta = inc.timestamp;
+            await cerrarAveriaDeIncidencia(inc.id, params.resueltoPor || params.bloqueado_por, params.motivo || 'Vehículo desbloqueado');
+          }
         }
       } catch (e) { /* no bloqueante: el desbloqueo ya se ha aplicado */ }
 
@@ -624,12 +643,13 @@ async function manejarPeticionSupabase(urlStr, options) {
       // Si el vehículo está bloqueado POR ESTA incidencia (el motivo del bloqueo
       // es su descripción), se desbloquea, salvo que tenga una avería abierta
       // que le impida circular (esa se desbloquea al marcarla como reparada).
-      let vehiculoDesbloqueado = false;
+      let vehiculoDesbloqueado = false, averiaCerrada = false;
       try {
         const [{ data: inc }, { data: veh }] = await Promise.all([
-          sb.from('incidencias').select('descripcion').eq('timestamp', params.timestamp).eq('matricula', params.matricula).maybeSingle(),
+          sb.from('incidencias').select('id, descripcion').eq('timestamp', params.timestamp).eq('matricula', params.matricula).maybeSingle(),
           sb.from('vehiculos').select('bloqueado, motivo_bloqueo').eq('matricula', params.matricula).maybeSingle()
         ]);
+        if (inc) averiaCerrada = await cerrarAveriaDeIncidencia(inc.id, params.resueltoPor, params.comentario);
         const norm = t => String(t || '').replace(/^Avería:\s*/i, '').replace(/\s+/g, ' ').trim().toUpperCase();
         if (inc && veh && veh.bloqueado && norm(veh.motivo_bloqueo) === norm(inc.descripcion)) {
           const { data: averiasInmov } = await sb.from('averias').select('id')
@@ -642,7 +662,7 @@ async function manejarPeticionSupabase(urlStr, options) {
           }
         }
       } catch (e) { /* no bloqueante: la incidencia ya está resuelta */ }
-      return { ok: true, vehiculoDesbloqueado };
+      return { ok: true, vehiculoDesbloqueado, averiaCerrada };
     }
 
     case 'eliminarIncidencia': {

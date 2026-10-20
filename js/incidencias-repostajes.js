@@ -1494,6 +1494,7 @@ async function resolverIncidencia(idx) {
     incidenciasCache[idx].estado = 'COMPLETADO';
     renderTabIncidencias();
     const desbloqueado = (typeof _aplicarDesbloqueoTrasResolver === 'function') && _aplicarDesbloqueoTrasResolver(json, inc.matricula);
+    if (json.averiaCerrada && !desbloqueado && typeof mantCargarResumen === 'function') mantCargarResumen();
     registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}${desbloqueado ? ' · desbloqueado' : ''}`);
     mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
     actualizarBotonIncidenciasPendientes();

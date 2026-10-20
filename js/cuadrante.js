@@ -523,6 +523,7 @@ function confirmarDesbloqueoRapido(mat) {
         document.body.removeChild(overlay);
         renderTabla();
         actualizarBotonIncidenciasPendientes();
+        if (typeof mantCargarResumen === 'function') mantCargarResumen(); // su avería también se cierra
         mostrarToast(`✓ ${mat} desbloqueado`, 'success');
       } else {
         mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');

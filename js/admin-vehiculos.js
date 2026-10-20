@@ -400,6 +400,7 @@ function desbloquearVehiculoAdmin(gi, vi) {
         registrarAccion('VEHICULO', 'Desbloquear vehículo', `${v.matricula} · ${motivo.substring(0,80)}`);
         mostrarToast(`✓ ${v.matricula} desbloqueado`, 'success');
         if (typeof fichaRefrescar === 'function') fichaRefrescar(v.matricula);
+        if (typeof mantCargarResumen === 'function') mantCargarResumen(); // su avería también se cierra
       } else {
         mostrarToast('Error al desbloquear: ' + (json.error||''), 'error');
         btnOk.textContent = '✓ Desbloquear'; btnOk.disabled = false;

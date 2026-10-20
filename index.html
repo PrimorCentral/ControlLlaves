@@ -2005,6 +2005,8 @@
 <script src="js/ordenes-trabajo.js"></script>
 <script src="js/admin-responsables.js"></script>
 <script src="js/admin-vehiculos.js"></script>
+<script src="js/ficha-vehiculo.js"></script>
+<link rel="stylesheet" href="css/ficha-vehiculo.css">
 <script src="js/admin-documentos.js"></script>
 <script src="js/admin-conductores.js"></script>
 <script src="js/historial.js"></script>
@@ -2259,117 +2261,25 @@
 </div>
 
 <div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
-  <div class="ficha-box">
-
-    <!-- ── HEADER ── -->
-    <div class="ficha-header">
-      <div class="ficha-header-top">
-        <div class="ficha-header-left">
-          <div class="ficha-mat-plate">
-            <div class="ficha-mat-plate-eu">
-              <span class="eu-stars">★★★</span>
-              <span class="eu-code">E</span>
-            </div>
-            <div class="ficha-mat-plate-text" id="ficha-mat">—</div>
-          </div>
-          <div class="ficha-header-meta" style="margin-top:4px;">
-            <span class="ficha-meta-tipo" id="ficha-tipo">—</span>
-            <span id="ficha-header-badges"></span>
-          </div>
-        </div>
-        <div class="ficha-titulo-label">Ficha técnica vehículo</div>
-        <button class="ficha-close" onclick="cerrarFichaVehiculo()">✕</button>
-      </div>
-
-      <!-- ── TABS ── -->
-      <div class="ficha-tabs">
-        <button class="ficha-tab active" data-tab="seguro" onclick="fichaTabSwitch('seguro')">
-          <span class="ficha-tab-icon">🛡️</span>Seguro
-        </button>
-        <button class="ficha-tab" data-tab="itv" onclick="fichaTabSwitch('itv')">
-          <span class="ficha-tab-icon">🔧</span>ITV
-        </button>
-        <button class="ficha-tab" data-tab="docs" onclick="fichaTabSwitch('docs')">
-          <span class="ficha-tab-icon">📂</span>Documentos
-        </button>
-        <button class="ficha-tab" data-tab="mant" onclick="fichaTabSwitch('mant')">
-          <span class="ficha-tab-icon">🛠️</span>Mantenimiento
-        </button>
-      </div>
+  <div class="fv-box" role="dialog" aria-modal="true" aria-labelledby="fv-titulo">
+    <header class="fv-cabecera" id="fv-cabecera"></header>
+    <div class="fv-cuerpo">
+      <nav class="fv-nav" aria-label="Secciones de la ficha">
+        <div class="fv-nav-ops" id="fv-nav-ops"></div>
+        <div class="fv-km" id="fv-km"></div>
+      </nav>
+      <main class="fv-main">
+        <section class="fv-panel" data-tab="resumen" aria-label="Resumen"></section>
+        <section class="fv-panel" data-tab="seguro" aria-label="Seguro"></section>
+        <section class="fv-panel" data-tab="itv" aria-label="ITV"></section>
+        <section class="fv-panel" data-tab="docs" aria-label="Documentos"></section>
+        <!-- Mantenimiento: lo pinta js/mantenimiento.js -->
+        <section class="fv-panel" data-tab="mant" id="ficha-panel-mant" aria-label="Mantenimiento">
+          <div id="ficha-mant-content" class="mant-panel"></div>
+        </section>
+      </main>
     </div>
-
-    <!-- ── BODY ── -->
-    <div class="ficha-body">
-
-      <!-- PANEL SEGURO -->
-      <div class="ficha-panel active" id="ficha-panel-seguro">
-
-        <!-- Alerta vencimiento -->
-        <div id="ficha-seg-alerta" class="ficha-alert warn" style="display:none"></div>
-
-        <div class="ficha-section">
-          <div class="ficha-section-header">
-            <span class="ficha-section-icon">🛡️</span>
-            <span class="ficha-section-title">Datos del seguro</span>
-          </div>
-          <div class="ficha-rows">
-            <div class="ficha-row">
-              <span class="ficha-label">Aseguradora</span>
-              <span class="ficha-val" id="ficha-seg-aseguradora">—</span>
-            </div>
-            <div class="ficha-row">
-              <span class="ficha-label">Tomador</span>
-              <span class="ficha-val" id="ficha-seg-nombre">—</span>
-            </div>
-            <div class="ficha-row">
-              <span class="ficha-label">CIF</span>
-              <span class="ficha-val" id="ficha-seg-cif">—</span>
-            </div>
-            <div class="ficha-row">
-              <span class="ficha-label">Nº Póliza</span>
-              <span class="ficha-val" id="ficha-seg-poliza">—</span>
-            </div>
-            <div class="ficha-row">
-              <span class="ficha-label">Vencimiento</span>
-              <span class="ficha-val" id="ficha-seg-vencimiento">—</span>
-            </div>
-            <div class="ficha-row" style="padding: 11px 0;">
-              <span class="ficha-label">Tel. Asistencia</span>
-              <span class="ficha-val" id="ficha-seg-tel">—</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PANEL ITV -->
-      <div class="ficha-panel" id="ficha-panel-itv">
-        <div class="ficha-section">
-          <div class="ficha-section-header">
-            <span class="ficha-section-icon">🔧</span>
-            <span class="ficha-section-title">Inspección Técnica</span>
-          </div>
-          <div id="ficha-itv-big" class="ficha-itv-big">
-            <!-- Contenido dinámico -->
-          </div>
-        </div>
-      </div>
-
-      <!-- PANEL DOCUMENTOS -->
-      <div class="ficha-panel" id="ficha-panel-docs">
-        <div id="ficha-docs-content" class="ficha-docs-cats">
-          <div class="ficha-docs-loading">
-            <div class="ficha-spinner"></div>Carga la pestaña para ver los documentos
-          </div>
-        </div>
-      </div>
-
-      <!-- PANEL MANTENIMIENTO (js/mantenimiento.js) -->
-      <div class="ficha-panel" id="ficha-panel-mant">
-        <div id="ficha-mant-content" class="mant-panel"></div>
-      </div>
-
-    </div><!-- /ficha-body -->
-  </div><!-- /ficha-box -->
+  </div>
 </div>
 
 <script src="js/bloqueos-navegador.js"></script>

@@ -239,7 +239,4 @@
 .acerca-aceptar{ transition:transform .15s, filter .15s; }
 .acerca-aceptar:hover{ transform:translateY(-1px); }
 
-@media (prefers-reduced-motion: reduce){
-  .acerca-de-overlay *, .acerca-de-overlay *::before, .acerca-de-overlay *::after, .acerca-de-overlay{ animation:none !important; transition:none !important; }
-  .acerca-panel .acerca-activado svg path{ stroke-dashoffset:0; }
-}
+/* Sin prefers-reduced-motion: en los PCs del trabajo viene activado y la ventana no se animaba. */

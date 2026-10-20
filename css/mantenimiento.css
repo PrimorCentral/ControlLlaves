@@ -117,7 +117,7 @@
 .mant-btn-ok { background: #C93636; color: #fff; }
 .mant-btn-ok:disabled { opacity: .6; cursor: wait; }
 @media (max-width: 520px) { .mant-fila { grid-template-columns: 1fr; } }
-@media (prefers-reduced-motion: reduce) { .mant-badge.grave { animation: none; } }
+/* Sin prefers-reduced-motion: en los PCs del trabajo viene activado y el aviso no latía. */
 
 /* ── Botón "Añadir Incidencia" y ventana "¿Qué quieres añadir?" ── */
 .btn-print-row.btn-anadir {

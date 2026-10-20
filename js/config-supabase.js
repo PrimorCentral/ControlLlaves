@@ -620,7 +620,29 @@ async function manejarPeticionSupabase(urlStr, options) {
         .eq('timestamp', params.timestamp)
         .eq('matricula', params.matricula);
       if (error) return { ok: false, error: error.message };
-      return { ok: true };
+
+      // Si el vehículo está bloqueado POR ESTA incidencia (el motivo del bloqueo
+      // es su descripción), se desbloquea, salvo que tenga una avería abierta
+      // que le impida circular (esa se desbloquea al marcarla como reparada).
+      let vehiculoDesbloqueado = false;
+      try {
+        const [{ data: inc }, { data: veh }] = await Promise.all([
+          sb.from('incidencias').select('descripcion').eq('timestamp', params.timestamp).eq('matricula', params.matricula).maybeSingle(),
+          sb.from('vehiculos').select('bloqueado, motivo_bloqueo').eq('matricula', params.matricula).maybeSingle()
+        ]);
+        const norm = t => String(t || '').replace(/^Avería:\s*/i, '').replace(/\s+/g, ' ').trim().toUpperCase();
+        if (inc && veh && veh.bloqueado && norm(veh.motivo_bloqueo) === norm(inc.descripcion)) {
+          const { data: averiasInmov } = await sb.from('averias').select('id')
+            .eq('matricula', params.matricula).neq('estado', 'reparada').eq('inmoviliza', true).limit(1);
+          if (!averiasInmov || !averiasInmov.length) {
+            const { error: errDesb } = await sb.from('vehiculos').update({
+              bloqueado: false, motivo_bloqueo: '', bloqueado_por: '', fecha_bloqueo: null
+            }).eq('matricula', params.matricula);
+            if (!errDesb) vehiculoDesbloqueado = true;
+          }
+        }
+      } catch (e) { /* no bloqueante: la incidencia ya está resuelta */ }
+      return { ok: true, vehiculoDesbloqueado };
     }
 
     case 'eliminarIncidencia': {

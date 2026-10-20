@@ -1451,7 +1451,7 @@ async function resolverIncidencia(idx) {
         </div>
         <div style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">
           Se marcará como <strong style="color:#1a6635">Resuelto</strong> en el sistema.<br>
-          Si el vehículo estaba bloqueado por esta incidencia, <strong>deberás desbloquearlo manualmente</strong> desde el panel de vehículos.
+          Si el vehículo estaba bloqueado por esta incidencia, <strong>se desbloqueará automáticamente</strong> (salvo que tenga una avería abierta que le impida circular).
         </div>
         <div style="display:flex;gap:10px;justify-content:center;">
           <button id="inc-resolver-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancelar</button>
@@ -1493,8 +1493,9 @@ async function resolverIncidencia(idx) {
     // Actualizar caché local
     incidenciasCache[idx].estado = 'COMPLETADO';
     renderTabIncidencias();
-    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}`);
-    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta`, 'success');
+    const desbloqueado = (typeof _aplicarDesbloqueoTrasResolver === 'function') && _aplicarDesbloqueoTrasResolver(json, inc.matricula);
+    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}${desbloqueado ? ' · desbloqueado' : ''}`);
+    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
     actualizarBotonIncidenciasPendientes();
   } catch(e) {
     mostrarToast('Error al resolver la incidencia: ' + e.message, 'error');

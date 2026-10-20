@@ -576,6 +576,19 @@ function renderListaRepostajesPendientes(filas) {
     </div>`).join('');
 }
 
+// Tras resolver una incidencia: si el servidor quitó el bloqueo del vehículo,
+// reflejarlo ya en el cuadrante sin esperar a recargar.
+function _aplicarDesbloqueoTrasResolver(json, matricula) {
+  if (!json || !json.vehiculoDesbloqueado) return false;
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+    if (v.matricula === matricula) { v.bloqueado = false; v.motivo_bloqueo = ''; v.bloqueado_por = ''; v.fecha_bloqueo = ''; }
+  }));
+  if (typeof renderTabla === 'function') renderTabla();
+  if (typeof renderAdminVehiculos === 'function') { try { renderAdminVehiculos(); renderAdminStats(); } catch (e) {} }
+  if (typeof mantCargarResumen === 'function') mantCargarResumen();
+  return true;
+}
+
 // ── MODAL: INCIDENCIAS PENDIENTES ───────────────────────────────────────────
 async function actualizarBotonIncidenciasPendientes() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
@@ -868,8 +881,9 @@ async function confirmarResolverModal(idx) {
       }
     }
 
-    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta`, 'success');
-    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}`);
+    const desbloqueado = _aplicarDesbloqueoTrasResolver(json, inc.matricula);
+    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
+    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}${desbloqueado ? ' · desbloqueado' : ''}`);
     actualizarBotonIncidenciasPendientes();
     cargarIncidenciasPendientesModal();
   } catch (e) {

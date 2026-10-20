@@ -3,7 +3,8 @@
    Lógica en js/ficha-vehiculo.js. Colores: marino #0E1726 · rojo #C93636
    ===================================================================== */
 
-#modal-ficha-vehiculo { background: rgba(5,8,18,0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+/* Sin backdrop-filter (desenfoque): en los PCs del trabajo, sin tarjeta gráfica, hacía que la ficha fuera a tirones */
+#modal-ficha-vehiculo { background: rgba(5,8,18,0.78); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .fv-box {
   position: relative;
   width: min(1120px, 100%); height: min(780px, calc(100vh - 32px));
@@ -205,3 +206,8 @@
   .fv-panel { padding: 16px; }
   .fv-acciones, .fv-check { grid-template-columns: 1fr; }
 }
+
+/* Rendimiento: mientras la ficha está abierta no se anima nada de lo que queda
+   detrás (cuadrante), y la escena del acceso se para cuando el acceso está oculto. */
+body:has(#modal-ficha-vehiculo.visible) .mant-badge.grave::after { animation-play-state: paused; }
+#pantalla-login.oculto .login-escena, #pantalla-login.oculto .login-escena * { animation-play-state: paused; }

@@ -1685,3 +1685,7 @@
     .estrella-hab { color: #f79009; }
     .tag-habitual { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: #fff4e5; color: #93370d; vertical-align: 1px; }
     .operario-item-ocupado { font-weight: 700; color: #b42318; }
+    .operario-dropdown-item.suplente { border-left: 3px dashed #fdb022; padding-left: 9px; background: #fffdf8; }
+    .operario-dropdown-item.suplente:hover, .operario-dropdown-item.suplente.highlighted { background: #fff7e8; }
+    .tag-habitual.sup { background: #f2f4f7; color: #854a0e; border: 1px dashed #fdb022; }
+    .estrella-hab.vacia { color: transparent; -webkit-text-stroke: 1.2px #f79009; }

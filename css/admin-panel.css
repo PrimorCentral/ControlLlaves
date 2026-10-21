@@ -295,6 +295,17 @@
 }
 .hab-chip.sin-turno .hab-x { color: #667085; }
 .hab-x:hover { background: rgba(0,0,0,.08); }
+.hab-chip { padding-left: 4px; }
+.hab-tipo {
+  order: 0; width: 22px; height: 22px; border-radius: 50%; border: none; background: transparent; color: #f79009;
+  font-size: 14px; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+}
+.hab-tipo:hover { background: rgba(0,0,0,.07); }
+.hab-tipo.vacia { color: transparent; -webkit-text-stroke: 1.2px #f79009; }
+.hab-chip.suplente { background: #fff; border-style: dashed; border-color: #fdb022; color: #854a0e; }
+.hab-sup-tag { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #b54708; }
+.hab-check { display: inline-flex; align-items: center; gap: 5px; font: 600 12px 'Barlow', sans-serif; color: #5b6475; cursor: pointer; user-select: none; }
+.hab-check input { accent-color: #f79009; }
 .hab-add {
   height: 28px; padding: 0 11px; border-radius: 20px; border: 1px dashed #c5cad3; background: #fff; color: #5b6475;
   font: 600 13px 'Barlow', sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;

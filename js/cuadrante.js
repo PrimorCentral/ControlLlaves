@@ -881,7 +881,7 @@ function renderTabla() {
 
           if (repoInfo) {
             // Tarjeta entregada HOY y pendiente de devolución → badge amarillo, abre modal devolución directa
-            html += `<td style="text-align:center;padding:4px 6px;"><span style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;"
+            html += `<td style="text-align:center;padding:4px 6px;"><span style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:1px 12px;line-height:1.3;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;"
               onclick="abrirDevolucionDirecta(${JSON.stringify(repoInfo).replace(/"/g,'&quot;')})" title="Tarjeta pendiente — click para registrar devolución">
               ⛽ ${esc(repoInfo.num_tarjeta||'GASOIL')}
             </span></td>`;
@@ -894,7 +894,7 @@ function renderTabla() {
               html += `<td style="text-align:center;padding:4px 6px;"><span
                 onclick="generarPDFRepostajeDirecto(${JSON.stringify(repoFecha).replace(/"/g,'&quot;')})"
                 title="Repostaje completado — click para generar PDF"
-                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#1a6635;background:#eafaf1;border:2px solid #a9dfbf;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;width:100%;box-sizing:border-box;transition:background 0.15s,border-color 0.15s"
+                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#1a6635;background:#eafaf1;border:2px solid #a9dfbf;border-radius:8px;padding:1px 12px;line-height:1.3;white-space:nowrap;cursor:pointer;width:100%;box-sizing:border-box;transition:background 0.15s,border-color 0.15s"
                 onmouseover="this.style.background='#d6f5e3';this.style.borderColor='#7ccba6'" onmouseout="this.style.background='#eafaf1';this.style.borderColor='#a9dfbf'">
                 ⛽ ${esc(repoFecha.num_tarjeta)}
               </span></td>`;
@@ -903,7 +903,7 @@ function renderTabla() {
               html += `<td style="text-align:center;padding:4px 6px;"><span
                 onclick="abrirDevolucionDirecta(${JSON.stringify(repoFecha).replace(/"/g,'&quot;')})"
                 title="Tarjeta pendiente de devolución — click para registrar devolución"
-                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;">
+                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:1px 12px;line-height:1.3;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;">
                 ⛽ ${esc(repoFecha.num_tarjeta)}
               </span></td>`;
             }
@@ -933,7 +933,7 @@ function renderTabla() {
               html += `<td style="text-align:center;padding:4px 6px;"><span
                 onclick="generarPDFRepostajeDirecto(${JSON.stringify(repoLocal).replace(/"/g,'&quot;')})"
                 title="Repostaje completado — click para generar PDF"
-                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#1a6635;background:#eafaf1;border:2px solid #a9dfbf;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;width:100%;box-sizing:border-box;transition:background 0.15s,border-color 0.15s"
+                style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#1a6635;background:#eafaf1;border:2px solid #a9dfbf;border-radius:8px;padding:1px 12px;line-height:1.3;white-space:nowrap;cursor:pointer;width:100%;box-sizing:border-box;transition:background 0.15s,border-color 0.15s"
                 onmouseover="this.style.background='#d6f5e3';this.style.borderColor='#7ccba6'" onmouseout="this.style.background='#eafaf1';this.style.borderColor='#a9dfbf'">
                 ⛽ ${esc(numTarjetaLocal)}
               </span></td>`;
@@ -953,7 +953,7 @@ function renderTabla() {
                   resp_entrega:   d.resp_entrega || '',
                 };
                 html += `<td style="text-align:center;padding:4px 6px;"><span
-                  style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:5px 12px;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;"
+                  style="display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:900;color:#92600a;background:#fffbeb;border:2px solid #f59e0b;border-radius:8px;padding:1px 12px;line-height:1.3;white-space:nowrap;cursor:pointer;box-shadow:0 0 0 3px rgba(245,158,11,0.15);animation:badge-pulse 2s ease-in-out infinite;width:100%;box-sizing:border-box;"
                   onclick="abrirDevolucionDirecta(${JSON.stringify(repoLocal).replace(/"/g,'&quot;')})"
                   title="Tarjeta pendiente — click para registrar devolución">
                   ⛽ ${esc(numTarjetaLocal)}
@@ -1031,7 +1031,7 @@ function renderTabla() {
           html += `<td style="padding:4px 6px;">
             <button
               onclick="pedirConfirmacionRecibirLlave('${esc(v.matricula)}')"
-              style="display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:5px 10px;background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;border-radius:7px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s,box-shadow .15s;box-sizing:border-box;"
+              style="display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:3px 10px;background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;border-radius:7px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s,box-shadow .15s;box-sizing:border-box;"
               onmouseover="this.style.background='#143022';this.style.boxShadow='0 0 0 3px rgba(74,222,128,0.2)'"
               onmouseout="this.style.background='#1a3a2a';this.style.boxShadow='none'"
               title="Confirmar recepción de llaves">

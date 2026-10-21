@@ -189,10 +189,37 @@
 .fv-doc-falta .fv-doc-nombre { color: #9A5B00; }
 .fv-doc-meta { font-size: 12.5px; color: #8899AA; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+
+/* ── Editar (lápiz, solo admin) y pestaña Gestión ── */
+.fv-lapiz {
+  height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #D5DBE4; background: #fff; color: #0E1726;
+  font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s, color .15s;
+}
+.fv-lapiz:hover { background: #0E1726; border-color: #0E1726; color: #fff; }
+.fv-lapiz:focus-visible { outline: 2px solid #C93636; outline-offset: 2px; }
+/* En la cabecera oscura */
+.fv-lapiz-osc { background: transparent; border-color: #2B3A50; color: #E9EDF3; }
+.fv-lapiz-osc:hover { background: rgba(255,255,255,.1); border-color: #4A5B74; color: #fff; }
+
+.fv-btn-verde { border-color: #A7D9BC; color: #166534; flex-shrink: 0; }
+.fv-btn-verde:hover { background: #EAF7EF; }
+.fv-btn-rojo-lleno.fv-btn { align-self: center; margin-top: 0; }
+.fv-campos.fv-campos-gest { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 6px 0 0; }
+.fv-gest-fila { flex-direction: row; align-items: center; gap: 20px; }
+.fv-gest-fila > .fv-btn { flex-shrink: 0; min-width: 170px; height: 42px; font-size: 14px; }
+.fv-gest-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.fv-gest-titulo { font-size: 19px; font-weight: 700; display: inline-flex; align-items: center; gap: 9px; }
+.fv-gest-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #C9D1DD; }
+.fv-gest-dot.ok { background: #1E9E5A; } .fv-gest-dot.mal { background: #C93636; } .fv-gest-dot.aviso { background: #F59E0B; }
+.fv-gest-fila.peligro { border-color: #F2C4BF; background: #FFFBFA; }
+
 /* ── Pantallas pequeñas ── */
 @media (max-width: 900px) {
   .fv-grid3 { grid-template-columns: 1fr; }
   .fv-grid2, .fv-docs-grid, .fv-campos { grid-template-columns: 1fr; }
+  .fv-campos.fv-campos-gest { grid-template-columns: 1fr 1fr; }
+  .fv-gest-fila { flex-direction: column; align-items: stretch; }
 }
 @media (max-width: 768px) {
   #modal-ficha-vehiculo { padding: 0 !important; }

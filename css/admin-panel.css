@@ -452,3 +452,25 @@
   .cond-ficha-pie { padding: 14px 18px; }
   .cond-btn-eliminar { width: 100%; justify-content: center; order: 3; }
 }
+
+/* ── Vehículos: la fila abre la ficha; flechas ↑↓ para el orden del cuadrante ── */
+.adm-table tr.veh-fila { cursor: pointer; }
+.adm-table tbody tr.veh-fila:hover td { background: #f3f5f9 !important; }
+.veh-mat-btn {
+  border: none; background: none; padding: 0; margin: 0; cursor: pointer; text-align: left;
+}
+.veh-mat-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.veh-mat-btn:focus-visible { outline: 2px solid var(--adm-red); outline-offset: 3px; border-radius: 3px; }
+.adm-table th.veh-th-orden { text-align: right; padding-right: 50px; }
+.veh-orden { display: inline-flex; gap: 4px; vertical-align: middle; }
+.veh-flecha {
+  width: 30px; height: 30px; padding: 0; border: 1px solid #d5d9e0; border-radius: 7px; background: #fff;
+  color: var(--adm-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.veh-flecha .adm-ico { width: 15px; height: 15px; stroke-width: 2.4; }
+.veh-flecha:hover:not(:disabled) { background: var(--adm-ink); color: #fff; border-color: var(--adm-ink); }
+.veh-flecha:focus-visible { outline: 2px solid var(--adm-red); outline-offset: 2px; }
+.veh-flecha:disabled { opacity: .3; cursor: default; }
+.veh-chev { display: inline-block; width: 22px; margin-left: 12px; color: #8790a3; vertical-align: middle; }
+.veh-chev .adm-ico { width: 18px; height: 18px; stroke-width: 2.2; vertical-align: middle; }

@@ -408,7 +408,7 @@
     /* ─── FILA BLOQUEADA (operario asignado) ─── */
     .operario-locked {
       display: flex; align-items: center; gap: 6px;
-      padding: 4px 6px; min-width: 160px;
+      padding: 0 6px; min-width: 160px;
     }
     .operario-locked-name {
       font-size: 12px; font-weight: 700; color: #1a1a2e;

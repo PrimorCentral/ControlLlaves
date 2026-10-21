@@ -397,16 +397,23 @@ function _mantRenderMantenimiento() {
   }
   h += `</section>`;
 
-  // Mantenimientos realizados
+  // Mantenimientos realizados. Las revisiones de tacógrafo no se repiten aquí:
+  // están en el apartado Tacógrafo de la ficha (siguen contando en el gasto de arriba).
+  const vehM = typeof _getVehiculo === 'function' ? _getVehiculo(matricula) : null;
+  const sepTaco = !!(vehM && vehM.tacografo);
+  const lista = sepTaco ? mants.filter(m => m.tipo !== 'Tacógrafo') : mants;
+  const taco = sepTaco ? mants.filter(m => m.tipo === 'Tacógrafo') : [];
+  const totalLista = lista.reduce((s, m) => s + (m.coste != null ? Number(m.coste) : 0), 0);
+  const notaTaco = taco.length ? `<div class="mf-pie mf-pie-taco"><span>${taco.length} revisi${taco.length === 1 ? 'ón' : 'ones'} de tacógrafo · ${_mantEuros(taco.reduce((s, m) => s + (m.coste != null ? Number(m.coste) : 0), 0))}</span><button type="button" class="adm-link mf-link" onclick="fichaTabSwitch('taco')">Ver en Tacógrafo →</button></div>` : '';
   h += `<section class="mf-sec mf-sec-ancha">
-    ${_mfCabecera(_MF_ICO_MANT, 'MANTENIMIENTOS REALIZADOS', mants.length ? `<span class="mf-num gris">${mants.length}</span>` : '',
+    ${_mfCabecera(_MF_ICO_MANT, 'MANTENIMIENTOS REALIZADOS', lista.length ? `<span class="mf-num gris">${lista.length}</span>` : '',
       admin ? `<button type="button" class="mf-btn-head" onclick="mantAbrirFormMantenimiento('${mat}')">+ Registrar</button>` : '')}`;
-  if (!mants.length) {
-    h += `<div class="mf-vacio">Todavía no hay mantenimientos registrados.</div>`;
+  if (!lista.length) {
+    h += `<div class="mf-vacio">Todavía no hay mantenimientos registrados.</div>${notaTaco}`;
   } else {
     h += `<div class="mf-tabla-wrap"><table class="mf-tabla mf-tabla-mt">
       <thead><tr><th>Fecha</th><th>Trabajo</th><th>Taller</th><th class="der">Km</th><th class="der">Coste</th><th class="der">Documentos</th></tr></thead>
-      <tbody>${mants.map(m => {
+      <tbody>${lista.map(m => {
         // Documentos del mantenimiento: la factura y los adjuntos (certificados, etc.)
         const enlace = (path, nombre, txt) => `<button type="button" class="adm-link mf-link" title="${esc(nombre || '')}" onclick="abrirVisorDoc('sb:${esc(path)}','${esc(nombre || 'Documento')}','${/\.pdf$/i.test(nombre || '') ? 'pdf' : 'imagen'}')">${txt}</button>`;
         const adj = Array.isArray(m.adjuntos) ? m.adjuntos.filter(a => a && a.path) : [];
@@ -424,7 +431,7 @@ function _mantRenderMantenimiento() {
         </tr>`;
       }).join('')}</tbody>
     </table></div>
-    <div class="mf-pie"><span>${mants.length} mantenimiento${mants.length === 1 ? '' : 's'} · desde ${_mantFecha(mants[mants.length - 1].fecha)}</span><span>Gasto total: <strong class="mf-mono">${_mantEuros(total)}</strong></span></div>`;
+    <div class="mf-pie"><span>${lista.length} mantenimiento${lista.length === 1 ? '' : 's'} · desde ${_mantFecha(lista[lista.length - 1].fecha)}</span><span>Gasto total: <strong class="mf-mono">${_mantEuros(totalLista)}</strong></span></div>${notaTaco}`;
   }
   h += `</section></div>`;
 
@@ -678,7 +685,8 @@ async function mantAbrirFormMantenimiento(matricula, revisionId, tipoInicial) {
       _mantCampo('Coste (€)', `<input type="text" name="coste" inputmode="decimal" placeholder="Opcional">`) +
     `</div>` +
     _mantCampo('Taller', `<input type="text" name="taller" placeholder="Opcional">`) +
-    _mantCampo('Factura', `<input type="file" name="factura" accept=".pdf,image/*">`, 'PDF o foto. Queda guardada con este mantenimiento.') +
+    _mantCampo('Factura', `<input type="file" name="factura" accept=".pdf,image/*">`) +
+    _mantCampo('Certificado u otro documento', `<input type="file" name="certificado" accept=".pdf,image/*">`, 'PDF o foto. Factura y certificado quedan guardados con este mantenimiento.') +
     `<fieldset class="mant-prox"><legend>Programar la próxima (opcional)</legend><div class="mant-fila">` +
       _mantCampo('Fecha', `<input type="date" name="prox_fecha" min="${_mantHoyISO()}"${tipoSel === 'Tacógrafo' ? ` value="${prox2}"` : ''}>`) +
       _mantCampo('Kilómetros', `<input type="text" name="prox_km" inputmode="numeric" placeholder="Ej.: ${kmActual != null ? Math.round(kmActual + 30000) : '250000'}">`) +
@@ -687,8 +695,10 @@ async function mantAbrirFormMantenimiento(matricula, revisionId, tipoInicial) {
     const tipo = form.tipo.value;
     const fecha = form.fecha.value || _mantHoyISO();
     const archivo = form.factura.files && form.factura.files[0];
-    if (archivo && archivo.size > (typeof DOCS_MAX_MB !== 'undefined' ? DOCS_MAX_MB : 15) * 1024 * 1024)
-      return `La factura ocupa demasiado (máx. ${typeof DOCS_MAX_MB !== 'undefined' ? DOCS_MAX_MB : 15} MB).`;
+    const certif = form.certificado.files && form.certificado.files[0];
+    const maxMB = typeof DOCS_MAX_MB !== 'undefined' ? DOCS_MAX_MB : 15;
+    if (archivo && archivo.size > maxMB * 1024 * 1024) return `La factura ocupa demasiado (máx. ${maxMB} MB).`;
+    if (certif && certif.size > maxMB * 1024 * 1024) return `El certificado ocupa demasiado (máx. ${maxMB} MB).`;
     const proxKm = _mantNum(form.prox_km.value);
     const proxFecha = form.prox_fecha.value || null;
 
@@ -698,13 +708,20 @@ async function mantAbrirFormMantenimiento(matricula, revisionId, tipoInicial) {
       factura_nombre = `Factura ${tipo} ${_mantFecha(fecha).replace(/\//g, '-')}.${ext}`;
       factura_path = await docsSubirArchivo(matricula, 'mantenimiento', archivo, factura_nombre); // va con el mantenimiento, no sale en Documentos
     }
+    // Certificado (u otro documento): va en "adjuntos" del mantenimiento
+    const adjuntos = [];
+    if (certif) {
+      const ext = (certif.name.split('.').pop() || 'pdf').toLowerCase();
+      const nombre = `Certificado ${tipo} ${_mantFecha(fecha).replace(/\//g, '-')}.${ext}`;
+      adjuntos.push({ path: await docsSubirArchivo(matricula, 'mantenimiento', certif, nombre), nombre });
+    }
     const { error } = await sb.from('mantenimientos').insert({
       matricula, tipo, fecha,
       descripcion: form.descripcion.value.trim() || null,
       km: _mantNum(form.km.value),
       coste: _mantNum(form.coste.value),
       taller: form.taller.value.trim() || null,
-      factura_path, factura_nombre,
+      factura_path, factura_nombre, adjuntos,
       registrado_por: _mantUsuario()
     });
     if (error) return 'No se pudo guardar: ' + error.message;

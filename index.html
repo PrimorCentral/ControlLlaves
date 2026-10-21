@@ -584,6 +584,7 @@
       <div class="admin-nav-grupo">Flota</div>
       <button class="admin-tab" id="tab-btn-vehiculos" onclick="cambiarTab('vehiculos')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg><span>Vehículos</span></button>
       <button class="admin-tab" id="tab-btn-conductores" onclick="cambiarTab('conductores')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/></svg><span>Conductores</span></button>
+      <button class="admin-tab" id="tab-btn-asignaciones" onclick="cambiarTab('asignaciones')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7a3 3 0 1 1-3 3M12 13l-7 7M7 18l2 2M9 16l2 2M17 4l3 3"/></svg><span>Asignaciones</span></button>
       <button class="admin-tab" id="tab-btn-historial" onclick="cambiarTab('historial')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></svg><span>Historial</span></button>
       <div class="admin-nav-grupo">Operativa</div>
       <button class="admin-tab" id="tab-btn-log" onclick="cambiarTab('log')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log de órdenes</span></button>
@@ -646,6 +647,36 @@
         </div>
         <div class="admin-list" id="admin-lista-conductores" style="max-height:420px"></div>
       </div>
+    </div>
+
+    <!-- TAB: ASIGNACIONES (choferes habituales por matrícula y turno) -->
+    <div class="admin-tab-panel" id="tab-panel-asignaciones">
+      <div class="adm-page-head">
+        <div>
+          <h1>Asignaciones</h1>
+          <p>Choferes habituales de cada matrícula. Se resaltan al asignar en el cuadrante.</p>
+        </div>
+        <div class="adm-page-actions">
+          <button class="adm-btn" onclick="exportarAsignacionesPDF()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Exportar PDF</button>
+        </div>
+      </div>
+      <div class="admin-stats" id="asig-stats"></div>
+      <div id="asig-rotacion"></div>
+      <div class="adm-card" id="asig-card">
+        <div class="adm-toolbar">
+          <div class="adm-seg" id="asig-seg">
+            <button data-f="todas" class="on" onclick="asigCambiarFiltro('todas')">Todas</button>
+            <button data-f="con" onclick="asigCambiarFiltro('con')">Con habituales</button>
+            <button data-f="sin" onclick="asigCambiarFiltro('sin')">Sin habituales</button>
+          </div>
+          <div class="adm-toolbar-right">
+            <label class="adm-search"><svg class="adm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
+              <span class="adm-sr">Buscar</span><input type="text" id="asig-filtro" placeholder="Buscar matrícula o chofer" oninput="renderAdminAsignaciones()"></label>
+          </div>
+        </div>
+        <div class="adm-table-wrap" id="admin-lista-asignaciones"></div>
+      </div>
+      <p class="adm-nota">El turno de cada chofer se marca en <strong>Conductores</strong>. Un chofer puede ser habitual de varias matrículas. Es solo una ayuda: en el cuadrante se puede seguir asignando a cualquiera.</p>
     </div>
 
     <!-- TAB: HISTORIAL -->
@@ -2009,6 +2040,7 @@
 <link rel="stylesheet" href="css/ficha-vehiculo.css">
 <script src="js/admin-documentos.js"></script>
 <script src="js/admin-conductores.js"></script>
+<script src="js/admin-asignaciones.js"></script>
 <script src="js/historial.js"></script>
 <script src="js/llaves-repostaje.js"></script>
 <script src="js/admin-login-presencia.js"></script>

@@ -395,7 +395,7 @@ function _fichaHtmlResumen(v) {
       <span class="fv-card-lbl">ACCIONES RÁPIDAS</span>
       <div class="fv-acciones">
         <button type="button" class="fv-btn fv-btn-gr" onclick="mantAbrirFormAveria('${mat}')">Dar parte de avería</button>
-        <button type="button" class="fv-btn fv-btn-gr" onclick="abrirGestorDocumentos('${mat}','docs',{puedeBorrar:${admin}})">Subir documento</button>
+        <button type="button" class="fv-btn fv-btn-gr" onclick="fichaSubirDocumento()">Subir documento</button>
         <button type="button" class="fv-btn fv-btn-gr" onclick="abrirGestorDocumentos('${mat}','fotos',{puedeBorrar:${admin}})">Añadir fotos</button>
         ${tel ? `<a class="fv-btn fv-btn-gr fv-btn-oscuro" href="tel:${esc(tel)}">Llamar asistencia</a>` : `<button type="button" class="fv-btn fv-btn-gr" disabled title="Sin teléfono de asistencia">Llamar asistencia</button>`}
       </div>
@@ -504,7 +504,7 @@ function _fvHuecoDoc(cat, label) {
       <span class="fv-doc-nombre">Falta subirlo</span>
       <span class="fv-doc-meta">Debería estar en la ficha del vehículo</span>
     </div>
-    <button type="button" class="fv-btn" onclick="abrirGestorDocumentos('${esc(_fichaMat)}','docs',{puedeBorrar:${admin}})">Subir</button>
+    <button type="button" class="fv-btn" onclick="fichaSubirDocumento('${esc(cat)}')">Subir</button>
   </div>`;
 }
 
@@ -530,7 +530,7 @@ function _fvDocGrande(doc, etiqueta, anteriores) {
     </div>`;
 }
 
-function _fvDocGrandeFalta(label) {
+function _fvDocGrandeFalta(label, cat) {
   const admin = _fvEsAdmin();
   return `
     <div class="fv-docg falta">
@@ -540,7 +540,7 @@ function _fvDocGrandeFalta(label) {
       </div>
       <span class="fv-docg-nombre">Falta subirlo</span>
       <span class="fv-docg-meta">Debería estar en la ficha del vehículo</span>
-      <button type="button" class="fv-btn fv-docg-ver" onclick="abrirGestorDocumentos('${esc(_fichaMat)}','docs',{puedeBorrar:${admin}})">Subir</button>
+      <button type="button" class="fv-btn fv-docg-ver" onclick="fichaSubirDocumento('${esc(cat)}')">Subir</button>
     </div>`;
 }
 
@@ -553,7 +553,7 @@ function _fichaHtmlDocs(v) {
       <h2 class="fv-h2">Documentos</h2>
       <span class="fv-card-nota">${d.cargado ? `${todos.length} archivo${todos.length === 1 ? '' : 's'}${(d.fotos || []).length ? ` · ${d.fotos.length} foto${d.fotos.length === 1 ? '' : 's'}` : ''}` : ''}</span>
       <button type="button" class="fv-btn" onclick="abrirGestorDocumentos('${mat}','fotos',{puedeBorrar:${admin}})">Fotos</button>
-      <button type="button" class="fv-btn fv-btn-oscuro" onclick="abrirGestorDocumentos('${mat}','docs',{puedeBorrar:${admin}})">+ Subir documento</button>
+      <button type="button" class="fv-btn fv-btn-oscuro" onclick="fichaSubirDocumento()">+ Subir documento</button>
     </div>`;
   if (!d.cargado) return h + _fvCargando();
   if (d.errorDocs) return h + `<div class="fv-cargando" style="color:#B42318">No se pudieron cargar los documentos. Revisa la conexión.</div>`;
@@ -562,7 +562,7 @@ function _fichaHtmlDocs(v) {
   h += `<h3 class="fv-h3">Documentación del vehículo</h3><div class="fv-docs-grandes">`;
   FICHA_DOCS_ESENCIALES.forEach(o => {
     const de = todos.filter(x => x.categoria === o.id).sort((a, b) => _fvFechaOrden(b).localeCompare(_fvFechaOrden(a)));
-    h += de.length ? _fvDocGrande(de[0], o.label, de.length - 1) : _fvDocGrandeFalta(o.label);
+    h += de.length ? _fvDocGrande(de[0], o.label, de.length - 1) : _fvDocGrandeFalta(o.label, o.id);
   });
   h += `</div>`;
 
@@ -573,6 +573,49 @@ function _fichaHtmlDocs(v) {
     h += `<h3 class="fv-h3">Otros documentos</h3><div class="fv-docs-grandes">${otros.map(x => _fvDocGrande(x, FICHA_DOC_LABELS[x.categoria] && x.categoria !== 'otros' ? FICHA_DOC_LABELS[x.categoria] : 'Otros')).join('')}</div>`;
   }
   return h;
+}
+
+// ── Subir un documento desde la ficha (ventana pequeña: tipo + archivo) ──
+const FICHA_TIPOS_SUBIDA = [
+  { id: 'ficha_tecnica',       label: 'Ficha técnica' },
+  { id: 'permiso_circulacion', label: 'Permiso de circulación' },
+  { id: 'poliza_seguro',       label: 'Póliza de seguro' },
+  { id: 'informe_itv',         label: 'Informe ITV' },
+  { id: 'otros',               label: 'Otro documento' }
+];
+
+function fichaSubirDocumento(categoria) {
+  const mat = _fichaMat;
+  if (!mat || typeof _mantModal !== 'function') return;
+  const cat = FICHA_TIPOS_SUBIDA.some(t => t.id === categoria) ? categoria : 'ficha_tecnica';
+  const opciones = FICHA_TIPOS_SUBIDA.map(t => `<option value="${t.id}"${t.id === cat ? ' selected' : ''}>${t.label}</option>`).join('');
+  const cuerpo =
+    _mantCampo('¿Qué documento es?', `<select name="categoria">${opciones}</select>`) +
+    _mantCampo('Archivo', `<input type="file" name="archivo" accept="application/pdf,image/*">`, `PDF o foto, de ${typeof DOCS_MAX_MB !== 'undefined' ? DOCS_MAX_MB : 15} MB como máximo.`);
+  let itvSubido = null;
+  const ov = _mantModal(`Subir documento · ${_fichaMatReal(mat)}`, '📄', cuerpo, 'Subir', async form => {
+    const file = form.archivo.files && form.archivo.files[0];
+    if (!file) return 'Elige el archivo que quieres subir.';
+    const mime = typeof _docsMime === 'function' ? _docsMime(file) : (file.type || '');
+    if (mime !== 'application/pdf' && !mime.startsWith('image/')) return 'Solo se admiten PDF o fotos.';
+    if (typeof DOCS_MAX_MB !== 'undefined' && file.size > DOCS_MAX_MB * 1024 * 1024) return `El archivo supera los ${DOCS_MAX_MB} MB.`;
+    const categoria = form.categoria.value;
+    const etiqueta = (FICHA_TIPOS_SUBIDA.find(t => t.id === categoria) || {}).label || 'Documento';
+    const blob = file.type ? file : new Blob([file], { type: mime });
+    await docsSubirArchivo(mat, categoria, blob, file.name);
+    registrarAccion('VEHICULO', 'Subir documento', `${mat} · ${etiqueta} · ${file.name}`);
+    mostrarToast(`✓ ${etiqueta} subido`, 'success');
+    if (categoria === 'informe_itv') itvSubido = file;
+    if (_fichaMat === mat) _fichaCargarDatos(mat);
+    return null;
+  });
+  // Al cerrar tras subir un informe ITV: leer la fecha y ofrecer guardarla
+  const obs = new MutationObserver(() => {
+    if (ov.isConnected) return;
+    obs.disconnect();
+    if (itvSubido && typeof itvActualizarDesdeInforme === 'function') itvActualizarDesdeInforme(mat, itvSubido, null);
+  });
+  obs.observe(document.body, { childList: true });
 }
 
 // ── Subir un informe ITV desde la propia ficha ──

@@ -242,21 +242,31 @@ function _fichaPintarCabecera(v) {
   const marca = _fvMarca(_fichaMat);
   const grupo = _fvGrupo(_fichaMat);
   const desc = [marca, _fvTipo(v.tipo)].filter(Boolean).join(' · ');
-  const extra = [_fvCap(v.nota), _fvCap(grupo)].filter(Boolean).join(' · ');
+  const nota = String(v.nota || '').trim();
+  const prop = !nota ? '—' : nota.toUpperCase() === 'PROPIEDAD' ? 'Propia'
+    : nota.toUpperCase() === 'OTRO ALQUILER' ? 'Alquiler' : `Alquiler · ${nota.toUpperCase()}`;
+  const col = (lbl, val, vacio) => `<div class="fv-cab-col"><span class="fv-cab-lbl">${lbl}</span><span class="fv-cab-val${vacio ? ' vacio' : ''}">${esc(val)}</span></div>`;
   document.getElementById('fv-cabecera').innerHTML = `
-    <div class="fv-placa" aria-label="Matrícula ${esc(_fichaMatReal(_fichaMat))}">
-      <span class="fv-placa-eu" aria-hidden="true">★★★<b>E</b></span>
-      <span class="fv-placa-txt">${esc(_fichaMatReal(_fichaMat))}</span>
-    </div>
-    <div class="fv-titulo">
-      <span class="fv-eyebrow" id="fv-titulo">FICHA DEL VEHÍCULO</span>
-      <span class="fv-desc">${esc(desc || _fichaMat)}${extra ? ` <span>· ${esc(extra)}</span>` : ''}</span>
-    </div>
-    ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz fv-lapiz-osc" onclick="fichaEditar('datos')" title="Editar matrícula, tipo, nave, propiedad y sociedad">${_FV_LAPIZ}<span>Editar</span></button>` : ''}
-    <div class="fv-chips">${chips.join('')}</div>
-    <button type="button" class="fv-cerrar" onclick="cerrarFichaVehiculo()" aria-label="Cerrar la ficha">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>`;
+    <div class="fv-franja" id="fv-titulo">FICHA DEL VEHÍCULO</div>
+    <div class="fv-cab-fila">
+      <div class="fv-placa" aria-label="Matrícula ${esc(_fichaMatReal(_fichaMat))}">
+        <span class="fv-placa-eu" aria-hidden="true">★★★<b>E</b></span>
+        <span class="fv-placa-txt">${esc(_fichaMatReal(_fichaMat))}</span>
+      </div>
+      <div class="fv-cab-cols">
+        ${col('VEHÍCULO', desc || _fichaMat)}
+        ${col('NAVE', grupo ? grupo.toUpperCase() : '—', !grupo)}
+        ${col('PROPIEDAD', prop, prop === '—')}
+        ${col('SOCIEDAD', v.sociedad ? v.sociedad.toUpperCase() : 'Sin sociedad', !v.sociedad)}
+      </div>
+      <div class="fv-cab-der">
+        ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz fv-lapiz-osc" onclick="fichaEditar('datos')" title="Editar matrícula, tipo, nave, propiedad y sociedad">${_FV_LAPIZ}<span>Editar</span></button>` : ''}
+        <div class="fv-chips">${chips.join('')}</div>
+        <button type="button" class="fv-cerrar" onclick="cerrarFichaVehiculo()" aria-label="Cerrar la ficha">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </div>`;
 }
 
 function _fichaPintarNav(v) {

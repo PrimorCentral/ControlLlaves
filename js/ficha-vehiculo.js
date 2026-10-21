@@ -153,7 +153,7 @@ async function _fichaCargarDatos(matricula) {
   tareas.push((async () => {
     try {
       const todos = await docsListarSupabase(matricula);
-      d.docs = todos.filter(x => x.categoria !== 'fotos');
+      d.docs = todos.filter(x => x.categoria !== 'fotos' && x.categoria !== 'mantenimiento'); // facturas: en Mantenimiento
       d.fotos = todos.filter(x => x.categoria === 'fotos');
       if (await docsDriveActivo()) {
         try { d.docsDrive = await docsListarDrive(matricula, todos.map(x => x.drive_id).filter(Boolean)); } catch (e) {}
@@ -248,7 +248,7 @@ function _fichaPintarCabecera(v) {
 function _fichaPintarNav(v) {
   const e = _fichaEstado(v);
   const d = _fichaDatos || {};
-  const nDocs = (d.docs || []).length + (d.docsDrive || []).length;
+  const nDocs = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria !== 'informe_itv').length; // la ITV va en su apartado
   const info = {
     resumen: { dot: (v.bloqueado || e.itv.cls === 'mal' || e.seg.cls === 'mal') ? 'mal' : ((e.averias.length || e.incid.length || e.itv.cls === 'aviso' || e.seg.cls === 'aviso' || e.faltan.length) ? 'aviso' : 'ok'), txt: '' },
     seguro:  { dot: e.seg.cls, txt: e.seg.cls === 'nada' ? '—' : (e.seg.cls === 'mal' ? 'Caducado' : `${e.seg.dias} d`) },
@@ -509,11 +509,46 @@ function _fvHuecoDoc(cat, label) {
 }
 
 // ── Documentos ──
+// Lo esencial (ficha técnica, permiso y póliza) en tarjetas grandes y, debajo,
+// el resto. Los informes de ITV no salen aquí: están en el apartado ITV.
+const FICHA_DOCS_ESENCIALES = FICHA_DOCS_OBLIGATORIOS.filter(o => o.id !== 'informe_itv');
+
+function _fvFechaOrden(x) { return String(x.fecha || ''); }
+
+function _fvDocGrande(doc, etiqueta, anteriores) {
+  const pdf = (doc.formato || '').toLowerCase() === 'pdf' || /\.pdf$/i.test(doc.nombre || '');
+  const ver = `abrirVisorDoc('${esc(doc.ref)}','${esc(doc.nombre || '')}','${esc(doc.formato || '')}')`;
+  return `
+    <div class="fv-docg">
+      <div class="fv-docg-cab">
+        <span class="fv-docg-ico ${pdf ? 'pdf' : 'img'}" aria-hidden="true">${pdf ? 'PDF' : 'IMG'}</span>
+        <span class="fv-docg-cat">${esc(etiqueta)}</span>
+      </div>
+      <span class="fv-docg-nombre" title="${esc(doc.nombre)}">${esc(doc.nombre || 'Sin nombre')}</span>
+      <span class="fv-docg-meta">${_fvFecha(doc.fecha)} · ${esc(_fvCap(doc.subido_por || '—'))}${doc.origen === 'drive' ? ' · en Drive' : ''}${anteriores ? ` · ${anteriores} versión${anteriores === 1 ? '' : 'es'} anterior${anteriores === 1 ? '' : 'es'}` : ''}</span>
+      <button type="button" class="fv-btn fv-btn-oscuro fv-docg-ver" onclick="${ver}">Ver documento</button>
+    </div>`;
+}
+
+function _fvDocGrandeFalta(label) {
+  const admin = _fvEsAdmin();
+  return `
+    <div class="fv-docg falta">
+      <div class="fv-docg-cab">
+        <span class="fv-docg-ico falta" aria-hidden="true">!</span>
+        <span class="fv-docg-cat">${esc(label)}</span>
+      </div>
+      <span class="fv-docg-nombre">Falta subirlo</span>
+      <span class="fv-docg-meta">Debería estar en la ficha del vehículo</span>
+      <button type="button" class="fv-btn fv-docg-ver" onclick="abrirGestorDocumentos('${esc(_fichaMat)}','docs',{puedeBorrar:${admin}})">Subir</button>
+    </div>`;
+}
+
 function _fichaHtmlDocs(v) {
   const d = _fichaDatos || {};
   const admin = _fvEsAdmin();
   const mat = esc(_fichaMat);
-  const todos = (d.docs || []).concat(d.docsDrive || []);
+  const todos = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria !== 'informe_itv');
   let h = `<div class="fv-docs-cab">
       <h2 class="fv-h2">Documentos</h2>
       <span class="fv-card-nota">${d.cargado ? `${todos.length} archivo${todos.length === 1 ? '' : 's'}${(d.fotos || []).length ? ` · ${d.fotos.length} foto${d.fotos.length === 1 ? '' : 's'}` : ''}` : ''}</span>
@@ -522,15 +557,22 @@ function _fichaHtmlDocs(v) {
     </div>`;
   if (!d.cargado) return h + _fvCargando();
   if (d.errorDocs) return h + `<div class="fv-cargando" style="color:#B42318">No se pudieron cargar los documentos. Revisa la conexión.</div>`;
-  // Primero los obligatorios (o su hueco), luego el resto
-  let tarjetas = '';
-  FICHA_DOCS_OBLIGATORIOS.forEach(o => {
-    const de = todos.filter(x => x.categoria === o.id);
-    if (de.length) de.forEach(x => { tarjetas += _fvDocFila(x, 'cat'); });
-    else tarjetas += _fvHuecoDoc(o.id, o.label);
+
+  // Esenciales: el más reciente de cada uno (o el hueco si falta)
+  h += `<h3 class="fv-h3">Documentación del vehículo</h3><div class="fv-docs-grandes">`;
+  FICHA_DOCS_ESENCIALES.forEach(o => {
+    const de = todos.filter(x => x.categoria === o.id).sort((a, b) => _fvFechaOrden(b).localeCompare(_fvFechaOrden(a)));
+    h += de.length ? _fvDocGrande(de[0], o.label, de.length - 1) : _fvDocGrandeFalta(o.label);
   });
-  todos.filter(x => !FICHA_DOCS_OBLIGATORIOS.some(o => o.id === x.categoria)).forEach(x => { tarjetas += _fvDocFila(Object.assign({}, x, { categoria: 'otros' }), 'cat'); });
-  return h + `<div class="fv-docs-grid">${tarjetas}</div>`;
+  h += `</div>`;
+
+  // Otros documentos (revisión del tacógrafo, etc.)
+  const otros = todos.filter(x => !FICHA_DOCS_OBLIGATORIOS.some(o => o.id === x.categoria))
+    .sort((a, b) => _fvFechaOrden(b).localeCompare(_fvFechaOrden(a)));
+  if (otros.length) {
+    h += `<h3 class="fv-h3">Otros documentos</h3><div class="fv-docs-grandes">${otros.map(x => _fvDocGrande(x, FICHA_DOC_LABELS[x.categoria] && x.categoria !== 'otros' ? FICHA_DOC_LABELS[x.categoria] : 'Otros')).join('')}</div>`;
+  }
+  return h;
 }
 
 // ── Subir un informe ITV desde la propia ficha ──

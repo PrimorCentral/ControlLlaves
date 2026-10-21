@@ -672,7 +672,7 @@ async function mantAbrirFormMantenimiento(matricula, revisionId) {
       _mantCampo('Coste (€)', `<input type="text" name="coste" inputmode="decimal" placeholder="Opcional">`) +
     `</div>` +
     _mantCampo('Taller', `<input type="text" name="taller" placeholder="Opcional">`) +
-    _mantCampo('Factura', `<input type="file" name="factura" accept=".pdf,image/*">`, 'PDF o foto. Se guarda también en Documentos (Otros).') +
+    _mantCampo('Factura', `<input type="file" name="factura" accept=".pdf,image/*">`, 'PDF o foto. Queda guardada con este mantenimiento.') +
     `<fieldset class="mant-prox"><legend>Programar la próxima (opcional)</legend><div class="mant-fila">` +
       _mantCampo('Fecha', `<input type="date" name="prox_fecha" min="${_mantHoyISO()}">`) +
       _mantCampo('Kilómetros', `<input type="text" name="prox_km" inputmode="numeric" placeholder="Ej.: ${kmActual != null ? Math.round(kmActual + 30000) : '250000'}">`) +
@@ -690,7 +690,7 @@ async function mantAbrirFormMantenimiento(matricula, revisionId) {
     if (archivo) {
       const ext = (archivo.name.split('.').pop() || 'pdf').toLowerCase();
       factura_nombre = `Factura ${tipo} ${_mantFecha(fecha).replace(/\//g, '-')}.${ext}`;
-      factura_path = await docsSubirArchivo(matricula, 'otros', archivo, factura_nombre);
+      factura_path = await docsSubirArchivo(matricula, 'mantenimiento', archivo, factura_nombre); // va con el mantenimiento, no sale en Documentos
     }
     const { error } = await sb.from('mantenimientos').insert({
       matricula, tipo, fecha,
@@ -722,8 +722,11 @@ async function mantAbrirFormMantenimiento(matricula, revisionId) {
 
 async function mantBorrarMantenimiento(matricula, id) {
   if (!_mantEsAdmin()) return;
-  const ok = await appConfirm('Se eliminará este mantenimiento del historial. La factura, si tiene, se queda en Documentos.', { titulo: '¿Eliminar mantenimiento?', icono: '🗑️', labelOk: 'Eliminar', peligro: true });
+  const ok = await appConfirm('Se eliminará este mantenimiento del historial. La factura, si tiene, pasa a Documentos (Otros).', { titulo: '¿Eliminar mantenimiento?', icono: '🗑️', labelOk: 'Eliminar', peligro: true });
   if (!ok) return;
+  // La factura no se pierde: vuelve a Documentos como "Otros"
+  const { data: mt } = await sb.from('mantenimientos').select('factura_path').eq('id', id).maybeSingle();
+  if (mt && mt.factura_path) await sb.from('documentos_vehiculo').update({ categoria: 'otros' }).eq('path', mt.factura_path);
   const { error } = await sb.from('mantenimientos').delete().eq('id', id);
   if (error) { mostrarToast('No se pudo eliminar: ' + error.message, 'error'); return; }
   registrarAccion('MANTENIMIENTO', 'Mantenimiento eliminado', matricula);

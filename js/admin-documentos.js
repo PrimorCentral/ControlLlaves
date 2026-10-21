@@ -287,7 +287,7 @@ function _gCarpetas(g) {
 
 function _gPintar(overlay) {
   const g = overlay._g;
-  const docs = g.docsSb.filter(d => d.categoria !== 'fotos').concat(g.docsDrive);
+  const docs = g.docsSb.filter(d => d.categoria !== 'fotos' && d.categoria !== 'mantenimiento').concat(g.docsDrive); // las facturas van en Mantenimiento
   const carpetas = _gCarpetas(g);
   const nFotos = carpetas.reduce((s, c) => s + c.fotos.length, 0);
   const tab = (id, txt, n) => `<button type="button" data-acc="tab" data-tab="${id}" role="tab" aria-selected="${g.tab === id}"

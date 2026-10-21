@@ -410,7 +410,7 @@ function desbloquearVehiculoAdmin(gi, vi) {
       btnOk.textContent = '✓ Desbloquear'; btnOk.disabled = false;
     }
   };
-  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 function editarITV(gi, vi) {
@@ -505,7 +505,7 @@ function editarVehiculo(gi, vi) {
     aviso.style.display = matInput.value.trim() !== v.matricula ? 'block' : 'none';
   });
   overlay.querySelector('#edv-cancel').onclick = () => overlay.remove();
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 
   overlay.querySelector('#edv-guardar').onclick = async () => {
     const nuevaMat  = matInput.value.trim().toUpperCase();

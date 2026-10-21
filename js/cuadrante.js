@@ -203,7 +203,7 @@ function mostrarAvisoYaAsignado(mat, nombre, otraMat) {
     if (inp) inp.value = getDato(mat).operario || '';
   };
   overlay.querySelector('#btn-ya-asignado-cerrar').onclick = cerrar;
-  overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 async function _procesarSeleccionOperario(mat, nombre) {
@@ -449,7 +449,7 @@ function mostrarModalVehiculoOcupado(mat, nombre, info, pendientesRestantes, onR
     setTimeout(() => { if (inp) inp.focus(); }, 100);
   };
 
-  overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); restaurarInput(); } });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 function _fmtFechaHoraBloqueo(iso) {
@@ -491,7 +491,7 @@ function mostrarInfoBloqueo(mat, motivo, bloqueado_por, fecha_bloqueo) {
     document.body.removeChild(overlay);
     confirmarDesbloqueoRapido(mat);
   };
-  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 function confirmarDesbloqueoRapido(mat) {
@@ -556,7 +556,7 @@ function confirmarDesbloqueoRapido(mat) {
       overlay.querySelector('#btn-desbloqueo-ok').disabled = false;
     }
   };
-  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 function abrirModalBloqueoRapido() {
@@ -623,7 +623,7 @@ function abrirModalBloqueoRapido() {
       btnOk.textContent = '⛔ Bloquear'; btnOk.disabled = false;
     }
   };
-  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 function mostrarAvisoRestringido(mat, nombre, onContinuar) {
@@ -1515,7 +1515,7 @@ function verDetalleReasignacion(matricula) {
   document.body.appendChild(overlay);
   overlay.querySelector('#btn-reasig-detail-close').onclick = () => document.body.removeChild(overlay);
   overlay.querySelector('#btn-reasig-detail-ok').onclick    = () => document.body.removeChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 // Cuando se elige un operario en el dropdown

@@ -90,6 +90,4 @@ async function guardarCambioClave() {
     btnOk.disabled = false; btnOk.textContent = '🔑 Guardar clave';
   }
 }
-document.getElementById('modal-cambio-clave').addEventListener('click', function(e){
-  if (e.target === this) cerrarModalCambioClave();
-});
+// Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.

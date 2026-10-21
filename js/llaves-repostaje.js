@@ -405,7 +405,7 @@ function mostrarModalErrorKm(mensaje) {
   document.body.appendChild(modal);
   const cerrar = () => { if (document.body.contains(modal)) document.body.removeChild(modal); };
   modal.querySelector('#btn-cerrar-modal-km').addEventListener('click', cerrar);
-  modal.addEventListener('click', (e) => { if (e.target === modal) cerrar(); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 async function enviarRegistroRepostaje() {

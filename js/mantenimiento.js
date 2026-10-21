@@ -938,7 +938,7 @@ function mantMenuAnadir(boton, matricula) {
   _mantMenuAbierto = ov;
 
   ov.addEventListener('click', e => {
-    if (e.target === ov) { _mantCerrarMenu(true); return; }
+    // Un clic fuera NO cierra la ventana: solo «Cancelar».
     const b = e.target.closest('[data-accion]');
     if (!b || b.disabled) return;
     const accion = b.dataset.accion;

@@ -242,7 +242,7 @@ async function abrirGestorDocumentos(matricula, pestana, opciones) {
       style="width:1080px;max-width:100%;height:88vh;max-height:860px;background:#fff;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;"></section>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => {
-    if (e.target === overlay) return _gCerrar(overlay);
+    // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
     const b = e.target.closest('[data-acc]');
     if (b && !b.disabled) _gAccion(overlay, b.dataset.acc, b.dataset, b);
   });

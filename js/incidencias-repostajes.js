@@ -1416,7 +1416,7 @@ function verResolucionIncidencia(idx) {
     </div>`;
   document.body.appendChild(ov);
   ov.querySelector('#btn-ver-res-cerrar').onclick = () => document.body.removeChild(ov);
-  ov.addEventListener('click', e => { if (e.target === ov) document.body.removeChild(ov); });
+  // Un clic fuera NO cierra la ventana: solo la ✕ o su botón de cerrar.
 }
 
 function exportarIncidenciasCSV() {

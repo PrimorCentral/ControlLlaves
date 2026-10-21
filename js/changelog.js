@@ -10,6 +10,27 @@
 // ---------------------------------------------------------------
 const CHANGELOG_FLOTA = [
   {
+    version: '3.9.0',
+    fecha: '2026-10-21',
+    cambios: [
+      { tipo: 'nuevo',  texto: 'Nueva sección "Asignaciones" en el Panel Admin: choferes habituales de cada vehículo, separados por turno, y suplentes para cuando no puede ir el habitual. Se puede descargar en PDF' },
+      { tipo: 'nuevo',  texto: 'Los conductores tienen turno (Turno 1, Turno 2 o sin turno). Los dos turnos se alternan mañana y tarde cada lunes, solos' },
+      { tipo: 'nuevo',  texto: 'Al asignar un chofer en el cuadrante salen primero los habituales de ese vehículo para el turno abierto (★) y después los suplentes, antes que el resto' },
+      { tipo: 'mejora', texto: 'Panel Admin › Conductores rediseñado: lista en tabla y ficha de cada conductor en una ventana al pulsarlo' },
+      { tipo: 'nuevo',  texto: 'Nuevo apartado "Tacógrafo" en la ficha: próxima revisión con su semáforo y barra, revisiones realizadas con factura y certificado, y aviso cuando está a punto de caducar. Los vehículos sin tacógrafo lo indican y no dan avisos' },
+      { tipo: 'nuevo',  texto: 'ITV: el informe se sube desde el propio apartado ITV y la app lee del PDF escaneado la fecha de la próxima inspección y pregunta si se guarda. Avisa si la matrícula no coincide o el resultado no es favorable. La fecha solo se edita a mano si no se ha podido leer' },
+      { tipo: 'mejora', texto: 'En ITV se ve el informe actual y los anteriores quedan en un historial plegado; la tarjeta ITV del Resumen lleva barra de días, como la del seguro' },
+      { tipo: 'nuevo',  texto: 'Los datos del vehículo se editan desde la propia ficha (botón Editar) y la nueva pestaña "Gestión" (solo administradores) reúne bloquear, restringir y dar de baja o de alta' },
+      { tipo: 'mejora', texto: 'Panel Admin › Vehículos: al pulsar una fila se abre su ficha, y el orden del cuadrante se cambia con las flechas ↑↓ de cada fila' },
+      { tipo: 'nuevo',  texto: 'Los vehículos tienen Sociedad, y Nave, Propiedad y Sociedad se eligen en listas desplegables (con opción de añadir una nueva)' },
+      { tipo: 'mejora', texto: 'Nueva cabecera de la ficha: título en franja roja y, junto a la matrícula, vehículo, nave, propiedad y sociedad' },
+      { tipo: 'mejora', texto: 'Documentos muestra solo lo esencial (ficha técnica, permiso y póliza) en tarjetas grandes, sin los informes de ITV; "Subir documento" abre una ventana sencilla para elegir el tipo y el archivo' },
+      { tipo: 'mejora', texto: 'Las facturas y certificados de los mantenimientos se guardan con su mantenimiento y no en Documentos; cada mantenimiento puede llevar factura y certificado' },
+      { tipo: 'mejora', texto: 'Las ventanas ya no se cierran al pulsar fuera de ellas: solo con la ✕ o su botón de cerrar' },
+      { tipo: 'correccion', texto: 'Las filas del cuadrante con datos tienen la misma altura que las vacías, para que quepan más vehículos sin desplazar la pantalla; el botón "Asignar tarjeta" sale centrado' }
+    ]
+  },
+  {
     version: '3.8.1',
     fecha: '2026-10-19',
     cambios: [

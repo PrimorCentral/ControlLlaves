@@ -270,3 +270,57 @@
   }
   #admin-lista-conductores > *, #admin-lista-responsables > *, #activos-lista > * { flex-shrink: 0; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ASIGNACIONES — choferes habituales por matrícula y turno
+   ════════════════════════════════════════════════════════════════════════════ */
+.asig-table { min-width: 760px; }
+.asig-table td { vertical-align: top; }
+.asig-table td:first-child, .asig-table td:nth-child(2) { padding-top: 16px; }
+.asig-celda { position: relative; }
+.turno-th { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 5px; letter-spacing: .4px; }
+.turno-th.t1 { background: #fff8eb; color: #b45309; border: 1px solid #f5d9a6; }
+.turno-th.t2 { background: #eef2ff; color: #3b5bdb; border: 1px solid #c7d2fe; }
+
+.hab-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hab-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 5px 0 11px; border-radius: 20px;
+  background: #fff8eb; border: 1px solid #f5d9a6; color: #7a3e06; font: 600 13px 'Barlow', sans-serif; white-space: nowrap;
+}
+.hab-chip.sin-turno { background: #f2f4f7; border-color: #d5d9e0; color: #475467; }
+.hab-chip.sin-turno::after { content: 'sin turno'; font-size: 10px; font-weight: 700; color: #98a2b3; margin-right: 2px; order: 1; }
+.hab-x {
+  order: 2; width: 20px; height: 20px; border-radius: 50%; border: none; background: transparent; color: #b45309;
+  font: 700 12px 'Barlow', sans-serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.hab-chip.sin-turno .hab-x { color: #667085; }
+.hab-x:hover { background: rgba(0,0,0,.08); }
+.hab-add {
+  height: 28px; padding: 0 11px; border-radius: 20px; border: 1px dashed #c5cad3; background: #fff; color: #5b6475;
+  font: 600 13px 'Barlow', sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+}
+.hab-add:hover { border-color: var(--adm-ink); color: var(--adm-ink); }
+.hab-input {
+  height: 30px; width: 220px; padding: 0 10px; border: 1.5px solid #e84545; border-radius: 8px; box-sizing: border-box;
+  font: 600 13px 'Barlow', sans-serif; color: #1a1a2e; outline: none; box-shadow: 0 0 0 3px rgba(232,69,69,0.08);
+}
+.asig-dd.operario-dropdown { position: absolute !important; top: calc(100% - 6px); left: 16px; width: 300px; z-index: 20; max-height: 260px; }
+.asig-celda:last-child .asig-dd.operario-dropdown { left: auto; right: 16px; }
+.tag-sin-turno { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: #f2f4f7; color: #475467; vertical-align: 1px; }
+.asig-rot .adm-btn-sm { flex-shrink: 0; }
+
+/* Selector de turno en la lista de Conductores */
+.turno-seg { flex-shrink: 0; }
+.turno-seg button { height: 28px; padding: 0 11px; font-size: 12px; }
+.turno-seg button.on.t1 { color: #b45309; }
+.turno-seg button.on.t2 { color: #3b5bdb; }
+
+@media (min-width: 769px) {
+  #tab-panel-asignaciones.active > #asig-card { flex: 1 1 auto; min-height: 0; flex-shrink: 1; }
+  #asig-card .adm-toolbar { flex-shrink: 0; }
+  #admin-lista-asignaciones { flex: 1 1 auto; min-height: 0; overflow: auto; }
+}
+@media (max-width: 768px) {
+  .turno-seg { order: 5; width: 100%; }
+  .cond-item { flex-wrap: wrap; }
+}

@@ -36,6 +36,7 @@ function renderAdminConductores() {
         <div class="admin-stat-icon">🏢</div>
         <div class="admin-stat-num">${sociedades.size}</div>
         <div class="admin-stat-label">Sociedades</div>
+        <div class="admin-stat-sub">${CONDUCTORES.filter(c => !c.turno).length} sin turno asignado</div>
       </div>
       <div class="admin-stat-card">
         <div class="admin-stat-icon">🔍</div>
@@ -94,6 +95,10 @@ function renderAdminConductores() {
             <span style="font-size:9px;font-weight:800;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:4px;padding:1px 7px;">${esc(c.sociedad||'—')}</span>
           </div>
         </div>
+        <div class="adm-seg turno-seg" role="group" aria-label="Turno de ${esc(c.nombre)}">
+          ${[[1,'Turno 1'],[2,'Turno 2'],[0,'Sin turno']].map(([t, lbl]) =>
+            `<button type="button" class="${(c.turno || 0) === t ? 'on' : ''}${t ? ' t' + t : ''}" onclick="cambiarTurnoConductor(${idx}, ${t})">${lbl}</button>`).join('')}
+        </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
             <span style="font-size:10px;font-weight:700;color:#1a1a2e;background:#f0f2f5;border:1px solid #e2e8f0;border-radius:5px;padding:2px 9px;letter-spacing:0.5px;">${esc(c.dni||'—')}</span>
@@ -112,6 +117,16 @@ function renderAdminConductores() {
       ${filas}
     </div>`;
   }).join('');
+}
+
+// Turno (equipo) del conductor: se guarda al momento en Supabase
+async function cambiarTurnoConductor(idx, turno) {
+  const c = CONDUCTORES[idx];
+  if (!c) return;
+  if (await guardarTurnoConductor(c.numUsuario, turno || null)) {
+    mostrarToast(`✓ ${c.nombre}: ${turno ? 'Turno ' + turno : 'sin turno'}`, 'success');
+  }
+  renderAdminConductores();
 }
 
 function exportarConductoresPDF() {

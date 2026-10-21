@@ -138,10 +138,10 @@ function _admFilasVehiculos(hoy) {
     if (_admVehNave && grupo.nombre !== _admVehNave) return;
     grupo.vehiculos.forEach((v, vi) => {
       if (v.archivado && !_admVehVerBajas) return;
-      if (q && ![v.matricula, v.tipo, v.nota, grupo.nombre].some(x => (x||'').toUpperCase().includes(q))) return;
+      if (q && ![v.matricula, v.tipo, v.nota, v.sociedad, grupo.nombre].some(x => (x||'').toUpperCase().includes(q))) return;
 
       const nota = (v.nota||'').trim();
-      const prop = nota.toUpperCase() === 'PROPIEDAD' ? 'Propia' : (nota ? `Alquiler · ${esc(nota)}` : 'Alquiler');
+      const prop = nota.toUpperCase() === 'PROPIEDAD' ? 'Propia' : (nota && nota.toUpperCase() !== 'OTRO ALQUILER' ? `Alquiler · ${esc(nota)}` : 'Alquiler');
       const itv = _admItvInfo(v, hoy);
 
       let estado;
@@ -401,6 +401,45 @@ function _vehiculoTieneMovimientoActivo(mat) {
   return enCuadrante || !!enRepostaje;
 }
 
+// ── Desplegables comunes de vehículo: nave, propiedad y sociedad ─────────────
+const VEH_PROPIEDADES = ['PROPIEDAD', 'DFM', 'PINVECO', 'ENTERPRISE', 'COVEY', 'OTRO ALQUILER'];
+const _VEH_NUEVA = '__nueva__';
+
+/** Sociedades conocidas: las de los conductores y las de otros vehículos (sin repetir). */
+function _vehSociedades() {
+  const set = new Set();
+  (typeof CONDUCTORES !== 'undefined' ? CONDUCTORES : []).forEach(c => { const x = String(c.sociedad || '').trim().toUpperCase(); if (x) set.add(x); });
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => { const x = String(v.sociedad || '').trim().toUpperCase(); if (x) set.add(x); }));
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+/** Select + caja de texto para "otra" (se muestra solo al elegir esa opción). */
+function _vehSelectConOtra(id, opciones, actual, textoOtra, placeholder, estilo, vacio) {
+  const act = String(actual || '').trim().toUpperCase();
+  const lista = opciones.slice();
+  if (act && !lista.includes(act)) lista.unshift(act); // valor antiguo que no está en la lista
+  return `<select id="${id}" style="${estilo}" onchange="document.getElementById('${id}-otra').style.display=this.value==='${_VEH_NUEVA}'?'block':'none';if(this.value==='${_VEH_NUEVA}')document.getElementById('${id}-otra').focus()">
+      ${vacio ? `<option value="">${vacio}</option>` : ''}
+      ${lista.map(o => `<option value="${esc(o)}"${o === act ? ' selected' : ''}>${esc(o)}</option>`).join('')}
+      <option value="${_VEH_NUEVA}">${textoOtra}</option>
+    </select>
+    <input id="${id}-otra" placeholder="${placeholder}" oninput="this.value=this.value.toUpperCase()" style="${estilo}display:none;margin-top:6px;">`;
+}
+function _vehLeerSelect(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return '';
+  return (sel.value === _VEH_NUEVA ? document.getElementById(id + '-otra').value : sel.value).trim().toUpperCase();
+}
+function _vehCampoNave(id, actual, estilo) {
+  return _vehSelectConOtra(id, GRUPOS.map(g => g.nombre.toUpperCase()), actual, '➕ Nueva nave…', 'Nombre de la nueva nave', estilo, actual ? '' : 'Elige la nave…');
+}
+function _vehCampoPropiedad(id, actual, estilo) {
+  return _vehSelectConOtra(id, VEH_PROPIEDADES, actual, '✏️ Escribir otra…', 'Propiedad o proveedor', estilo, '');
+}
+function _vehCampoSociedad(id, actual, estilo) {
+  return _vehSelectConOtra(id, _vehSociedades(), actual, '✏️ Otra sociedad…', 'Nombre de la sociedad', estilo, '(Sin sociedad)');
+}
+
 function editarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   const tiposBase = ['FURGONETA', 'CAMION 8P', 'CAMION 15P', 'CAMION 24P'];
@@ -428,12 +467,15 @@ function editarVehiculo(gi, vi) {
         </div>
         <div>
           <label style="${lbl}">Nave / Ubicación *</label>
-          <input id="edv-nave" list="edv-naves" value="${esc(GRUPOS[gi].nombre)}" oninput="this.value=this.value.toUpperCase()" style="${inp}">
-          <datalist id="edv-naves">${naves.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+          ${_vehCampoNave('edv-nave', GRUPOS[gi].nombre, inp)}
         </div>
-        <div style="grid-column:1/-1">
-          <label style="${lbl}">Propiedad / Nota</label>
-          <input id="edv-nota" value="${esc(v.nota||'')}" placeholder="Ej: Propiedad, PINVECO…" style="${inp}">
+        <div>
+          <label style="${lbl}">Propiedad</label>
+          ${_vehCampoPropiedad('edv-nota', v.nota, inp)}
+        </div>
+        <div>
+          <label style="${lbl}">Sociedad</label>
+          ${_vehCampoSociedad('edv-soc', v.sociedad, inp)}
         </div>
       </div>
       <div id="edv-aviso" style="display:none;margin-top:12px;font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;line-height:1.5;">
@@ -457,8 +499,9 @@ function editarVehiculo(gi, vi) {
   overlay.querySelector('#edv-guardar').onclick = async () => {
     const nuevaMat  = matInput.value.trim().toUpperCase();
     const nuevoTipo = overlay.querySelector('#edv-tipo').value;
-    const nuevaNave = overlay.querySelector('#edv-nave').value.trim().toUpperCase();
-    const nuevaNota = overlay.querySelector('#edv-nota').value.trim();
+    const nuevaNave = _vehLeerSelect('edv-nave');
+    const nuevaNota = _vehLeerSelect('edv-nota');
+    const nuevaSoc  = _vehLeerSelect('edv-soc');
 
     if (!nuevaMat)  { mostrarToast('El nombre/matrícula es obligatorio', 'error'); return; }
     if (!nuevaNave) { mostrarToast('La nave es obligatoria', 'error'); return; }
@@ -499,12 +542,13 @@ function editarVehiculo(gi, vi) {
       }
     }
 
-    const antes = `${v.matricula} · ${v.tipo} · ${GRUPOS[gi].nombre}`;
+    const antes = `${v.matricula} · ${v.tipo} · ${GRUPOS[gi].nombre}${v.sociedad ? ' · ' + v.sociedad : ''}`;
     const matAnterior = v.matricula;
     v.matricula = nuevaMat;
     if (typeof _fichaMat !== 'undefined' && _fichaMat === matAnterior) _fichaMat = nuevaMat;
     v.tipo      = nuevoTipo;
     v.nota      = nuevaNota;
+    v.sociedad  = nuevaSoc;
 
     // Cambio de nave: sacar del grupo actual y añadir al final del nuevo
     const naveActual = GRUPOS[gi].nombre;
@@ -528,7 +572,7 @@ function editarVehiculo(gi, vi) {
     if (!ok) { restaurarBtn(); renderAdminVehiculos(); renderAdminStats(); renderTabla(); return; }
     overlay.remove();
     renderAdminVehiculos(); renderAdminStats(); renderTabla();
-    registrarAccion('VEHICULO', 'Editar vehículo', `${antes} → ${v.matricula} · ${v.tipo} · ${nuevaNave}`);
+    registrarAccion('VEHICULO', 'Editar vehículo', `${antes} → ${v.matricula} · ${v.tipo} · ${nuevaNave}${nuevaSoc ? ' · ' + nuevaSoc : ''}`);
     mostrarToast(`✓ ${v.matricula} actualizado`, 'success');
   };
 }
@@ -601,13 +645,17 @@ function desarchivarVehiculo(gi, vi) {
 }
 
 function abrirModalNuevoVehiculo() {
-  ['modal-add-matricula','modal-add-nota','modal-add-itv-fin',
+  ['modal-add-matricula','modal-add-itv-fin',
    'modal-add-seguro-nombre','modal-add-seguro-cif','modal-add-seguro-poliza',
    'modal-add-seguro-vencimiento','modal-add-seguro-tel'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('modal-add-tipo').value = 'FURGONETA';
-  document.getElementById('modal-add-grupo').value = '';
+  // Nave, propiedad y sociedad: desplegables (se rellenan cada vez, con las naves y sociedades actuales)
+  const est = 'width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;';
+  document.getElementById('modal-add-grupo-wrap').innerHTML = _vehCampoNave('modal-add-grupo', '', est);
+  document.getElementById('modal-add-nota-wrap').innerHTML = _vehCampoPropiedad('modal-add-nota', 'PROPIEDAD', est);
+  document.getElementById('modal-add-soc-wrap').innerHTML = _vehCampoSociedad('modal-add-soc', '', est);
   document.getElementById('modal-nuevo-vehiculo').style.display = 'flex';
   setTimeout(() => document.getElementById('modal-add-matricula').focus(), 100);
 }
@@ -617,8 +665,9 @@ function cerrarModalNuevoVehiculo() {
 async function confirmarNuevoVehiculo() {
   const mat     = document.getElementById('modal-add-matricula').value.trim().toUpperCase();
   const tipo    = document.getElementById('modal-add-tipo').value;
-  const grupo   = document.getElementById('modal-add-grupo').value.trim().toUpperCase();
-  const nota    = document.getElementById('modal-add-nota').value.trim();
+  const grupo   = _vehLeerSelect('modal-add-grupo');
+  const nota    = _vehLeerSelect('modal-add-nota');
+  const sociedad = _vehLeerSelect('modal-add-soc');
   const itv_fin = document.getElementById('modal-add-itv-fin').value.trim();
   const seguro_aseguradora = (document.getElementById('modal-add-seguro-aseguradora')||{value:''}).value.trim();
   const seguro_nombre      = document.getElementById('modal-add-seguro-nombre').value.trim();
@@ -634,7 +683,7 @@ async function confirmarNuevoVehiculo() {
   const grupoNuevo = !g;
   if (!g) { g = { nombre: grupo, vehiculos: [] }; GRUPOS.push(g); }
   const maxOrden = g.vehiculos.reduce((m, x) => Math.max(m, Number(x.orden) || 0), 0);
-  const nuevo = { matricula: mat, tipo, nota, orden: maxOrden + 1, restringido: false, itv_fin, seguro_aseguradora, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel };
+  const nuevo = { matricula: mat, tipo, nota, sociedad, orden: maxOrden + 1, restringido: false, itv_fin, seguro_aseguradora, seguro_nombre, seguro_cif, seguro_poliza, seguro_vencimiento, seguro_tel };
   g.vehiculos.push(nuevo);
 
   const btn = document.querySelector('#modal-nuevo-vehiculo button[onclick*="confirmarNuevoVehiculo"]');

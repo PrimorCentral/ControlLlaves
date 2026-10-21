@@ -252,7 +252,7 @@ function _fichaPintarCabecera(v) {
       <span class="fv-eyebrow" id="fv-titulo">FICHA DEL VEHÍCULO</span>
       <span class="fv-desc">${esc(desc || _fichaMat)}${extra ? ` <span>· ${esc(extra)}</span>` : ''}</span>
     </div>
-    ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz fv-lapiz-osc" onclick="fichaEditar('datos')" title="Editar matrícula, tipo, nave y propiedad">${_FV_LAPIZ}<span>Editar</span></button>` : ''}
+    ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz fv-lapiz-osc" onclick="fichaEditar('datos')" title="Editar matrícula, tipo, nave, propiedad y sociedad">${_FV_LAPIZ}<span>Editar</span></button>` : ''}
     <div class="fv-chips">${chips.join('')}</div>
     <button type="button" class="fv-cerrar" onclick="cerrarFichaVehiculo()" aria-label="Cerrar la ficha">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -777,7 +777,7 @@ function _fichaHtmlGestion(v) {
   if (!_fvEsAdmin()) return '';
   const grupo = _fvGrupo(_fichaMat);
   const nota = (v.nota || '').trim();
-  const prop = nota.toUpperCase() === 'PROPIEDAD' ? 'Propia' : (nota ? `Alquiler · ${_fvCap(nota)}` : 'Alquiler');
+  const prop = nota.toUpperCase() === 'PROPIEDAD' ? 'Propia' : (nota && nota.toUpperCase() !== 'OTRO ALQUILER' ? `Alquiler · ${_fvCap(nota)}` : 'Alquiler');
   const dato = (lbl, val) => `<div class="fv-campo"><span class="fv-campo-lbl">${lbl}</span><span class="fv-campo-val">${esc(val || '—')}</span></div>`;
   const fila = (lbl, titulo, txt, boton, cls) => `
     <div class="fv-card fv-gest-fila${cls ? ' ' + cls : ''}">
@@ -793,7 +793,7 @@ function _fichaHtmlGestion(v) {
       <div class="fv-card-cab"><span class="fv-card-lbl">DATOS DEL VEHÍCULO</span>
         <button type="button" class="fv-lapiz" onclick="fichaEditar('datos')">${_FV_LAPIZ}<span>Editar datos</span></button></div>
       <div class="fv-campos fv-campos-gest">
-        ${dato('Matrícula', _fichaMat)}${dato('Tipo', _fvTipo(v.tipo))}${dato('Nave', _fvCap(grupo))}${dato('Propiedad', prop)}
+        ${dato('Matrícula', _fichaMat)}${dato('Tipo', _fvTipo(v.tipo))}${dato('Nave', _fvCap(grupo))}${dato('Propiedad', prop)}${dato('Sociedad', v.sociedad ? v.sociedad : 'Sin sociedad')}
       </div>
     </div>`;
   if (v.archivado) {

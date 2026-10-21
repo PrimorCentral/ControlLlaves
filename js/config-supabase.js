@@ -149,7 +149,8 @@ async function manejarPeticionSupabase(urlStr, options) {
         seguro_poliza: v.seguro_poliza || '',
         seguro_vencimiento: v.seguro_vencimiento || '',
         seguro_tel: v.seguro_tel || '',
-        tacografo: !!v.tacografo
+        tacografo: !!v.tacografo,
+        sociedad: v.sociedad || ''
       }));
       return { ok: true, flota };
     }
@@ -464,6 +465,7 @@ async function manejarPeticionSupabase(urlStr, options) {
         seguro_vencimiento: fecha(v.seguro_vencimiento),
         seguro_tel:         v.seguro_tel || '',
         ...(v.tacografo !== undefined ? { tacografo: SI(v.tacografo) } : {}),
+        ...(v.sociedad !== undefined ? { sociedad: String(v.sociedad || '').trim() } : {}),
         updated_at:         new Date().toISOString()
       }));
       const { error } = await sb.from('vehiculos').upsert(filas, { onConflict: 'matricula' });

@@ -161,7 +161,8 @@ async function manejarPeticionSupabase(urlStr, options) {
         nombre: c.nombre,
         dni: c.dni || '',
         sociedad: c.sociedad || '',
-        nave: c.nave || ''
+        nave: c.nave || '',
+        turno: (c.turno === 1 || c.turno === 2) ? c.turno : null  // equipo (Asignaciones)
       }));
       return { ok: true, conductores };
     }
@@ -486,6 +487,8 @@ async function manejarPeticionSupabase(urlStr, options) {
         return { ok: false, error: error.message };
       }
       if (!data || !data.length) return { ok: false, error: 'No se encontró el vehículo ' + anterior + ' en la base de datos' };
+      // Choferes habituales: siguen a la matrícula nueva (si la tabla aún no existe, se ignora)
+      try { await sb.from('conductores_habituales').update({ matricula: nueva }).eq('matricula', anterior); } catch (e) {}
       return { ok: true };
     }
 
@@ -507,6 +510,8 @@ async function manejarPeticionSupabase(urlStr, options) {
     case 'eliminarConductor': {
       const { error } = await sb.from('conductores').delete().eq('num_usuario', params.numUsuario);
       if (error) return { ok: false, error: error.message };
+      // Quitarlo también de los habituales de las matrículas (si la tabla aún no existe, se ignora)
+      try { await sb.from('conductores_habituales').delete().eq('num_usuario', String(params.numUsuario)); } catch (e) {}
       return { ok: true };
     }
 

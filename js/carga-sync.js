@@ -50,6 +50,8 @@ async function cargarCuadrante() {
     //  cuando una de las dos termina antes que la otra)
     // Rutas se carga en paralelo pero SIN bloquear el arranque del cuadrante
     rutasCargarDesdeSheets();
+    // Choferes habituales + rotación de turnos: tampoco bloquean el arranque
+    if (typeof cargarHabituales === 'function') cargarHabituales();
     const [flotaOk, conductoresOk, json, jsonIncid, jsonReasig] = await Promise.all([
       cargarFlotaDesdeSheets(false),
       cargarConductoresDesdeSheets(false),

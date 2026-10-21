@@ -80,7 +80,7 @@ function cambiarTabConfig() {
   // Activar visualmente la pestaña config sin pasar por abrirLoginConfig de nuevo
   const homeWatermark = document.getElementById('admin-home-watermark');
   if (homeWatermark) homeWatermark.style.display = 'none';
-  ['vehiculos','conductores','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
+  ['vehiculos','conductores','asignaciones','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t==='config');
     document.getElementById('tab-panel-'+t).classList.toggle('active', t==='config');
   });

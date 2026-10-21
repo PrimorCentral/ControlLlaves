@@ -227,7 +227,7 @@ function cambiarTab(tab) {
   }
   const homeWatermark = document.getElementById('admin-home-watermark');
   if (homeWatermark) homeWatermark.style.display = tab ? 'none' : 'flex';
-  ['vehiculos','conductores','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
+  ['vehiculos','conductores','asignaciones','historial','log','reasignaciones','incidencias','repostajes','responsables','config','activos'].forEach(t => {
     document.getElementById('tab-btn-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-panel-'+t).classList.toggle('active', t===tab);
   });
@@ -263,6 +263,7 @@ function cambiarTab(tab) {
   }
   if (tab === 'responsables') cargarResponsables();
   if (tab === 'conductores') renderAdminConductores();
+  if (tab === 'asignaciones') abrirAdminAsignaciones();
   if (tab === 'config') cargarEstadoPassAdmin();
   if (tab === 'activos') cargarUsuariosActivos();
 }

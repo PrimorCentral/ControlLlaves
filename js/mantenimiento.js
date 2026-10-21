@@ -405,11 +405,14 @@ function _mantRenderMantenimiento() {
     h += `<div class="mf-vacio">Todavía no hay mantenimientos registrados.</div>`;
   } else {
     h += `<div class="mf-tabla-wrap"><table class="mf-tabla mf-tabla-mt">
-      <thead><tr><th>Fecha</th><th>Trabajo</th><th>Taller</th><th class="der">Km</th><th class="der">Coste</th><th class="der">Factura</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Trabajo</th><th>Taller</th><th class="der">Km</th><th class="der">Coste</th><th class="der">Documentos</th></tr></thead>
       <tbody>${mants.map(m => {
-        const fac = m.factura_path
-          ? `<button type="button" class="adm-link mf-link" onclick="abrirVisorDoc('sb:${esc(m.factura_path)}','${esc(m.factura_nombre || 'Factura')}','${/\.pdf$/i.test(m.factura_nombre || '') ? 'pdf' : 'imagen'}')">Ver</button>`
-          : '<span class="mf-sub">—</span>';
+        // Documentos del mantenimiento: la factura y los adjuntos (certificados, etc.)
+        const enlace = (path, nombre, txt) => `<button type="button" class="adm-link mf-link" title="${esc(nombre || '')}" onclick="abrirVisorDoc('sb:${esc(path)}','${esc(nombre || 'Documento')}','${/\.pdf$/i.test(nombre || '') ? 'pdf' : 'imagen'}')">${txt}</button>`;
+        const adj = Array.isArray(m.adjuntos) ? m.adjuntos.filter(a => a && a.path) : [];
+        const docsMt = (m.factura_path ? [enlace(m.factura_path, m.factura_nombre, adj.length ? 'Factura' : 'Ver')] : [])
+          .concat(adj.map((a, i) => enlace(a.path, a.nombre, adj.length > 1 ? `Doc. ${i + 1}` : 'Certificado')));
+        const fac = docsMt.length ? docsMt.join('') : '<span class="mf-sub">—</span>';
         const borrar = admin ? `<button type="button" class="mf-borrar" title="Eliminar este mantenimiento" aria-label="Eliminar este mantenimiento" onclick="mantBorrarMantenimiento('${mat}','${esc(m.id)}')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>` : '';
         return `<tr>
           <td class="mf-fecha">${_mantFecha(m.fecha)}</td>
@@ -722,11 +725,12 @@ async function mantAbrirFormMantenimiento(matricula, revisionId) {
 
 async function mantBorrarMantenimiento(matricula, id) {
   if (!_mantEsAdmin()) return;
-  const ok = await appConfirm('Se eliminará este mantenimiento del historial. La factura, si tiene, pasa a Documentos (Otros).', { titulo: '¿Eliminar mantenimiento?', icono: '🗑️', labelOk: 'Eliminar', peligro: true });
+  const ok = await appConfirm('Se eliminará este mantenimiento del historial. Sus documentos (factura, certificados…) pasan a Documentos (Otros).', { titulo: '¿Eliminar mantenimiento?', icono: '🗑️', labelOk: 'Eliminar', peligro: true });
   if (!ok) return;
-  // La factura no se pierde: vuelve a Documentos como "Otros"
-  const { data: mt } = await sb.from('mantenimientos').select('factura_path').eq('id', id).maybeSingle();
-  if (mt && mt.factura_path) await sb.from('documentos_vehiculo').update({ categoria: 'otros' }).eq('path', mt.factura_path);
+  // La factura y los adjuntos no se pierden: vuelven a Documentos como "Otros"
+  const { data: mt } = await sb.from('mantenimientos').select('factura_path, adjuntos').eq('id', id).maybeSingle();
+  const paths = mt ? [mt.factura_path].concat((Array.isArray(mt.adjuntos) ? mt.adjuntos : []).map(a => a && a.path)).filter(Boolean) : [];
+  if (paths.length) await sb.from('documentos_vehiculo').update({ categoria: 'otros' }).in('path', paths);
   const { error } = await sb.from('mantenimientos').delete().eq('id', id);
   if (error) { mostrarToast('No se pudo eliminar: ' + error.message, 'error'); return; }
   registrarAccion('MANTENIMIENTO', 'Mantenimiento eliminado', matricula);

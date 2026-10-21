@@ -151,16 +151,22 @@ function mantIconoCuadrante(matricula) {
   else if (r.revVencida) { cls = 'grave'; titulo = 'Revisión vencida'; }
   else if (r.revProxima)   { cls = 'aviso'; titulo = 'Revisión próxima'; }
   else return '';
-  return `<span class="mant-badge ${cls}" title="${esc(titulo)} · ver mantenimiento" role="button" tabindex="0"
-    onclick="event.stopPropagation();abrirFichaVehiculo('${esc(matricula)}');fichaTabSwitch('mant')">`
+  return `<span class="mant-badge ${cls}" title="${esc(titulo)} · ver en la ficha" role="button" tabindex="0"
+    onclick="event.stopPropagation();abrirFichaVehiculo('${esc(matricula)}');fichaTabSwitch(mantPestanaFicha('${esc(matricula)}'))">`
     + `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></span>`;
 }
 
 // ── Pestaña de la ficha ──────────────────────────────────────────────────────
 async function mantCargarFicha(matricula) {
-  const cont = document.getElementById('ficha-mant-content');
-  if (!cont) return;
-  cont.innerHTML = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Cargando mantenimiento…</div>`;
+  const contAv = document.getElementById('ficha-averias-content');
+  const contMt = document.getElementById('ficha-mant-content');
+  if (!contAv && !contMt) return;
+  const cargando = `<div class="ficha-docs-loading"><div class="ficha-spinner"></div>Cargando…</div>`;
+  // Solo se muestra «Cargando» la primera vez; al refrescar se deja lo que había
+  if (!_mantFicha || _mantFicha.matricula !== matricula) {
+    if (contAv) contAv.innerHTML = cargando;
+    if (contMt) contMt.innerHTML = cargando;
+  }
   let averias, mants, revs, kmActual, incids = [];
   try {
     const [a, m, r, km, inc] = await Promise.all([
@@ -172,158 +178,254 @@ async function mantCargarFicha(matricula) {
     ]);
     if (a.error || m.error || r.error) throw new Error((a.error || m.error || r.error).message);
     averias = a.data || []; mants = m.data || []; revs = r.data || []; kmActual = km;
-    // Las incidencias que ya tienen avería se ven en el bloque Averías
+    // Las incidencias que ya tienen avería se ven en la lista de averías
     const conAveria = new Set(averias.map(x => x.incidencia_id).filter(Boolean));
     incids = ((inc && !inc.error && inc.data) || []).filter(i => !conAveria.has(i.id));
   } catch (e) {
-    if (_fichaMat === matricula)
-      cont.innerHTML = `<div class="ficha-docs-loading" style="color:#C93636">No se pudo cargar el mantenimiento. Revisa la conexión.</div>`;
+    if (_fichaMat === matricula) {
+      const err = `<div class="ficha-docs-loading" style="color:#C93636">No se pudo cargar. Revisa la conexión.</div>`;
+      if (contAv) contAv.innerHTML = err;
+      if (contMt) contMt.innerHTML = err;
+    }
     return;
   }
   if (_fichaMat !== matricula) return; // se cambió de vehículo mientras cargaba
-  _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids);
+  const filtro = (_mantFicha && _mantFicha.matricula === matricula) ? _mantFicha.filtro : 'abiertas';
+  _mantFicha = { matricula, averias, mants, revs, kmActual, incids, filtro };
+  _mantRenderAverias();
+  _mantRenderMantenimiento();
 }
 
-function _mantRenderFicha(matricula, averias, mants, revs, kmActual, incids) {
-  incids = incids || [];
+// Datos de la ficha abierta (para cambiar de filtro sin volver a pedirlos)
+let _mantFicha = null;
+
+/** ¿A qué pestaña de la ficha llevar a quien pulsa el aviso de una matrícula? */
+function mantPestanaFicha(matricula) {
+  const r = mantResumen[matricula];
+  return (r && (r.averias || r.incid)) ? 'averias' : 'mant';
+}
+
+function mantFiltrarAverias(filtro) {
+  if (!_mantFicha) return;
+  _mantFicha.filtro = filtro;
+  _mantRenderAverias();
+  document.querySelector(`#ficha-averias-content .mf-filtro[data-f="${filtro}"]`)?.focus();
+}
+
+// Cabecera oscura de cada bloque
+function _mfCabecera(icono, titulo, extra, boton) {
+  return `<div class="mf-head">
+    ${icono}<h3>${titulo}</h3>${extra || ''}
+    ${boton ? `<span class="mf-head-esp"></span>${boton}` : ''}
+  </div>`;
+}
+const _MF_ICO_AVERIA = `<svg class="mf-ico av" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17h.01"/></svg>`;
+const _MF_ICO_REV    = `<svg class="mf-ico rev" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`;
+const _MF_ICO_MANT   = `<svg class="mf-ico mt" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>`;
+const _MF_ICO_INCID  = `<svg class="mf-ico av" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg>`;
+
+function _mfHace(iso) {
+  if (!iso) return { txt: '', cls: '' };
+  const d = -_mantDias(iso);
+  return { txt: d <= 0 ? 'hoy' : `hace ${d} día${d === 1 ? '' : 's'}`, cls: d > 14 ? 'tarde' : '' };
+}
+
+// ── Pestaña AVERÍAS ──────────────────────────────────────────────────────────
+function _mantRenderAverias() {
+  const cont = document.getElementById('ficha-averias-content');
+  if (!cont || !_mantFicha) return;
+  const { matricula, averias, incids, filtro } = _mantFicha;
   _mantIncidsFicha = incids;
-  const cont  = document.getElementById('ficha-mant-content');
   const admin = _mantEsAdmin();
-  const mat   = esc(matricula);
-  const abiertas = averias.filter(a => a.estado !== 'reparada');
-  const cerradas = averias.filter(a => a.estado === 'reparada');
-  const revsEst  = revs.map(r => Object.assign({}, r, _mantEstadoRevision(r, kmActual)));
-  const vencidas = revsEst.filter(r => r.estado === 'vencida').length;
-  const proximas = revsEst.filter(r => r.estado === 'proxima').length;
+  const mat = esc(matricula);
+  const abiertas  = averias.filter(a => a.estado !== 'reparada');
+  const inmov     = abiertas.filter(a => a.inmoviliza);
+  const reparadas = averias.filter(a => a.estado === 'reparada');
+  const enTaller  = abiertas.filter(a => a.estado === 'en_taller').length;
+  let h = '';
 
-  // Dos columnas que ocupan toda la ficha, sin scroll: a la izquierda lo que
-  // hay que resolver (incidencias y averías), a la derecha revisiones y mantenimientos.
-  let html = '<div class="mant-col">';
+  // Aviso: no puede circular
+  if (inmov.length) {
+    const cuales = inmov.slice(0, 3).map(a => `${esc(a.descripcion)} (${_mantFecha(a.fecha).substring(0, 5)})`).join(', ');
+    h += `<div class="mf-aviso mal">${_MF_ICO_AVERIA}<span><strong>No puede circular:</strong> ${inmov.length === 1 ? 'una avería lo impide' : `${inmov.length} averías lo impiden`} · ${cuales}${inmov.length > 3 ? '…' : ''}</span></div>`;
+  }
 
-  // ── Incidencias pendientes (accidentes, revisiones… que no son averías) ──
+  // Incidencias pendientes que aún no son avería
   if (incids.length) {
-    html += `<div class="ficha-section mant-sec">
-      <div class="ficha-section-header mant-sec-head">
-        <span class="ficha-section-icon">🚨</span><span class="ficha-section-title">Incidencias pendientes</span>
-        <button type="button" class="mant-btn-head" onclick="mantVerIncidenciasDe('${mat}')">Ver todas</button>
-      </div>
-      <div class="mant-lista">`;
+    h += `<section class="mf-sec mf-sec-auto">
+      ${_mfCabecera(_MF_ICO_INCID, 'INCIDENCIAS PENDIENTES', `<span class="mf-num">${incids.length}</span>`,
+        `<button type="button" class="mf-btn-head" onclick="mantVerIncidenciasDe('${mat}')">Ver todas</button>`)}
+      <div class="mf-lista">`;
     incids.forEach((i, idx) => {
       const t = MANT_TIPOS_INCID[i.tipo];
-      const dias = i.fecha ? -_mantDias(i.fecha) : null;
-      html += `<div class="mant-item">
-        <div class="mant-item-top">
-          <span class="mant-pill ${t ? 'incid-' + i.tipo : 'incid-sin'}">${t ? t.emoji + ' ' + t.txt : 'Sin tipo'}</span>
-          ${dias != null && dias > 0 ? `<span class="mant-item-meta">hace ${dias} día${dias === 1 ? '' : 's'}</span>` : ''}
-          <span class="mant-item-fecha">${_mantFecha(i.fecha)}</span>
+      const hace = _mfHace(i.fecha);
+      h += `<div class="mf-incid">
+        <span class="mant-pill ${t ? 'incid-' + i.tipo : 'incid-sin'}">${t ? esc(t.txt) : 'Sin tipo'}</span>
+        <div class="mf-incid-txt"><strong>${esc(i.descripcion || '—')}</strong><span>Registrada por ${esc(i.responsable || '—')} · ${_mantFecha(i.fecha)}${hace.txt ? ' · ' + hace.txt : ''}</span></div>
+        <button type="button" class="mf-btn" onclick="mantPasarIncidenciaAAveria(_mantIncidsFicha[${idx}])">Pasar a avería</button>
+      </div>`;
+    });
+    h += `</div></section>`;
+  }
+
+  // Lista de averías
+  const filtros = [
+    ['abiertas',  'Abiertas', abiertas.length],
+    ['inmov',     'Impiden circular', inmov.length],
+    ['reparadas', 'Reparadas', reparadas.length]
+  ];
+  const chips = !averias.length ? '' : `<div class="mf-filtros" role="group" aria-label="Filtrar averías">${filtros.map(([f, txt, n]) =>
+    `<button type="button" class="mf-filtro${filtro === f ? ' on' : ''}" data-f="${f}" aria-pressed="${filtro === f}" onclick="mantFiltrarAverias('${f}')">${txt} · ${n}</button>`).join('')}</div>`;
+  const lista = filtro === 'reparadas' ? reparadas : filtro === 'inmov' ? inmov : abiertas;
+
+  h += `<section class="mf-sec${lista.length ? ' mf-sec-llena' : ''}">
+    ${_mfCabecera(_MF_ICO_AVERIA, 'AVERÍAS', chips,
+      `<button type="button" class="mf-btn-head rojo" onclick="mantAbrirFormAveria('${mat}')">+ Dar parte de avería</button>`)}`;
+
+  if (!lista.length) {
+    if (filtro === 'abiertas') {
+      h += `<div class="mf-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+        <div><strong>Sin averías abiertas</strong><span>${incids.length ? 'Revisa las incidencias pendientes.' : 'El vehículo puede circular.'}</span></div></div>`;
+    } else {
+      h += `<div class="mf-vacio">${filtro === 'inmov' ? 'Ninguna avería impide circular.' : 'No hay averías reparadas en el historial.'}</div>`;
+    }
+  } else {
+    h += `<div class="mf-tabla-wrap"><table class="mf-tabla mf-tabla-av">
+      <thead><tr><th>Estado</th><th>Avería</th><th>Parte de</th><th>Fecha</th><th class="der">Km</th><th class="der">${admin && filtro !== 'reparadas' ? 'Acciones' : ''}</th></tr></thead>
+      <tbody>${lista.map(a => _mfFilaAveria(a, admin)).join('')}</tbody>
+    </table></div>`;
+  }
+  const resumen = [`${abiertas.length} abierta${abiertas.length === 1 ? '' : 's'}`];
+  if (enTaller) resumen.push(`${enTaller} en taller`);
+  if (reparadas.length) resumen.push(`${reparadas.length} reparada${reparadas.length === 1 ? '' : 's'} en el historial`);
+  h += `${averias.length ? `<div class="mf-pie"><span>${resumen.join(' · ')}</span></div>` : ''}</section>`;
+
+  cont.innerHTML = h;
+}
+
+function _mfFilaAveria(a, admin) {
+  const est = MANT_ESTADOS[a.estado] || MANT_ESTADOS.abierta;
+  const mat = esc(a.matricula);
+  const reparada = a.estado === 'reparada';
+  const hace = _mfHace(a.fecha);
+  let sub;
+  if (reparada) {
+    sub = `Reparada el ${_mantFecha(a.fecha_cierre)} por ${esc(a.cerrado_por || '—')}${a.comentario_cierre ? ' · ' + esc(a.comentario_cierre) : ''}`;
+  } else if (a.estado === 'en_taller') {
+    sub = a.taller ? `En taller ${esc(a.taller)}` : 'En taller';
+  } else {
+    sub = 'Sin taller asignado';
+  }
+  if (a.taller && reparada) sub += ` · Taller: ${esc(a.taller)}`;
+  if (a.coste != null) sub += ` · ${_mantEuros(a.coste)}`;
+
+  let acciones = '';
+  if (admin && !reparada) {
+    acciones = `${a.estado === 'abierta' ? `<button type="button" class="mf-btn" onclick="mantAveriaEnTaller('${mat}','${esc(a.id)}')">Pasar a taller</button>` : ''}
+      <button type="button" class="mf-btn oscuro" onclick="mantAbrirFormReparada('${mat}','${esc(a.id)}')">✓ Reparada</button>`;
+  }
+  return `<tr class="${a.inmoviliza && !reparada ? 'inmov' : ''}${reparada ? ' cerrada' : ''}">
+    <td class="mf-estado">
+      <span class="mant-pill av-${est.cls}">${est.txt}</span>
+      ${a.inmoviliza && !reparada ? '<span class="mant-pill av-inmoviliza">No puede circular</span>' : ''}
+    </td>
+    <td><strong class="mf-tit">${esc(a.descripcion)}</strong><span class="mf-sub">${sub}</span></td>
+    <td class="mf-quien">${esc(a.reportado_por || '—')}</td>
+    <td class="mf-fecha">${_mantFecha(a.fecha)}${!reparada && hace.txt ? `<span class="mf-hace ${hace.cls}">${hace.txt}</span>` : ''}</td>
+    <td class="mf-mono der">${a.km != null ? esc(Math.round(Number(a.km)).toLocaleString('es-ES')) : '—'}</td>
+    <td class="der"><div class="mf-acciones">${acciones}</div></td>
+  </tr>`;
+}
+
+// ── Pestaña MANTENIMIENTO ────────────────────────────────────────────────────
+function _mantRenderMantenimiento() {
+  const cont = document.getElementById('ficha-mant-content');
+  if (!cont || !_mantFicha) return;
+  const { matricula, mants, revs, kmActual } = _mantFicha;
+  const admin = _mantEsAdmin();
+  const mat = esc(matricula);
+  const orden = { vencida: 0, proxima: 1, ok: 2 };
+  const revsEst = revs.map(r => Object.assign({}, r, _mantEstadoRevision(r, kmActual)))
+    .sort((a, b) => orden[a.estado] - orden[b.estado] || String(a.fecha_limite || '9').localeCompare(String(b.fecha_limite || '9')));
+  const vencidas = revsEst.filter(r => r.estado === 'vencida').length;
+  const proximas = revsEst.filter(r => r.estado === 'proxima').length;
+  const anio = String(new Date().getFullYear());
+  const gastoAnio = mants.filter(m => String(m.fecha || '').startsWith(anio)).reduce((s, m) => s + (m.coste != null ? Number(m.coste) : 0), 0);
+  const total = mants.reduce((s, m) => s + (m.coste != null ? Number(m.coste) : 0), 0);
+  const urgente = revsEst[0];
+  const ultimo = mants[0];
+  let h = '';
+
+  // Franja de resumen
+  h += `<div class="mf-kpis">
+    <div class="mf-kpi"><span class="mf-kpi-lbl">Kilometraje actual</span><span class="mf-kpi-num mono">${kmActual != null ? _mantKm(kmActual) : 'Sin datos'}</span></div>
+    <div class="mf-kpi"><span class="mf-kpi-lbl">Revisión más urgente</span><span class="mf-kpi-txt ${urgente ? urgente.estado : ''}">${urgente ? `${esc(urgente.tipo)} · ${urgente.estado === 'vencida' ? 'vencida' : urgente.estado === 'proxima' ? 'próxima' : 'programada'}` : 'Ninguna programada'}</span></div>
+    <div class="mf-kpi"><span class="mf-kpi-lbl">Último mantenimiento</span><span class="mf-kpi-txt">${ultimo ? `${esc(ultimo.tipo)} · ${_mantFecha(ultimo.fecha)}` : 'Ninguno registrado'}</span></div>
+    <div class="mf-kpi"><span class="mf-kpi-lbl">Gasto en ${anio}</span><span class="mf-kpi-num mono">${_mantEuros(gastoAnio)}</span></div>
+  </div>`;
+
+  h += `<div class="mf-columnas">`;
+
+  // Próximas revisiones
+  const extraRev = vencidas ? `<span class="mf-num rojo">${vencidas} vencida${vencidas === 1 ? '' : 's'}</span>`
+                 : proximas ? `<span class="mf-num ambar">${proximas} próxima${proximas === 1 ? '' : 's'}</span>` : '';
+  h += `<section class="mf-sec">
+    ${_mfCabecera(_MF_ICO_REV, 'PRÓXIMAS REVISIONES', extraRev,
+      admin ? `<button type="button" class="mf-btn-head" onclick="mantAbrirFormRevision('${mat}')">+ Programar</button>` : '')}`;
+  if (!revsEst.length) {
+    h += `<div class="mf-vacio">No hay revisiones programadas.${admin ? ` <button type="button" class="adm-link mf-link" onclick="mantAbrirFormRevision('${mat}')">Programar una</button>` : ''}</div>`;
+  } else {
+    h += `<div class="mf-lista">`;
+    revsEst.forEach(r => {
+      const limites = [r.fecha_limite ? _mantFecha(r.fecha_limite) : '', r.km_limite != null ? _mantKm(r.km_limite) : ''].filter(Boolean).join(' o ');
+      h += `<div class="mf-rev ${r.estado}">
+        <div class="mf-rev-top">
+          <span class="mant-pill rev-${r.estado}">${r.estado === 'vencida' ? 'Vencida' : r.estado === 'proxima' ? 'Próxima' : 'Programada'}</span>
+          <strong class="mf-tit">${esc(r.tipo)}</strong>
+          <span class="mf-rev-falta ${r.estado}">${esc(r.texto)}</span>
         </div>
-        <div class="mant-item-txt">${esc(i.descripcion || '—')}</div>
-        <div class="mant-item-meta">Registrada por ${esc(i.responsable || '—')}</div>
-        <div class="mant-acciones">
-          <button type="button" class="mant-btn" onclick="mantPasarIncidenciaAAveria(_mantIncidsFicha[${idx}])">🔧 Pasar a avería</button>
+        <div class="mf-rev-bot">
+          <span class="mf-sub">Límite: <span class="mf-mono">${esc(limites || '—')}</span>${r.notas ? ' · ' + esc(r.notas) : ''}</span>
+          ${admin ? `<span class="mf-acciones">
+            <button type="button" class="mf-btn oscuro" onclick="mantAbrirFormMantenimiento('${mat}','${esc(r.id)}')">✓ Hecha</button>
+            <button type="button" class="mf-btn" onclick="mantQuitarRevision('${mat}','${esc(r.id)}')">Quitar</button>
+          </span>` : ''}
         </div>
       </div>`;
     });
-    html += `</div></div>`;
+    h += `</div>`;
   }
+  h += `</section>`;
 
-  // ── Averías ──
-  html += `<div class="ficha-section mant-sec">
-    <div class="ficha-section-header mant-sec-head">
-      <span class="ficha-section-icon">⚠️</span><span class="ficha-section-title">Averías</span>
-      <button type="button" class="mant-btn-head" onclick="mantAbrirFormAveria('${mat}')">+ Dar parte</button>
-    </div>
-    <div class="mant-lista">`;
-  if (!abiertas.length) html += `<div class="mant-vacio">Sin averías abiertas.</div>`;
-  abiertas.forEach(a => { html += _mantHtmlAveria(a, admin); });
-  if (cerradas.length) {
-    html += `<details class="mant-historial"><summary>Historial de averías reparadas (${cerradas.length})</summary>`;
-    cerradas.forEach(a => { html += _mantHtmlAveria(a, admin); });
-    html += `</details>`;
+  // Mantenimientos realizados
+  h += `<section class="mf-sec mf-sec-ancha">
+    ${_mfCabecera(_MF_ICO_MANT, 'MANTENIMIENTOS REALIZADOS', mants.length ? `<span class="mf-num gris">${mants.length}</span>` : '',
+      admin ? `<button type="button" class="mf-btn-head" onclick="mantAbrirFormMantenimiento('${mat}')">+ Registrar</button>` : '')}`;
+  if (!mants.length) {
+    h += `<div class="mf-vacio">Todavía no hay mantenimientos registrados.</div>`;
+  } else {
+    h += `<div class="mf-tabla-wrap"><table class="mf-tabla mf-tabla-mt">
+      <thead><tr><th>Fecha</th><th>Trabajo</th><th>Taller</th><th class="der">Km</th><th class="der">Coste</th><th class="der">Factura</th></tr></thead>
+      <tbody>${mants.map(m => {
+        const fac = m.factura_path
+          ? `<button type="button" class="adm-link mf-link" onclick="abrirVisorDoc('sb:${esc(m.factura_path)}','${esc(m.factura_nombre || 'Factura')}','${/\.pdf$/i.test(m.factura_nombre || '') ? 'pdf' : 'imagen'}')">Ver</button>`
+          : '<span class="mf-sub">—</span>';
+        const borrar = admin ? `<button type="button" class="mf-borrar" title="Eliminar este mantenimiento" aria-label="Eliminar este mantenimiento" onclick="mantBorrarMantenimiento('${mat}','${esc(m.id)}')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>` : '';
+        return `<tr>
+          <td class="mf-fecha">${_mantFecha(m.fecha)}</td>
+          <td><strong class="mf-tit">${esc(m.tipo)}</strong>${m.descripcion ? `<span class="mf-sub">${esc(m.descripcion)}</span>` : ''}<span class="mf-sub">Registrado por ${esc(m.registrado_por || '—')}</span></td>
+          <td class="mf-quien">${esc(m.taller || '—')}</td>
+          <td class="mf-mono der">${m.km != null ? esc(Math.round(Number(m.km)).toLocaleString('es-ES')) : '—'}</td>
+          <td class="mf-mono der fuerte">${m.coste != null ? _mantEuros(m.coste) : '—'}</td>
+          <td class="der"><span class="mf-acciones">${fac}${borrar}</span></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="mf-pie"><span>${mants.length} mantenimiento${mants.length === 1 ? '' : 's'} · desde ${_mantFecha(mants[mants.length - 1].fecha)}</span><span>Gasto total: <strong class="mf-mono">${_mantEuros(total)}</strong></span></div>`;
   }
-  html += `</div></div>`;
+  h += `</section></div>`;
 
-  html += '</div><div class="mant-col">';
-
-  // ── Próximas revisiones ──
-  html += `<div class="ficha-section mant-sec">
-    <div class="ficha-section-header mant-sec-head">
-      <span class="ficha-section-icon">📅</span><span class="ficha-section-title">Próximas revisiones</span>
-      ${admin ? `<button type="button" class="mant-btn-head" onclick="mantAbrirFormRevision('${mat}')">+ Programar</button>` : ''}
-    </div>
-    <div class="mant-lista">
-      <div class="mant-km-actual">Kilometraje actual: <strong>${kmActual != null ? _mantKm(kmActual) : 'sin datos'}</strong><span> · según el último repostaje</span></div>`;
-  if (!revsEst.length) html += `<div class="mant-vacio">No hay revisiones programadas.</div>`;
-  revsEst.forEach(r => {
-    const limites = [r.fecha_limite ? _mantFecha(r.fecha_limite) : '', r.km_limite != null ? _mantKm(r.km_limite) : ''].filter(Boolean).join(' o ');
-    html += `<div class="mant-item">
-      <div class="mant-item-top">
-        <span class="mant-pill rev-${r.estado}">${r.estado === 'vencida' ? 'Vencida' : r.estado === 'proxima' ? 'Próxima' : 'Programada'}</span>
-        <span class="mant-item-tit">${esc(r.tipo)}</span>
-        <span class="mant-item-fecha">${esc(limites)}</span>
-      </div>
-      <div class="mant-item-txt">${esc(r.texto)}${r.notas ? ' · ' + esc(r.notas) : ''}</div>
-      ${admin ? `<div class="mant-acciones">
-        <button type="button" class="mant-btn ok" onclick="mantAbrirFormMantenimiento('${mat}','${esc(r.id)}')">✓ Hecha: registrar mantenimiento</button>
-        <button type="button" class="mant-btn" onclick="mantQuitarRevision('${mat}','${esc(r.id)}')">Quitar</button>
-      </div>` : ''}
-    </div>`;
-  });
-  html += `</div></div>`;
-
-  // ── Mantenimientos realizados ──
-  const total = mants.reduce((s, m) => s + (m.coste != null ? Number(m.coste) : 0), 0);
-  html += `<div class="ficha-section mant-sec">
-    <div class="ficha-section-header mant-sec-head">
-      <span class="ficha-section-icon">🛠️</span><span class="ficha-section-title">Mantenimientos realizados</span>
-      ${admin ? `<button type="button" class="mant-btn-head" onclick="mantAbrirFormMantenimiento('${mat}')">+ Registrar</button>` : ''}
-    </div>
-    <div class="mant-lista">`;
-  if (!mants.length) html += `<div class="mant-vacio">Todavía no hay mantenimientos registrados.</div>`;
-  mants.forEach(m => {
-    const meta = [m.km != null ? _mantKm(m.km) : '', m.taller ? esc(m.taller) : '', m.coste != null ? _mantEuros(m.coste) : ''].filter(Boolean).join(' · ');
-    html += `<div class="mant-item">
-      <div class="mant-item-top">
-        <span class="mant-item-tit">${esc(m.tipo)}</span>
-        <span class="mant-item-fecha">${_mantFecha(m.fecha)}</span>
-      </div>
-      ${m.descripcion ? `<div class="mant-item-txt">${esc(m.descripcion)}</div>` : ''}
-      <div class="mant-item-meta">${meta}${meta ? ' · ' : ''}Registrado por ${esc(m.registrado_por || '—')}</div>
-      ${(m.factura_path || admin) ? `<div class="mant-acciones">
-        ${m.factura_path ? `<button type="button" class="mant-btn" onclick="abrirVisorDoc('sb:${esc(m.factura_path)}','${esc(m.factura_nombre || 'Factura')}','${/\.pdf$/i.test(m.factura_nombre || '') ? 'pdf' : 'imagen'}')">📄 Ver factura</button>` : ''}
-        ${admin ? `<button type="button" class="mant-btn" onclick="mantBorrarMantenimiento('${mat}','${esc(m.id)}')">Eliminar</button>` : ''}
-      </div>` : ''}
-    </div>`;
-  });
-  if (mants.length && total > 0) html += `<div class="mant-total">Gasto total registrado: <strong>${_mantEuros(total)}</strong></div>`;
-  html += `</div></div>`;
-
-  html += '</div>';
-  cont.innerHTML = html;
-}
-
-function _mantHtmlAveria(a, admin) {
-  const est  = MANT_ESTADOS[a.estado] || MANT_ESTADOS.abierta;
-  const mat  = esc(a.matricula);
-  const meta = [a.km != null ? _mantKm(a.km) : '', a.taller ? 'Taller: ' + esc(a.taller) : '', a.coste != null ? _mantEuros(a.coste) : ''].filter(Boolean).join(' · ');
-  let acciones = '';
-  if (admin && a.estado !== 'reparada') {
-    acciones = `<div class="mant-acciones">
-      ${a.estado === 'abierta' ? `<button type="button" class="mant-btn" onclick="mantAveriaEnTaller('${mat}','${esc(a.id)}')">🔧 Pasar a taller</button>` : ''}
-      <button type="button" class="mant-btn ok" onclick="mantAbrirFormReparada('${mat}','${esc(a.id)}')">✓ Marcar como reparada</button>
-    </div>`;
-  }
-  return `<div class="mant-item${a.estado === 'reparada' ? ' cerrada' : ''}">
-    <div class="mant-item-top">
-      <span class="mant-pill av-${est.cls}">${est.txt}</span>
-      ${a.inmoviliza && a.estado !== 'reparada' ? `<span class="mant-pill av-inmoviliza">No puede circular</span>` : ''}
-      <span class="mant-item-fecha">${_mantFecha(a.fecha)}</span>
-    </div>
-    <div class="mant-item-txt">${esc(a.descripcion)}</div>
-    <div class="mant-item-meta">Parte de ${esc(a.reportado_por || '—')}${meta ? ' · ' + meta : ''}</div>
-    ${a.estado === 'reparada' ? `<div class="mant-item-meta">Reparada el ${_mantFecha(a.fecha_cierre)} por ${esc(a.cerrado_por || '—')}${a.comentario_cierre ? ' · ' + esc(a.comentario_cierre) : ''}</div>` : ''}
-    ${acciones}
-  </div>`;
+  cont.innerHTML = h;
 }
 
 // ── Ventanas de formulario ───────────────────────────────────────────────────
@@ -848,7 +950,7 @@ function mantMenuAnadir(boton, matricula) {
       case 'docs':       abrirGestorDocumentos(matricula, 'docs', { puedeBorrar: admin }); break;
       case 'mant':       mantAbrirFormMantenimiento(matricula); break;
       case 'revision':   mantAbrirFormRevision(matricula); break;
-      case 'ficha':      abrirFichaVehiculo(matricula); fichaTabSwitch('mant'); break;
+      case 'ficha':      abrirFichaVehiculo(matricula); fichaTabSwitch(mantPestanaFicha(matricula)); break;
     }
   });
   const primero = ov.querySelector('.mant-tile:not([disabled])');

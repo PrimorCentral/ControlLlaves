@@ -778,8 +778,8 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
     }
     const av = averiasMap[f.id];
     const estadosAv = { abierta: 'Abierta', en_taller: 'En taller', reparada: 'Reparada' };
-    const averiaHtml = av ? `<button type="button" class="incid-averia-pill est-${esc(av.estado)}" title="Ver en Mantenimiento"
-        onclick="abrirFichaVehiculo('${esc(f.matricula)}');fichaTabSwitch('mant')">🔧 Avería · ${estadosAv[av.estado] || 'Abierta'}</button>` : '';
+    const averiaHtml = av ? `<button type="button" class="incid-averia-pill est-${esc(av.estado)}" title="Ver en Averías"
+        onclick="abrirFichaVehiculo('${esc(f.matricula)}');fichaTabSwitch('averias')">🔧 Avería · ${estadosAv[av.estado] || 'Abierta'}</button>` : '';
 
     let footer;
     if (modoResueltas) {

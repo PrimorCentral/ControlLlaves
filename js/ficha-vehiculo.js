@@ -2,10 +2,10 @@
 // FLOTA PRIMOR · js/ficha-vehiculo.js — FICHA DEL VEHÍCULO
 //
 // Ventana que se abre al pulsar una matrícula. Menú lateral con:
-//   Resumen · Seguro · ITV · Documentos · Mantenimiento
+//   Resumen · Seguro · ITV · Documentos · Averías · Mantenimiento
 // · Resumen: bloqueo, tarjetas de ITV / Seguro / Mantenimiento, qué
 //   documentación falta y acciones rápidas.
-// · Mantenimiento: lo pinta js/mantenimiento.js (mantCargarFicha).
+// · Averías y Mantenimiento: los pinta js/mantenimiento.js (mantCargarFicha).
 // · Los datos del vehículo salen de GRUPOS (ya cargados); documentos,
 //   kilometraje y mantenimiento se piden a Supabase al abrir la ficha.
 // Funciones públicas (las usan otros archivos): abrirFichaVehiculo,
@@ -32,6 +32,7 @@ const FICHA_SECCIONES = [
   { id: 'seguro',  label: 'Seguro' },
   { id: 'itv',     label: 'ITV' },
   { id: 'docs',    label: 'Documentos' },
+  { id: 'averias', label: 'Averías' },
   { id: 'mant',    label: 'Mantenimiento' }
 ];
 
@@ -125,7 +126,7 @@ function fichaTabSwitch(tab) {
     b.setAttribute('aria-current', activa ? 'page' : 'false');
   });
   document.querySelectorAll('#modal-ficha-vehiculo .fv-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === tab));
-  if (tab === 'mant' && typeof mantCargarFicha === 'function') mantCargarFicha(_fichaMat);
+  if ((tab === 'mant' || tab === 'averias') && typeof mantCargarFicha === 'function') mantCargarFicha(_fichaMat);
   else _fichaPintarPanel(tab);
 }
 
@@ -175,9 +176,11 @@ function _fichaPintarTodo() {
   if (!v) return;
   _fichaPintarCabecera(v);
   _fichaPintarNav(v);
-  // Paneles: el activo se pinta; Mantenimiento lo pinta mantenimiento.js
+  // Paneles: el activo se pinta; Averías y Mantenimiento los pinta mantenimiento.js
   document.querySelectorAll('#modal-ficha-vehiculo .fv-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === _fichaTab));
-  if (_fichaTab === 'mant') { if (typeof mantCargarFicha === 'function' && !document.querySelector('#ficha-mant-content .mant-col')) mantCargarFicha(_fichaMat); }
+  if (_fichaTab === 'mant' || _fichaTab === 'averias') {
+    if (typeof mantCargarFicha === 'function' && !(typeof _mantFicha !== 'undefined' && _mantFicha && _mantFicha.matricula === _fichaMat)) mantCargarFicha(_fichaMat);
+  }
   else _fichaPintarPanel(_fichaTab);
 }
 
@@ -235,15 +238,22 @@ function _fichaPintarNav(v) {
     seguro:  { dot: e.seg.cls, txt: e.seg.cls === 'nada' ? '—' : (e.seg.cls === 'mal' ? 'Caducado' : `${e.seg.dias} d`) },
     itv:     { dot: e.itv.cls, txt: e.itv.cls === 'nada' ? '—' : (e.itv.cls === 'mal' ? 'Caducada' : `${e.itv.dias} d`) },
     docs:    { dot: e.faltan.length ? 'aviso' : 'ok', txt: d.cargado ? String(nDocs) : '…' },
-    mant:    { dot: (e.averias.some(a => a.inmoviliza) || e.revVencida) ? 'mal' : ((e.averias.length || e.incid.length || e.revProxima) ? 'aviso' : 'ok'),
-               txt: e.averias.length ? (e.averias.length === 1 ? '1 avería' : `${e.averias.length} averías`) : (e.incid.length ? `${e.incid.length} pend.` : '') }
+    averias: { dot: e.averias.some(a => a.inmoviliza) ? 'mal' : ((e.averias.length || e.incid.length) ? 'aviso' : 'ok'),
+               txt: e.averias.length ? String(e.averias.length) : (e.incid.length ? `${e.incid.length} pend.` : ''),
+               globo: e.averias.length > 0 },
+    // Mantenimiento: globo rojo con las revisiones vencidas, o ámbar con las próximas
+    mant:    { dot: e.revVencida ? 'mal' : (e.revProxima ? 'aviso' : 'ok'),
+               txt: e.revVencida ? String(e.revs.filter(r => r.estado === 'vencida').length)
+                  : (e.revProxima ? String(e.revs.filter(r => r.estado === 'proxima').length) : ''),
+               globo: e.revVencida ? true : (e.revProxima ? 'ambar' : false),
+               titulo: e.revVencida ? 'Revisiones vencidas' : (e.revProxima ? 'Revisiones próximas' : '') }
   };
-  if (!d.cargado) { info.docs.dot = 'nada'; info.mant.dot = 'nada'; info.resumen.dot = 'nada'; }
+  if (!d.cargado) { info.docs.dot = 'nada'; info.averias.dot = 'nada'; info.mant.dot = 'nada'; info.resumen.dot = 'nada'; }
   document.getElementById('fv-nav-ops').innerHTML = FICHA_SECCIONES.map(s => `
     <button type="button" class="fv-nav-op${s.id === _fichaTab ? ' activa' : ''}" data-tab="${s.id}" aria-current="${s.id === _fichaTab ? 'page' : 'false'}" onclick="fichaTabSwitch('${s.id}')">
       <i class="fv-dot ${info[s.id].dot}" aria-hidden="true"></i>
       <span class="fv-nav-txt">${s.label}</span>
-      <span class="fv-nav-info ${info[s.id].dot}">${esc(info[s.id].txt)}</span>
+      <span class="fv-nav-info ${info[s.id].dot}${info[s.id].globo ? ' globo' : ''}${info[s.id].globo === 'ambar' ? ' ambar' : ''}"${info[s.id].titulo ? ` title="${info[s.id].titulo}"` : ''}>${esc(info[s.id].txt)}</span>
     </button>`).join('');
   document.getElementById('fv-km').innerHTML = `
     <span class="fv-km-lbl">Kilometraje</span>
@@ -332,7 +342,7 @@ function _fichaHtmlResumen(v) {
       <span class="fv-card-sub">${esc(_fvCap(v.seguro_aseguradora || 'Sin aseguradora'))}${v.seguro_vencimiento ? ` · vence el ${_fvFecha(v.seguro_vencimiento)}` : ''}</span>
       ${v.seguro_vencimiento ? `<span class="fv-barra"><i class="${e.seg.cls}" style="width:${pctSeg}%"></i></span><span class="fv-card-pie">${e.seg.dias > 0 ? `Quedan ${e.seg.dias} días` : 'Hay que renovarlo'}</span>` : ''}
     </button>
-    <button type="button" class="fv-card fv-card-link" onclick="fichaTabSwitch('mant')">
+    <button type="button" class="fv-card fv-card-link" onclick="fichaTabSwitch('${(e.averias.length || e.incid.length) ? 'averias' : 'mant'}')">
       <span class="fv-card-lbl">MANTENIMIENTO</span>
       <span class="fv-card-big ${mantCls}">${mantTitulo}</span>
       <span class="fv-card-sub">${esc(mantSub)}</span>

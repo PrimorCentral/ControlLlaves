@@ -332,7 +332,8 @@ function _fichaHtmlResumen(v) {
   const pctSeg = e.seg.dias != null && e.seg.dias > 0 ? Math.max(4, Math.min(100, Math.round(e.seg.dias / 365 * 100))) : 0;
   const itvTitulo = { mal: 'Caducada', aviso: `Vence en ${e.itv.dias} d`, ok: 'En vigor', nada: 'Sin fecha' }[e.itv.cls];
   const itvSub = v.itv_fin ? (e.itv.dias < 0 ? `Venció el ${_fvFecha(v.itv_fin)}` : e.itv.dias === 0 ? `Vence hoy, ${_fvFecha(v.itv_fin)}` : `Hasta el ${_fvFecha(v.itv_fin)}`) : 'No hay fecha registrada';
-  const informeItv = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'informe_itv')[0];
+  const informeItv = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'informe_itv')
+    .sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0]; // el más reciente
   const segTitulo = { mal: 'Caducado', aviso: `Vence en ${e.seg.dias} d`, ok: 'En vigor', nada: 'Sin datos' }[e.seg.cls];
 
   let mantTitulo = 'Sin pendientes', mantCls = 'ok', mantSub = 'No hay averías abiertas';
@@ -453,7 +454,13 @@ function _fichaHtmlItv(v) {
   let h = `<div class="fv-docs-cab">
       <h2 class="fv-h2">ITV</h2><span class="fv-card-nota"></span>
       ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz" onclick="fichaEditar('itv')">${_FV_LAPIZ}<span>Editar fecha</span></button>` : ''}
+      <label class="fv-btn fv-btn-oscuro fv-subir-itv${_fichaSubiendoItv ? ' ocupado' : ''}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+        <span>Subir nuevo informe</span>
+        <input type="file" accept="application/pdf,image/*" class="fv-oculto" ${_fichaSubiendoItv ? 'disabled' : ''} onchange="fichaSubirInformeItv(this)">
+      </label>
     </div>
+    <div id="fv-itv-estado" class="fv-itv-estado-linea" role="status"${_fichaSubiendoItv ? '' : ' hidden'}>${esc(_fichaSubiendoItv || '')}</div>
     <div class="fv-card fv-itv ${e.itv.cls}">
       <span class="fv-itv-sem" aria-hidden="true"></span>
       <div class="fv-itv-txt">
@@ -463,10 +470,28 @@ function _fichaHtmlItv(v) {
         <span class="fv-card-sub">${sub}</span>
       </div>
     </div>
-    <h3 class="fv-h3">Informes de ITV</h3>`;
+`;
+  // El informe más reciente es el actual; los anteriores van al historial (plegado)
+  const ordenados = informes.slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+  const anteriores = ordenados.slice(1);
+  h += `<h3 class="fv-h3">Informe actual</h3>`;
   if (!d.cargado) h += _fvCargando();
-  else if (informes.length) h += `<div class="fv-docs-lista">${informes.map(p => _fvDocFila(p)).join('')}</div>`;
-  else h += _fvHuecoDoc('informe_itv', 'Informe ITV');
+  else if (ordenados.length) {
+    h += `<div class="fv-docs-lista">${_fvDocFila(ordenados[0])}</div>`;
+    if (anteriores.length) h += `
+      <details class="fv-historial">
+        <summary>Historial · ${anteriores.length} informe${anteriores.length === 1 ? '' : 's'} anterior${anteriores.length === 1 ? '' : 'es'}</summary>
+        <div class="fv-docs-lista">${anteriores.map(p => _fvDocFila(p)).join('')}</div>
+      </details>`;
+  }
+  else h += `<div class="fv-doc fv-doc-falta">
+      <span class="fv-doc-ico falta" aria-hidden="true">!</span>
+      <div class="fv-doc-info">
+        <span class="fv-doc-cat">INFORME ITV</span>
+        <span class="fv-doc-nombre">Falta subirlo</span>
+        <span class="fv-doc-meta">Pulsa «Subir nuevo informe» para añadirlo</span>
+      </div>
+    </div>`;
   return h;
 }
 
@@ -506,6 +531,37 @@ function _fichaHtmlDocs(v) {
   });
   todos.filter(x => !FICHA_DOCS_OBLIGATORIOS.some(o => o.id === x.categoria)).forEach(x => { tarjetas += _fvDocFila(Object.assign({}, x, { categoria: 'otros' }), 'cat'); });
   return h + `<div class="fv-docs-grid">${tarjetas}</div>`;
+}
+
+// ── Subir un informe ITV desde la propia ficha ──
+let _fichaSubiendoItv = '';   // texto de estado mientras se sube / se lee
+
+async function fichaSubirInformeItv(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file || _fichaSubiendoItv) return;
+  const mat = _fichaMat;
+  const mime = typeof _docsMime === 'function' ? _docsMime(file) : (file.type || '');
+  if (mime !== 'application/pdf' && !mime.startsWith('image/')) { mostrarToast('Solo se admiten PDF o imágenes', 'error'); return; }
+  if (typeof DOCS_MAX_MB !== 'undefined' && file.size > DOCS_MAX_MB * 1024 * 1024) { mostrarToast(`El archivo supera los ${DOCS_MAX_MB} MB`, 'error'); return; }
+  const repintar = () => { if (_fichaMat === mat && _fichaTab === 'itv') _fichaPintarPanel('itv'); };
+  _fichaSubiendoItv = `Subiendo ${file.name}…`; repintar();
+  try {
+    const blob = file.type ? file : new Blob([file], { type: mime });
+    await docsSubirArchivo(mat, 'informe_itv', blob, file.name);
+    registrarAccion('VEHICULO', 'Subir documento', `${mat} · Informe ITV · ${file.name}`);
+    mostrarToast('✓ Informe ITV subido', 'success');
+  } catch (e) {
+    _fichaSubiendoItv = ''; repintar();
+    mostrarToast('No se pudo subir: ' + e.message, 'error');
+    return;
+  }
+  _fichaSubiendoItv = '';
+  if (_fichaMat === mat) await _fichaCargarDatos(mat); // el nuevo pasa a "Informe actual"
+  // Leer la fecha de la próxima ITV del informe y ofrecer guardarla (js/itv-ocr.js)
+  if (typeof itvActualizarDesdeInforme === 'function') {
+    await itvActualizarDesdeInforme(mat, file, document.getElementById('fv-itv-estado'));
+  }
 }
 
 // ── Gestión (solo administradores) ──

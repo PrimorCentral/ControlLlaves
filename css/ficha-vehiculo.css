@@ -16,10 +16,21 @@
 }
 
 /* ── Cabecera ── */
-.fv-cabecera {
-  flex-shrink: 0; background: #0E1726; color: #E9EDF3;
-  padding: 20px 26px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+.fv-cabecera { flex-shrink: 0; background: #0E1726; color: #E9EDF3; display: flex; flex-direction: column; }
+/* Título: franja roja de lado a lado */
+.fv-franja {
+  background: #C93636; color: #fff; text-align: center; font-size: 15px; font-weight: 900;
+  letter-spacing: .32em; padding: 9px 0; line-height: 1.2;
 }
+.fv-cab-fila { display: flex; align-items: center; gap: 26px; padding: 18px 26px; flex-wrap: wrap; }
+/* Datos del vehículo en columnas, cada uno con su etiqueta */
+.fv-cab-cols { display: flex; flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+.fv-cab-col { padding: 0 22px; border-left: 1px solid #2B3A50; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fv-cab-col:first-child { border-left: none; padding-left: 0; }
+.fv-cab-lbl { font-size: 11.5px; font-weight: 800; letter-spacing: .12em; color: #8D9AAE; }
+.fv-cab-val { font-size: 17px; font-weight: 800; color: #fff; white-space: nowrap; }
+.fv-cab-val.vacio { color: #6B7A90; font-weight: 600; }
+.fv-cab-der { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .fv-placa { display: flex; align-items: stretch; border-radius: 8px; overflow: hidden; border: 2px solid #E9EDF3; background: #fff; flex-shrink: 0; }
 .fv-placa-eu {
   width: 28px; background: #1D4ED8; color: #FFD54A; display: flex; flex-direction: column;
@@ -34,7 +45,7 @@
 .fv-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .14em; color: #9AA6B8; }
 .fv-desc { font-size: 18px; font-weight: 700; color: #fff; }
 .fv-desc span { font-weight: 500; color: #9AA6B8; }
-.fv-chips { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.fv-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .fv-chip {
   display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px;
   font-size: 13px; font-weight: 700; white-space: nowrap;
@@ -277,10 +288,14 @@
 @media (max-width: 768px) {
   #modal-ficha-vehiculo { padding: 0 !important; }
   .fv-box { width: 100%; height: 100%; border-radius: 0; }
-  .fv-cabecera { padding: 14px 16px; gap: 12px; }
+  .fv-franja { font-size: 13px; letter-spacing: .24em; padding: 8px 52px; }
+  .fv-cab-fila { padding: 14px 16px; gap: 12px; }
   .fv-placa-txt { font-size: 20px; }
-  .fv-chips { margin-left: 0; justify-content: flex-start; order: 3; width: 100%; }
-  .fv-cerrar { position: absolute; top: 12px; right: 12px; }
+  .fv-cab-col { padding: 0 12px; }
+  .fv-cab-val { font-size: 15px; white-space: normal; }
+  .fv-cab-der { margin-left: 0; width: 100%; flex-wrap: wrap; }
+  .fv-chips { justify-content: flex-start; }
+  .fv-cerrar { position: absolute; top: 2px; right: 8px; border-color: rgba(255,255,255,.4); width: 32px; height: 32px; }
   .fv-cuerpo { flex-direction: column; }
   .fv-nav { width: auto; flex-direction: row; padding: 8px; border-right: none; border-bottom: 1px solid #E3E7EE; overflow-x: auto; }
   .fv-nav-ops { flex-direction: row; }

@@ -31,6 +31,7 @@ const FICHA_SECCIONES = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'seguro',  label: 'Seguro' },
   { id: 'itv',     label: 'ITV' },
+  { id: 'taco',    label: 'Tacógrafo' },
   { id: 'docs',    label: 'Documentos' },
   { id: 'averias', label: 'Averías' },
   { id: 'mant',    label: 'Mantenimiento' },
@@ -147,8 +148,15 @@ function fichaTabSwitch(tab) {
 
 // ── Carga de datos ───────────────────────────────────────────────────────────
 async function _fichaCargarDatos(matricula) {
-  const d = { cargado: true, docs: [], docsDrive: [], fotos: [], km: null, averias: [], revisiones: [], incid: [] };
+  const d = { cargado: true, docs: [], docsDrive: [], fotos: [], km: null, averias: [], revisiones: [], incid: [], taco: [] };
   const tareas = [];
+  // Revisiones de tacógrafo ya hechas (son mantenimientos de tipo Tacógrafo)
+  tareas.push((async () => {
+    try {
+      const r = await sb.from('mantenimientos').select('*').eq('matricula', matricula).eq('tipo', 'Tacógrafo').order('fecha', { ascending: false });
+      d.taco = r.data || [];
+    } catch (e) { /* sin conexión */ }
+  })());
   // Documentos (Supabase) y, si sigue activo, los antiguos de Drive
   tareas.push((async () => {
     try {
@@ -208,7 +216,11 @@ function _fichaEstado(v) {
   const revs = d.revisiones || [];
   const revVencida = revs.some(r => r.estado === 'vencida');
   const revProxima = revs.some(r => r.estado === 'proxima');
-  return { itv, seg, faltan, averias, revs, revVencida, revProxima, incid: d.incid || [] };
+  // Tacógrafo: próxima revisión programada (la más cercana)
+  const revTaco = revs.filter(r => r.tipo === 'Tacógrafo' && r.fecha_limite).sort((a, b) => String(a.fecha_limite).localeCompare(String(b.fecha_limite)))[0] || null;
+  const taco = !v.tacografo ? { cls: 'nada', txt: 'No lleva', dias: null, no: true }
+    : (revTaco ? _fvVencimiento(revTaco.fecha_limite, 60) : { cls: d.cargado ? 'aviso' : 'nada', txt: 'Sin fecha', dias: null });
+  return { itv, seg, faltan, averias, revs, revVencida, revProxima, incid: d.incid || [], taco, revTaco };
 }
 
 function _fichaPintarCabecera(v) {
@@ -221,6 +233,8 @@ function _fichaPintarCabecera(v) {
   else if (e.itv.cls === 'aviso') chips.push(chip('aviso', `ITV en ${e.itv.dias} d`));
   if (e.seg.cls === 'mal') chips.push(chip('mal', 'Seguro caducado'));
   else if (e.seg.cls === 'aviso') chips.push(chip('aviso', `Seguro en ${e.seg.dias} d`));
+  if (!e.taco.no && e.taco.cls === 'mal') chips.push(chip('mal', 'Tacógrafo caducado'));
+  else if (!e.taco.no && e.taco.cls === 'aviso' && e.taco.dias != null) chips.push(chip('aviso', `Tacógrafo en ${e.taco.dias} d`));
   if (e.averias.length) chips.push(chip('aviso', e.averias.length === 1 ? '1 avería abierta' : `${e.averias.length} averías abiertas`));
   if (e.incid.length) chips.push(chip('aviso', e.incid.length === 1 ? '1 incidencia pendiente' : `${e.incid.length} incidencias pendientes`));
   if (!chips.length && _fichaDatos && _fichaDatos.cargado) chips.push(chip('ok', 'Todo en regla'));
@@ -250,9 +264,10 @@ function _fichaPintarNav(v) {
   const d = _fichaDatos || {};
   const nDocs = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria !== 'informe_itv').length; // la ITV va en su apartado
   const info = {
-    resumen: { dot: (v.bloqueado || e.itv.cls === 'mal' || e.seg.cls === 'mal') ? 'mal' : ((e.averias.length || e.incid.length || e.itv.cls === 'aviso' || e.seg.cls === 'aviso' || e.faltan.length) ? 'aviso' : 'ok'), txt: '' },
+    resumen: { dot: (v.bloqueado || e.itv.cls === 'mal' || e.seg.cls === 'mal' || (!e.taco.no && e.taco.cls === 'mal')) ? 'mal' : ((e.averias.length || e.incid.length || e.itv.cls === 'aviso' || e.seg.cls === 'aviso' || e.faltan.length || (!e.taco.no && e.taco.cls === 'aviso')) ? 'aviso' : 'ok'), txt: '' },
     seguro:  { dot: e.seg.cls, txt: e.seg.cls === 'nada' ? '—' : (e.seg.cls === 'mal' ? 'Caducado' : `${e.seg.dias} d`) },
     itv:     { dot: e.itv.cls, txt: e.itv.cls === 'nada' ? '—' : (e.itv.cls === 'mal' ? 'Caducada' : `${e.itv.dias} d`) },
+    taco:    { dot: e.taco.cls, txt: e.taco.no ? 'No lleva' : (e.taco.dias == null ? (d.cargado ? 'Sin fecha' : '…') : (e.taco.cls === 'mal' ? 'Caducado' : `${e.taco.dias} d`)) },
     docs:    { dot: e.faltan.length ? 'aviso' : 'ok', txt: d.cargado ? String(nDocs) : '…' },
     averias: { dot: e.averias.some(a => a.inmoviliza) ? 'mal' : ((e.averias.length || e.incid.length) ? 'aviso' : 'ok'),
                txt: e.averias.length ? String(e.averias.length) : (e.incid.length ? `${e.incid.length} pend.` : ''),
@@ -284,7 +299,7 @@ function _fichaPintarPanel(tab) {
   const v = _getVehiculo(_fichaMat);
   const cont = document.querySelector(`#modal-ficha-vehiculo .fv-panel[data-tab="${tab}"]`);
   if (!v || !cont) return;
-  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, docs: _fichaHtmlDocs, gestion: _fichaHtmlGestion }[tab];
+  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, taco: _fichaHtmlTaco, docs: _fichaHtmlDocs, gestion: _fichaHtmlGestion }[tab];
   if (html) cont.innerHTML = html(v);
 }
 
@@ -493,6 +508,114 @@ function _fichaHtmlItv(v) {
       </div>
     </div>`;
   return h;
+}
+
+// ── Tacógrafo ──
+function _fichaHtmlTaco(v) {
+  const d = _fichaDatos || {};
+  const e = _fichaEstado(v);
+  const admin = _fvEsAdmin();
+  const mat = esc(_fichaMat);
+  if (!v.tacografo) {
+    return `<h2 class="fv-h2">Tacógrafo</h2>
+      <div class="fv-card fv-taco-no">
+        <span class="fv-taco-no-ico" aria-hidden="true">—</span>
+        <div class="fv-gest-txt">
+          <span class="fv-gest-titulo">Este vehículo no lleva tacógrafo</span>
+          <span class="fv-card-sub">No hace falta revisarlo y no salen avisos.</span>
+        </div>
+        ${admin ? `<button type="button" class="fv-btn" onclick="fichaTacografo(true)">Sí lleva tacógrafo</button>` : ''}
+      </div>`;
+  }
+  const r = e.revTaco;
+  const t = e.taco;
+  const titulo = !r ? 'Sin fecha' : ({ mal: t.dias === 0 ? 'Caduca hoy' : 'Caducado', aviso: `Vence en ${t.dias} días`, ok: 'En vigor' }[t.cls] || '—');
+  const sub = !r ? (admin ? 'No hay próxima revisión programada. Pulsa «Programar fecha».' : 'No hay próxima revisión programada.')
+    : t.dias < 0 ? `Venció el ${_fvFecha(r.fecha_limite)}, hace ${-t.dias} día${t.dias === -1 ? '' : 's'}.`
+    : `Hay que pasar la revisión antes del ${_fvFecha(r.fecha_limite)}.`;
+  const pct = t.dias != null && t.dias > 0 ? Math.max(4, Math.min(100, Math.round(t.dias / 730 * 100))) : 0; // cada 2 años
+  let h = `<div class="fv-docs-cab">
+      <h2 class="fv-h2">Tacógrafo</h2><span class="fv-card-nota"></span>
+      ${admin && !r ? `<button type="button" class="fv-lapiz" onclick="mantAbrirFormRevision('${mat}','Tacógrafo')">${_FV_LAPIZ}<span>Programar fecha</span></button>` : ''}
+      ${admin ? `<button type="button" class="fv-btn fv-btn-oscuro" onclick="mantAbrirFormMantenimiento('${mat}','${r ? esc(r.id) : ''}','Tacógrafo')">✓ Registrar revisión hecha</button>` : ''}
+    </div>
+    <div class="fv-card fv-itv ${r ? t.cls : 'nada'}">
+      <span class="fv-itv-sem" aria-hidden="true"></span>
+      <div class="fv-itv-txt">
+        <span class="fv-card-lbl">PRÓXIMA REVISIÓN</span>
+        <span class="fv-itv-fecha">${r ? _fvFecha(r.fecha_limite) : '—'}</span>
+        <span class="fv-itv-estado ${r ? t.cls : 'nada'}">${titulo}</span>
+        <span class="fv-card-sub">${sub}</span>
+        ${r ? `<span class="fv-barra grande fv-taco-barra"><i class="${t.cls}" style="width:${pct}%"></i></span>` : ''}
+      </div>
+    </div>
+    <h3 class="fv-h3">Revisiones realizadas</h3>`;
+  if (!d.cargado) h += _fvCargando();
+  else if (!(d.taco || []).length) h += `<div class="fv-cargando">Todavía no hay revisiones registradas.</div>`;
+  else {
+    const ver = (path, nombre, txt) => `<button type="button" class="fv-btn" title="${esc(nombre || '')}" onclick="abrirVisorDoc('sb:${esc(path)}','${esc(nombre || 'Documento')}','${/\.pdf$/i.test(nombre || '') ? 'pdf' : 'imagen'}')">${txt}</button>`;
+    h += `<div class="fv-docs-lista">` + d.taco.map(m => {
+      const adj = Array.isArray(m.adjuntos) ? m.adjuntos.filter(a => a && a.path) : [];
+      const docs = (m.factura_path ? [ver(m.factura_path, m.factura_nombre, adj.length ? 'Factura' : 'Ver')] : [])
+        .concat(adj.map((a, i) => ver(a.path, a.nombre, adj.length > 1 ? `Doc. ${i + 1}` : 'Certificado')));
+      const datos = [m.taller, m.coste != null ? Number(m.coste).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : '', m.km != null ? Math.round(Number(m.km)).toLocaleString('es-ES') + ' km' : ''].filter(Boolean).join(' · ');
+      return `<div class="fv-doc fv-taco-rev">
+        <span class="fv-taco-fecha">${_fvFecha(m.fecha)}</span>
+        <div class="fv-doc-info">
+          <span class="fv-doc-nombre">${esc(m.descripcion || 'Revisión del tacógrafo')}</span>
+          <span class="fv-doc-meta">${esc(datos || 'Sin taller ni coste')}</span>
+        </div>
+        <span class="fv-taco-docs">${docs.join('')}${admin ? `<button type="button" class="fv-btn" title="Añadir certificado u otro documento" onclick="fichaTacoAdjuntar('${esc(m.id)}')">+ Documento</button>` : ''}</span>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+  if (admin) h += `<button type="button" class="fv-taco-quitar" onclick="fichaTacografo(false)">Este vehículo no lleva tacógrafo</button>`;
+  return h;
+}
+
+/** Marca si el vehículo lleva tacógrafo (solo admin). */
+async function fichaTacografo(lleva) {
+  if (!_fvEsAdmin()) return;
+  const v = _getVehiculo(_fichaMat);
+  if (!v) return;
+  if (!lleva) {
+    const ok = await appConfirm(`<strong>${esc(v.matricula)}</strong> dejará de mostrar avisos de tacógrafo. Las revisiones ya registradas se conservan en Mantenimiento.`,
+      { titulo: '¿No lleva tacógrafo?', icono: '🚚', labelOk: 'Sí, no lleva', colorOk: '#1a1a2e' });
+    if (!ok) return;
+  }
+  v.tacografo = !!lleva;
+  renderAdminVehiculos(); renderTabla();
+  sincronizarVehiculosConSheets();
+  registrarAccion('VEHICULO', lleva ? 'Lleva tacógrafo' : 'No lleva tacógrafo', v.matricula);
+  mostrarToast(lleva ? '✓ Marcado: lleva tacógrafo' : '✓ Marcado: no lleva tacógrafo', 'success');
+}
+
+/** Añade un documento (certificado…) a una revisión de tacógrafo ya registrada. */
+function fichaTacoAdjuntar(mantId) {
+  const mat = _fichaMat;
+  if (!_fvEsAdmin() || !mat) return;
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/pdf,image/*';
+  inp.onchange = async () => {
+    const file = inp.files && inp.files[0];
+    if (!file) return;
+    if (typeof DOCS_MAX_MB !== 'undefined' && file.size > DOCS_MAX_MB * 1024 * 1024) { mostrarToast(`El archivo supera los ${DOCS_MAX_MB} MB`, 'error'); return; }
+    try {
+      mostrarToast('Subiendo documento…', 'info');
+      const mime = typeof _docsMime === 'function' ? _docsMime(file) : (file.type || '');
+      const blob = file.type ? file : new Blob([file], { type: mime });
+      const path = await docsSubirArchivo(mat, 'mantenimiento', blob, file.name);
+      const { data: m, error: e1 } = await sb.from('mantenimientos').select('adjuntos').eq('id', mantId).maybeSingle();
+      if (e1) throw e1;
+      const adj = (Array.isArray(m && m.adjuntos) ? m.adjuntos : []).concat([{ path, nombre: file.name }]);
+      const { error: e2 } = await sb.from('mantenimientos').update({ adjuntos: adj }).eq('id', mantId);
+      if (e2) throw e2;
+      registrarAccion('MANTENIMIENTO', 'Documento añadido a revisión de tacógrafo', `${mat} · ${file.name}`);
+      mostrarToast('✓ Documento añadido', 'success');
+      if (_fichaMat === mat) _fichaCargarDatos(mat);
+    } catch (e) { mostrarToast('No se pudo añadir: ' + (e.message || 'error de conexión'), 'error'); }
+  };
+  inp.click();
 }
 
 function _fvHuecoDoc(cat, label) {

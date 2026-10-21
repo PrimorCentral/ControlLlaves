@@ -654,7 +654,7 @@ async function mantAbrirFormReparada(matricula, id) {
 }
 
 // ── Mantenimiento realizado (admin) ──────────────────────────────────────────
-async function mantAbrirFormMantenimiento(matricula, revisionId) {
+async function mantAbrirFormMantenimiento(matricula, revisionId, tipoInicial) {
   if (!_mantEsAdmin()) return;
   let rev = null;
   if (revisionId) {
@@ -662,7 +662,10 @@ async function mantAbrirFormMantenimiento(matricula, revisionId) {
     rev = data || null;
   }
   const kmActual = await _mantKmActual(matricula);
-  const opciones = MANT_TIPOS.map(t => `<option${rev && rev.tipo === t ? ' selected' : ''}>${t}</option>`).join('')
+  const tipoSel = rev ? rev.tipo : tipoInicial;
+  // Tacógrafo: la próxima revisión se propone a 2 años
+  const prox2 = (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 2); return d.toISOString().slice(0, 10); })();
+  const opciones = MANT_TIPOS.map(t => `<option${tipoSel === t ? ' selected' : ''}>${t}</option>`).join('')
     + (rev && !MANT_TIPOS.includes(rev.tipo) ? `<option selected>${esc(rev.tipo)}</option>` : '');
   const cuerpo =
     `<div class="mant-fila">` +
@@ -677,7 +680,7 @@ async function mantAbrirFormMantenimiento(matricula, revisionId) {
     _mantCampo('Taller', `<input type="text" name="taller" placeholder="Opcional">`) +
     _mantCampo('Factura', `<input type="file" name="factura" accept=".pdf,image/*">`, 'PDF o foto. Queda guardada con este mantenimiento.') +
     `<fieldset class="mant-prox"><legend>Programar la próxima (opcional)</legend><div class="mant-fila">` +
-      _mantCampo('Fecha', `<input type="date" name="prox_fecha" min="${_mantHoyISO()}">`) +
+      _mantCampo('Fecha', `<input type="date" name="prox_fecha" min="${_mantHoyISO()}"${tipoSel === 'Tacógrafo' ? ` value="${prox2}"` : ''}>`) +
       _mantCampo('Kilómetros', `<input type="text" name="prox_km" inputmode="numeric" placeholder="Ej.: ${kmActual != null ? Math.round(kmActual + 30000) : '250000'}">`) +
     `</div></fieldset>`;
   _mantModal(`Registrar mantenimiento · ${_fichaMatReal(matricula)}`, '🛠️', cuerpo, 'Guardar', async form => {
@@ -739,11 +742,11 @@ async function mantBorrarMantenimiento(matricula, id) {
 }
 
 // ── Revisión programada (admin) ──────────────────────────────────────────────
-async function mantAbrirFormRevision(matricula) {
+async function mantAbrirFormRevision(matricula, tipoInicial) {
   if (!_mantEsAdmin()) return;
   const kmActual = await _mantKmActual(matricula);
   const cuerpo =
-    _mantCampo('Tipo *', `<select name="tipo">${MANT_TIPOS.map(t => `<option>${t}</option>`).join('')}</select>`) +
+    _mantCampo('Tipo *', `<select name="tipo">${MANT_TIPOS.map(t => `<option${t === tipoInicial ? ' selected' : ''}>${t}</option>`).join('')}</select>`) +
     `<div class="mant-fila">` +
       _mantCampo('Antes de la fecha', `<input type="date" name="fecha_limite" min="${_mantHoyISO()}">`) +
       _mantCampo('O antes de los km', `<input type="text" name="km_limite" inputmode="numeric" placeholder="${kmActual != null ? 'Ahora: ' + Math.round(kmActual).toLocaleString('es-ES') : 'Ej.: 250000'}">`) +

@@ -940,7 +940,7 @@
 
 
     <!-- MODAL: FICHA DEL CONDUCTOR (se abre al pulsar una fila de la lista) -->
-    <div id="modal-ficha-conductor" class="cond-ficha-overlay" style="display:none" onclick="if(event.target===this)cerrarFichaConductor()">
+    <div id="modal-ficha-conductor" class="cond-ficha-overlay" style="display:none">
       <div class="cond-ficha" role="dialog" aria-modal="true" aria-labelledby="ficha-cond-nombre">
         <div class="cond-ficha-head">
           <div class="cond-ficha-ini" id="ficha-cond-ini" aria-hidden="true"></div>
@@ -2328,7 +2328,7 @@
 
 <!-- ══ MODAL FICHA VEHÍCULO — hijo directo de body ══ -->
 <!-- ── VISOR DE DOCUMENTOS INLINE ── -->
-<div id="modal-visor-doc" onclick="if(event.target===this)cerrarVisorDoc()">
+<div id="modal-visor-doc">
   <div class="visor-box">
     <div class="visor-header">
       <div class="visor-header-icon">📄</div>
@@ -2364,7 +2364,7 @@
   </div>
 </div>
 
-<div id="modal-ficha-vehiculo" onclick="if(event.target===this)cerrarFichaVehiculo()">
+<div id="modal-ficha-vehiculo">
   <div class="fv-box" role="dialog" aria-modal="true" aria-labelledby="fv-titulo">
     <header class="fv-cabecera" id="fv-cabecera"></header>
     <div class="fv-cuerpo">

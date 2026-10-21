@@ -416,3 +416,6 @@
   .mf-filtros { margin-left: 0; width: 100%; order: 5; }
   .mf-incid { flex-wrap: wrap; }
 }
+
+/* Revisiones de tacógrafo: resumen y enlace a su apartado */
+.mf-pie.mf-pie-taco { background: #F6F7F9; color: #5B6576; }

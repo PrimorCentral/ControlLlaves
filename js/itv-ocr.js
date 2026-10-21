@@ -82,6 +82,23 @@ async function itvLeerInforme(file) {
   } finally { w.terminate(); }
 }
 
+/** Ventana "Leyendo el informe…" en mitad de la pantalla (por encima de la ficha). */
+function _itvModalCargando(matricula) {
+  const ov = document.createElement('div');
+  ov.setAttribute('role', 'alertdialog');
+  ov.setAttribute('aria-busy', 'true');
+  ov.setAttribute('aria-label', 'Leyendo el informe de ITV');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(5,8,18,0.6);display:flex;align-items:center;justify-content:center;font-family:Barlow,sans-serif;';
+  ov.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:32px 40px 28px;width:340px;max-width:90vw;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.4);">
+      <div style="width:48px;height:48px;margin:0 auto 18px;border:5px solid #E3E7EE;border-top-color:#C93636;border-radius:50%;animation:spin .8s linear infinite;"></div>
+      <div style="font-size:17px;font-weight:800;color:#0E1726;margin-bottom:6px;">Leyendo el informe de ITV…</div>
+      <div style="font-size:13.5px;color:#5B6576;line-height:1.5;">Buscando la fecha de la próxima inspección${matricula ? ` de <strong style="color:#0E1726">${esc(matricula)}</strong>` : ''}.<br>Puede tardar unos segundos.</div>
+    </div>`;
+  document.body.appendChild(ov);
+  return ov;
+}
+
 /**
  * Tras subir un informe ITV: lo lee y, si encuentra la fecha, pregunta si se actualiza.
  * statusEl (opcional): línea de estado de la ventana de documentos.
@@ -92,13 +109,12 @@ async function itvActualizarDesdeInforme(matricula, file, statusEl) {
   for (let i = 0; i < GRUPOS.length && vi < 0; i++) { vi = GRUPOS[i].vehiculos.findIndex(x => x.matricula === matricula); gi = i; }
   if (vi < 0) return;
   const v = GRUPOS[gi].vehiculos[vi];
-  const estado = (txt, color) => { if (statusEl) { statusEl.style.display = txt ? 'block' : 'none'; statusEl.style.color = color || '#5b6475'; statusEl.textContent = txt || ''; } };
 
-  estado('Leyendo la fecha del informe ITV… (puede tardar unos segundos)');
+  const cargando = _itvModalCargando(v.matricula);
   let datos;
   try { datos = await itvLeerInforme(file); }
   catch (e) { datos = { fecha: null, error: true }; }
-  estado('');
+  finally { cargando.remove(); }
 
   const fmt = iso => iso ? iso.split('-').reverse().join('/') : '—';
   if (!datos.fecha) {

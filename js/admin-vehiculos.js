@@ -1,10 +1,17 @@
 // ════════════════════════════════════════════════════════════════════════════
 // GESTIÓN VEHÍCULOS
 // ════════════════════════════════════════════════════════════════════════════
+// Vecino visible (no dado de baja) en esa dirección, o -1 si no hay
+function _vecinoActivo(arr, vi, direccion) {
+  let i = vi + direccion;
+  while (i >= 0 && i < arr.length && arr[i].archivado) i += direccion;
+  return (i >= 0 && i < arr.length) ? i : -1;
+}
+
 function moverVehiculoOrden(gi, vi, direccion) {
   const arr = GRUPOS[gi].vehiculos;
-  const nvi = vi + direccion;
-  if (nvi < 0 || nvi >= arr.length) return;
+  const nvi = _vecinoActivo(arr, vi, direccion);
+  if (nvi < 0) return;
   // Intercambiamos el valor de 'orden' entre los dos vehículos afectados
   const ordenA = arr[vi].orden, ordenB = arr[nvi].orden;
   arr[vi].orden  = ordenB;
@@ -37,7 +44,8 @@ const _ADM_ICO = {
   alert:  'M12 3l9 16H3zM12 10v4M12 17h.01',
   ok:     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
   dots:   'M5 12h.01M12 12h.01M19 12h.01',
-  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4'
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+  chev:   'm9 6 6 6-6 6'
 };
 function _admIco(n) { return `<svg class="adm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${_ADM_ICO[n]}"/></svg>`; }
 
@@ -108,7 +116,7 @@ function renderAdminVehiculos() {
       <table class="adm-table">
         <thead><tr>
           <th scope="col">Matrícula</th><th scope="col">Tipo</th><th scope="col">Nave</th><th scope="col">Propiedad</th>
-          <th scope="col">ITV</th><th scope="col">Estado</th><th scope="col"><span class="adm-sr">Acciones</span></th>
+          <th scope="col">ITV</th><th scope="col">Estado</th><th scope="col" class="veh-th-orden">Orden</th>
         </tr></thead>
         <tbody id="adm-veh-tbody">${_admFilasVehiculos(hoy)}</tbody>
       </table>
@@ -118,6 +126,8 @@ function renderAdminVehiculos() {
   html += `<div id="adm-docs-migracion"></div>`;
   lista.innerHTML = html;
   if (typeof pintarAvisoMigracionDocs === 'function') pintarAvisoMigracionDocs();
+  // Si la ficha del vehículo está abierta, se actualiza con el cambio
+  if (typeof fichaRepintar === 'function') fichaRepintar();
 }
 
 function _admFilasVehiculos(hoy) {
@@ -145,17 +155,22 @@ function _admFilasVehiculos(hoy) {
       else estado = `<span class="adm-estado"><span class="adm-dot ok"></span>Libre</span>`;
 
       const cls = v.archivado ? 'baja' : (v.bloqueado ? 'bloq' : '');
-      filas += `<tr class="${cls}">
-        <td><span class="adm-mat">${esc(v.matricula)}</span>${v.archivado ? '<span class="adm-tag baja">BAJA</span>' : ''}</td>
+      const abrir = `abrirFichaVehiculo('${esc(v.matricula)}')`;
+      const arr = grupo.vehiculos;
+      const flechas = v.archivado ? '' : `<span class="veh-orden" role="group" aria-label="Orden en el cuadrante">
+            <button type="button" class="veh-flecha" title="Subir en la lista" aria-label="Subir ${esc(v.matricula)} en la lista"
+              onclick="event.stopPropagation();moverVehiculoOrden(${gi},${vi},-1)" ${_vecinoActivo(arr, vi, -1) < 0 ? 'disabled' : ''}>${_admIco('up')}</button>
+            <button type="button" class="veh-flecha" title="Bajar en la lista" aria-label="Bajar ${esc(v.matricula)} en la lista"
+              onclick="event.stopPropagation();moverVehiculoOrden(${gi},${vi},1)" ${_vecinoActivo(arr, vi, 1) < 0 ? 'disabled' : ''}>${_admIco('down')}</button>
+          </span>`;
+      filas += `<tr class="${cls} veh-fila" onclick="${abrir}" title="Abrir la ficha de ${esc(v.matricula)}">
+        <td><button type="button" class="veh-mat-btn adm-mat" onclick="event.stopPropagation();${abrir}">${esc(v.matricula)}</button>${v.archivado ? '<span class="adm-tag baja">BAJA</span>' : ''}</td>
         <td>${esc(v.tipo)}</td>
         <td>${esc(grupo.nombre)}</td>
         <td>${prop}</td>
         <td>${v.archivado ? '—' : `<span class="adm-pill ${itv.cls}">${esc(itv.txt)}</span>`}</td>
         <td>${estado}</td>
-        <td class="acciones">
-          <button type="button" class="adm-btn adm-btn-sm" onclick="editarVehiculo(${gi},${vi})">Editar</button>
-          <button type="button" class="adm-icon-btn" aria-label="Más acciones para ${esc(v.matricula)}" aria-haspopup="menu" aria-expanded="false" onclick="abrirMenuVehiculo(event,${gi},${vi})">${_admIco('dots')}</button>
-        </td>
+        <td class="acciones">${flechas}<span class="veh-chev" aria-hidden="true">${_admIco('chev')}</span></td>
       </tr>`;
     });
   });
@@ -198,74 +213,6 @@ function _admMenuTeclas(e) {
   else if (e.key === 'Tab') cerrarMenuVehiculo();
 }
 
-function abrirMenuVehiculo(ev, gi, vi) {
-  ev.stopPropagation();
-  const btn = ev.currentTarget;
-  if (_admMenuBtn === btn) { cerrarMenuVehiculo(); return; }
-  cerrarMenuVehiculo();
-  const v = GRUPOS[gi].vehiculos[vi];
-  const n = GRUPOS[gi].vehiculos.length;
-
-  const items = [
-    { ico: 'edit',   txt: 'Editar datos',    fn: () => editarVehiculo(gi, vi) },
-    { ico: 'clock',  txt: 'Fecha de ITV',    fn: () => editarITV(gi, vi) },
-    { ico: 'shield', txt: 'Seguro',          fn: () => editarSeguro(gi, vi) },
-    { ico: 'file',   txt: 'Documentos',      fn: () => abrirGestorDocumentos(v.matricula) },
-    'sep',
-    { ico: 'up',     txt: 'Subir en la lista', fn: () => moverVehiculoOrden(gi, vi, -1), off: vi === 0 },
-    { ico: 'down',   txt: 'Bajar en la lista', fn: () => moverVehiculoOrden(gi, vi, 1),  off: vi === n - 1 },
-  ];
-  if (!v.archivado) {
-    items.push('sep',
-      v.restringido
-        ? { ico: 'unlock', txt: 'Permitir a todos', fn: () => toggleRestringido(gi, vi) }
-        : { ico: 'lock',   txt: 'Restringir acceso', fn: () => toggleRestringido(gi, vi) },
-      v.bloqueado
-        ? { ico: 'check', txt: 'Desbloquear',       fn: () => desbloquearVehiculoAdmin(gi, vi), cls: 'exito' }
-        : { ico: 'ban',   txt: 'Bloquear vehículo', fn: () => abrirModalBloqueo(gi, vi), cls: 'peligro' },
-      'sep',
-      { ico: 'archive', txt: 'Dar de baja', fn: () => eliminarVehiculo(gi, vi), cls: 'peligro' });
-  } else {
-    items.push('sep', { ico: 'restore', txt: 'Dar de alta', fn: () => desarchivarVehiculo(gi, vi), cls: 'exito' });
-  }
-
-  const menu = document.createElement('div');
-  menu.className = 'adm-menu';
-  menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', `Acciones para ${v.matricula}`);
-  items.forEach(it => {
-    if (it === 'sep') { const s = document.createElement('div'); s.className = 'adm-menu-sep'; menu.appendChild(s); return; }
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.setAttribute('role', 'menuitem');
-    if (it.cls) b.className = it.cls;
-    b.disabled = !!it.off;
-    b.innerHTML = _admIco(it.ico) + `<span>${it.txt}</span>`;
-    b.onclick = () => { cerrarMenuVehiculo(); it.fn(); };
-    menu.appendChild(b);
-  });
-  document.body.appendChild(menu);
-
-  // Posición: debajo del botón, alineado a la derecha; si no cabe, encima
-  const r = btn.getBoundingClientRect();
-  const mh = menu.offsetHeight, mw = menu.offsetWidth;
-  let top = r.bottom + 6;
-  if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
-  const left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8));
-  menu.style.top = top + 'px';
-  menu.style.left = left + 'px';
-
-  _admMenuEl = menu; _admMenuBtn = btn;
-  btn.setAttribute('aria-expanded', 'true');
-  document.addEventListener('mousedown', _admMenuFuera, true);
-  document.addEventListener('keydown', _admMenuTeclas, true);
-  window.addEventListener('resize', cerrarMenuVehiculo);
-  const wrap = document.querySelector('#tab-panel-vehiculos');
-  if (wrap) wrap.addEventListener('scroll', cerrarMenuVehiculo, true);
-  const primero = menu.querySelector('button:not(:disabled)');
-  if (primero) primero.focus();
-}
-
 function renderAdminStats() {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   let total=0, restringidos=0, alquiler=0, bloqueados=0, itvAlerta=0, bajas=0;
@@ -304,7 +251,7 @@ function toggleRestringido(gi, vi) {
 function abrirModalBloqueo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10600;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:16px;padding:28px 24px 22px;width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
       <div style="font-size:36px;text-align:center;margin-bottom:10px;">⛔</div>
@@ -416,7 +363,7 @@ function desbloquearVehiculoAdmin(gi, vi) {
 function editarITV(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10600;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:14px;padding:28px 28px 22px;width:360px;box-shadow:0 24px 64px rgba(0,0,0,0.35);font-family:Barlow,sans-serif;">
       <div style="font-size:22px;margin-bottom:8px;">📋</div>
@@ -463,7 +410,7 @@ function editarVehiculo(gi, vi) {
   const inp = 'width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #dde1e8;border-radius:8px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;outline:none;';
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10600;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:14px;padding:28px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
       <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">✏️ Editar vehículo</div>
@@ -555,6 +502,7 @@ function editarVehiculo(gi, vi) {
     const antes = `${v.matricula} · ${v.tipo} · ${GRUPOS[gi].nombre}`;
     const matAnterior = v.matricula;
     v.matricula = nuevaMat;
+    if (typeof _fichaMat !== 'undefined' && _fichaMat === matAnterior) _fichaMat = nuevaMat;
     v.tipo      = nuevoTipo;
     v.nota      = nuevaNota;
 
@@ -1083,7 +1031,7 @@ function imprimirVisorDoc() {
 function editarSeguro(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10600;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:14px;padding:28px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;">
       <div style="font-size:15px;font-weight:900;color:#1a1a2e;margin-bottom:4px;">🛡️ Datos del seguro</div>

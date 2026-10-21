@@ -33,8 +33,13 @@ const FICHA_SECCIONES = [
   { id: 'itv',     label: 'ITV' },
   { id: 'docs',    label: 'Documentos' },
   { id: 'averias', label: 'Averías' },
-  { id: 'mant',    label: 'Mantenimiento' }
+  { id: 'mant',    label: 'Mantenimiento' },
+  { id: 'gestion', label: 'Gestión', admin: true }   // solo administradores
 ];
+// Secciones que puede ver el usuario actual
+function _fvSecciones() { return FICHA_SECCIONES.filter(s => !s.admin || _fvEsAdmin()); }
+// Lápiz de "editar" (solo lo ven los administradores)
+const _FV_LAPIZ = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 function _fichaMatReal(m) {
@@ -101,6 +106,9 @@ function abrirFichaVehiculo(matricula) {
   _fichaDatos = { cargado: false, docs: [], docsDrive: [], fotos: [], km: null, averias: [], revisiones: [], incid: [] };
   const modal = document.getElementById('modal-ficha-vehiculo');
   modal.classList.add('visible');
+  // La pestaña Gestión se vacía al abrir: solo se pinta si el usuario es admin
+  const pGest = modal.querySelector('.fv-panel[data-tab="gestion"]');
+  if (pGest) pGest.innerHTML = '';
   _fichaPintarTodo();
   _fichaCargarDatos(matricula);
   setTimeout(() => { const b = modal.querySelector('.fv-cerrar'); if (b) b.focus(); }, 50);
@@ -111,6 +119,13 @@ function cerrarFichaVehiculo() {
   _fichaMat = '';
 }
 
+/** Repinta la ficha abierta con los datos de GRUPOS (tras editar ITV, seguro, bloqueo…). */
+function fichaRepintar() {
+  const modal = document.getElementById('modal-ficha-vehiculo');
+  if (!_fichaMat || !modal || !modal.classList.contains('visible')) return;
+  _fichaPintarTodo();
+}
+
 /** Vuelve a pedir los datos de la ficha abierta (tras una avería, un documento…). */
 function fichaRefrescar(matricula) {
   if (!_fichaMat || (matricula && matricula !== _fichaMat)) return;
@@ -118,7 +133,7 @@ function fichaRefrescar(matricula) {
 }
 
 function fichaTabSwitch(tab) {
-  if (!FICHA_SECCIONES.some(s => s.id === tab)) tab = 'resumen';
+  if (!_fvSecciones().some(s => s.id === tab)) tab = 'resumen';
   _fichaTab = tab;
   document.querySelectorAll('#modal-ficha-vehiculo .fv-nav-op').forEach(b => {
     const activa = b.dataset.tab === tab;
@@ -223,6 +238,7 @@ function _fichaPintarCabecera(v) {
       <span class="fv-eyebrow" id="fv-titulo">FICHA DEL VEHÍCULO</span>
       <span class="fv-desc">${esc(desc || _fichaMat)}${extra ? ` <span>· ${esc(extra)}</span>` : ''}</span>
     </div>
+    ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz fv-lapiz-osc" onclick="fichaEditar('datos')" title="Editar matrícula, tipo, nave y propiedad">${_FV_LAPIZ}<span>Editar</span></button>` : ''}
     <div class="fv-chips">${chips.join('')}</div>
     <button type="button" class="fv-cerrar" onclick="cerrarFichaVehiculo()" aria-label="Cerrar la ficha">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -246,10 +262,13 @@ function _fichaPintarNav(v) {
                txt: e.revVencida ? String(e.revs.filter(r => r.estado === 'vencida').length)
                   : (e.revProxima ? String(e.revs.filter(r => r.estado === 'proxima').length) : ''),
                globo: e.revVencida ? true : (e.revProxima ? 'ambar' : false),
-               titulo: e.revVencida ? 'Revisiones vencidas' : (e.revProxima ? 'Revisiones próximas' : '') }
+               titulo: e.revVencida ? 'Revisiones vencidas' : (e.revProxima ? 'Revisiones próximas' : '') },
+    gestion: { dot: v.archivado ? 'nada' : (v.bloqueado ? 'mal' : (v.restringido ? 'aviso' : 'ok')),
+               txt: v.archivado ? 'Baja' : (v.bloqueado ? 'Bloq.' : (v.restringido ? 'Restr.' : '')) }
   };
   if (!d.cargado) { info.docs.dot = 'nada'; info.averias.dot = 'nada'; info.mant.dot = 'nada'; info.resumen.dot = 'nada'; }
-  document.getElementById('fv-nav-ops').innerHTML = FICHA_SECCIONES.map(s => `
+  if (!_fvSecciones().some(s => s.id === _fichaTab)) _fichaTab = 'resumen';
+  document.getElementById('fv-nav-ops').innerHTML = _fvSecciones().map(s => `
     <button type="button" class="fv-nav-op${s.id === _fichaTab ? ' activa' : ''}" data-tab="${s.id}" aria-current="${s.id === _fichaTab ? 'page' : 'false'}" onclick="fichaTabSwitch('${s.id}')">
       <i class="fv-dot ${info[s.id].dot}" aria-hidden="true"></i>
       <span class="fv-nav-txt">${s.label}</span>
@@ -265,7 +284,7 @@ function _fichaPintarPanel(tab) {
   const v = _getVehiculo(_fichaMat);
   const cont = document.querySelector(`#modal-ficha-vehiculo .fv-panel[data-tab="${tab}"]`);
   if (!v || !cont) return;
-  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, docs: _fichaHtmlDocs }[tab];
+  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, docs: _fichaHtmlDocs, gestion: _fichaHtmlGestion }[tab];
   if (html) cont.innerHTML = html(v);
 }
 
@@ -308,6 +327,8 @@ function _fichaHtmlResumen(v) {
   }
 
   // Tarjetas ITV / Seguro / Mantenimiento
+  // Barra de lo que queda hasta la próxima ITV / el vencimiento del seguro (sobre un año)
+  const pctItv = e.itv.dias != null && e.itv.dias > 0 ? Math.max(4, Math.min(100, Math.round(e.itv.dias / 365 * 100))) : 0;
   const pctSeg = e.seg.dias != null && e.seg.dias > 0 ? Math.max(4, Math.min(100, Math.round(e.seg.dias / 365 * 100))) : 0;
   const itvTitulo = { mal: 'Caducada', aviso: `Vence en ${e.itv.dias} d`, ok: 'En vigor', nada: 'Sin fecha' }[e.itv.cls];
   const itvSub = v.itv_fin ? (e.itv.dias < 0 ? `Venció el ${_fvFecha(v.itv_fin)}` : e.itv.dias === 0 ? `Vence hoy, ${_fvFecha(v.itv_fin)}` : `Hasta el ${_fvFecha(v.itv_fin)}`) : 'No hay fecha registrada';
@@ -334,6 +355,7 @@ function _fichaHtmlResumen(v) {
       <span class="fv-card-lbl">ITV</span>
       <span class="fv-card-big ${e.itv.cls}">${itvTitulo}</span>
       <span class="fv-card-sub">${itvSub}</span>
+      ${v.itv_fin ? `<span class="fv-barra"><i class="${e.itv.cls}" style="width:${pctItv}%"></i></span><span class="fv-card-pie">${e.itv.dias > 0 ? `Quedan ${e.itv.dias} días` : 'Hay que pasarla'}</span>` : ''}
       ${informeItv ? `<span class="fv-card-pie">Informe: ${esc(informeItv.nombre)}</span>` : ''}
     </button>
     <button type="button" class="fv-card fv-card-link" onclick="fichaTabSwitch('seguro')">
@@ -389,7 +411,10 @@ function _fichaHtmlSeguro(v) {
   const tel = _fvTel(v.seguro_tel);
   const pct = e.seg.dias != null && e.seg.dias > 0 ? Math.max(4, Math.min(100, Math.round(e.seg.dias / 365 * 100))) : 0;
   const polizas = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'poliza_seguro');
-  let h = `<h2 class="fv-h2">Seguro</h2>
+  let h = `<div class="fv-docs-cab">
+      <h2 class="fv-h2">Seguro</h2><span class="fv-card-nota"></span>
+      ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz" onclick="fichaEditar('seguro')">${_FV_LAPIZ}<span>Editar seguro</span></button>` : ''}
+    </div>
     <div class="fv-card fv-campos">
       ${campo('Aseguradora', _fvCap(v.seguro_aseguradora))}
       ${campo('Nº de póliza', v.seguro_poliza, true)}
@@ -421,11 +446,14 @@ function _fichaHtmlItv(v) {
   const e = _fichaEstado(v);
   const informes = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'informe_itv');
   const titulo = { mal: e.itv.dias === 0 ? 'Caduca hoy' : 'Caducada', aviso: `Vence en ${e.itv.dias} días`, ok: 'En vigor', nada: 'Sin fecha registrada' }[e.itv.cls];
-  const sub = !v.itv_fin ? 'Añade la fecha desde Panel Admin › Vehículos.'
+  const sub = !v.itv_fin ? (_fvEsAdmin() ? 'Pulsa «Editar fecha» para añadirla.' : 'Un administrador tiene que añadir la fecha.')
     : e.itv.dias < 0 ? `Venció el ${_fvFecha(v.itv_fin)}, hace ${-e.itv.dias} día${e.itv.dias === -1 ? '' : 's'}. El vehículo no debe circular.`
     : e.itv.dias === 0 ? `Vence hoy, ${_fvFecha(v.itv_fin)}. El vehículo no debe circular a partir de mañana.`
     : `Válida hasta el ${_fvFecha(v.itv_fin)}.`;
-  let h = `<h2 class="fv-h2">ITV</h2>
+  let h = `<div class="fv-docs-cab">
+      <h2 class="fv-h2">ITV</h2><span class="fv-card-nota"></span>
+      ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz" onclick="fichaEditar('itv')">${_FV_LAPIZ}<span>Editar fecha</span></button>` : ''}
+    </div>
     <div class="fv-card fv-itv ${e.itv.cls}">
       <span class="fv-itv-sem" aria-hidden="true"></span>
       <div class="fv-itv-txt">
@@ -480,7 +508,73 @@ function _fichaHtmlDocs(v) {
   return h + `<div class="fv-docs-grid">${tarjetas}</div>`;
 }
 
+// ── Gestión (solo administradores) ──
+function _fichaHtmlGestion(v) {
+  if (!_fvEsAdmin()) return '';
+  const grupo = _fvGrupo(_fichaMat);
+  const nota = (v.nota || '').trim();
+  const prop = nota.toUpperCase() === 'PROPIEDAD' ? 'Propia' : (nota ? `Alquiler · ${_fvCap(nota)}` : 'Alquiler');
+  const dato = (lbl, val) => `<div class="fv-campo"><span class="fv-campo-lbl">${lbl}</span><span class="fv-campo-val">${esc(val || '—')}</span></div>`;
+  const fila = (lbl, titulo, txt, boton, cls) => `
+    <div class="fv-card fv-gest-fila${cls ? ' ' + cls : ''}">
+      <div class="fv-gest-txt">
+        <span class="fv-card-lbl">${lbl}</span>
+        <span class="fv-gest-titulo">${titulo}</span>
+        <span class="fv-card-sub">${txt}</span>
+      </div>
+      ${boton}
+    </div>`;
+  let h = `<h2 class="fv-h2">Gestión del vehículo</h2>
+    <div class="fv-card">
+      <div class="fv-card-cab"><span class="fv-card-lbl">DATOS DEL VEHÍCULO</span>
+        <button type="button" class="fv-lapiz" onclick="fichaEditar('datos')">${_FV_LAPIZ}<span>Editar datos</span></button></div>
+      <div class="fv-campos fv-campos-gest">
+        ${dato('Matrícula', _fichaMat)}${dato('Tipo', _fvTipo(v.tipo))}${dato('Nave', _fvCap(grupo))}${dato('Propiedad', prop)}
+      </div>
+    </div>`;
+  if (v.archivado) {
+    h += fila('ESTADO', '<i class="fv-gest-dot nada"></i>Dado de baja',
+      'No aparece en el cuadrante. Al darlo de alta volverá a aparecer en su nave.',
+      `<button type="button" class="fv-btn fv-btn-verde" onclick="fichaEditar('alta')">Dar de alta</button>`);
+    return h;
+  }
+  h += v.bloqueado
+    ? fila('DISPONIBILIDAD', '<i class="fv-gest-dot mal"></i>Bloqueado',
+        `Motivo: <b>${esc(v.motivo_bloqueo || 'sin indicar')}</b>${v.bloqueado_por ? ` · por ${esc(_fvCap(v.bloqueado_por))}` : ''}${v.fecha_bloqueo ? ` el ${esc(_fvFechaHora(v.fecha_bloqueo))}` : ''}`,
+        `<button type="button" class="fv-btn fv-btn-verde" onclick="fichaEditar('desbloquear')">Desbloquear</button>`)
+    : fila('DISPONIBILIDAD', '<i class="fv-gest-dot ok"></i>Libre',
+        'Se puede asignar en el cuadrante. Bloquéalo si no puede circular (avería, taller…).',
+        `<button type="button" class="fv-btn fv-btn-rojo" onclick="fichaEditar('bloquear')">Bloquear vehículo</button>`);
+  h += v.restringido
+    ? fila('ACCESO', '<i class="fv-gest-dot aviso"></i>Restringido',
+        'Solo el personal autorizado puede asignarlo.',
+        `<button type="button" class="fv-btn" onclick="fichaEditar('restringir')">Permitir a todos</button>`)
+    : fila('ACCESO', '<i class="fv-gest-dot ok"></i>Todos',
+        'Cualquier responsable puede asignarlo en el cuadrante.',
+        `<button type="button" class="fv-btn" onclick="fichaEditar('restringir')">Restringir acceso</button>`);
+  h += fila('BAJA', 'Dar de baja el vehículo',
+    'Desaparece del cuadrante, pero se conserva en los días anteriores. Se puede volver a dar de alta.',
+    `<button type="button" class="fv-btn fv-btn-rojo-lleno" onclick="fichaEditar('baja')">Dar de baja</button>`, 'peligro');
+  return h;
+}
+
 // ── Acciones ──
+/** Abre la ventana de edición correspondiente para el vehículo de la ficha (solo admin). */
+function fichaEditar(que) {
+  if (!_fvEsAdmin()) return;
+  for (let gi = 0; gi < GRUPOS.length; gi++) {
+    const vi = GRUPOS[gi].vehiculos.findIndex(x => x.matricula === _fichaMat);
+    if (vi < 0) continue;
+    const accion = {
+      datos: editarVehiculo, itv: editarITV, seguro: editarSeguro,
+      bloquear: abrirModalBloqueo, desbloquear: desbloquearVehiculoAdmin,
+      restringir: toggleRestringido, baja: eliminarVehiculo, alta: desarchivarVehiculo
+    }[que];
+    if (accion) accion(gi, vi);
+    return;
+  }
+}
+
 function fichaDesbloquear() {
   if (!_fvEsAdmin()) return;
   for (let gi = 0; gi < GRUPOS.length; gi++) {

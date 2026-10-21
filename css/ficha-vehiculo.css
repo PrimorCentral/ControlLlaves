@@ -214,6 +214,24 @@
 .fv-gest-dot.ok { background: #1E9E5A; } .fv-gest-dot.mal { background: #C93636; } .fv-gest-dot.aviso { background: #F59E0B; }
 .fv-gest-fila.peligro { border-color: #F2C4BF; background: #FFFBFA; }
 
+/* ── ITV: subir nuevo informe e historial ── */
+.fv-oculto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.fv-subir-itv { gap: 8px; position: relative; height: 36px; }
+.fv-subir-itv:focus-within { outline: 2px solid #C93636; outline-offset: 2px; }
+.fv-subir-itv.ocupado { opacity: .55; cursor: wait; }
+.fv-itv-estado-linea { font-size: 14px; font-weight: 700; color: #3A4456; background: #EEF1F5; border-radius: 10px; padding: 10px 14px; }
+.fv-historial { border: 1px solid #E3E7EE; border-radius: 12px; background: #fff; }
+.fv-historial > summary {
+  cursor: pointer; padding: 12px 16px; font-size: 14px; font-weight: 700; color: #3A4456; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+}
+.fv-historial > summary::-webkit-details-marker { display: none; }
+.fv-historial > summary::before { content: '▸'; font-size: 13px; transition: transform .15s; }
+.fv-historial[open] > summary::before { transform: rotate(90deg); }
+.fv-historial > summary:hover { background: #F6F7F9; border-radius: 12px; }
+.fv-historial .fv-docs-lista { padding: 0 12px 12px; }
+.fv-historial .fv-doc { opacity: .85; }
+
 /* ── Pantallas pequeñas ── */
 @media (max-width: 900px) {
   .fv-grid3 { grid-template-columns: 1fr; }

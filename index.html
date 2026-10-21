@@ -625,27 +625,40 @@
 
 
     <!-- TAB: CONDUCTORES -->
-    <div class="admin-tab-panel" id="tab-panel-conductores" style="flex-direction:column;gap:10px">
-      <div id="cond-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0;"></div>
-      <div class="admin-section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">
-          <div class="admin-section-title" style="margin-bottom:0">🧑‍✈️ Lista de conductores</div>
-          <button onclick="exportarConductoresPDF()" style="background:#e84545;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;">📄 Exportar PDF</button>
-          <button class="btn-add-item" onclick="abrirModalNuevoConductor()" style="background:#16a34a;color:white;border:none;border-radius:8px;padding:8px 16px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;flex-shrink:0;">+ Añadir conductor</button>
+    <div class="admin-tab-panel" id="tab-panel-conductores">
+      <div class="adm-page-head">
+        <div>
+          <h1>Conductores</h1>
+          <p id="cond-resumen">—</p>
         </div>
-        <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <div style="flex:1;min-width:200px;position:relative;">
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;">🔍</span>
-            <input type="text" id="cond-filtro" placeholder="Buscar por nombre, DNI, Nº usuario o sociedad…"
-              oninput="renderAdminConductores()" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 32px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;outline:none;transition:border-color .15s,box-shadow .15s;"
-              onfocus="this.style.borderColor='#3b5bdb';this.style.boxShadow='0 0 0 3px rgba(59,91,219,0.1)'"
-              onblur="this.style.borderColor='#dde1e8';this.style.boxShadow='none'">
+        <div class="adm-page-actions">
+          <button class="adm-btn" onclick="exportarConductoresPDF()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>Exportar PDF</button>
+          <button class="adm-btn adm-btn-primary" onclick="abrirModalNuevoConductor()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir conductor</button>
+        </div>
+      </div>
+      <div class="adm-card cond-card">
+        <div class="adm-toolbar cond-toolbar">
+          <label class="adm-search cond-search">
+            <svg class="adm-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span class="adm-sr">Buscar conductor</span>
+            <input type="text" id="cond-filtro" placeholder="Buscar por nombre, DNI, Nº usuario o sociedad…" oninput="renderAdminConductores()" autocomplete="off">
+          </label>
+          <div class="adm-toolbar-right">
+            <label class="adm-sr" for="cond-filtro-nave">Filtrar por nave</label>
+            <select id="cond-filtro-nave" class="cond-select" onchange="renderAdminConductores()">
+              <option value="">Todas las naves</option>
+            </select>
+            <label class="adm-sr" for="cond-filtro-turno">Filtrar por turno</label>
+            <select id="cond-filtro-turno" class="cond-select" onchange="renderAdminConductores()">
+              <option value="">Todos los turnos</option>
+              <option value="1">Turno 1</option>
+              <option value="2">Turno 2</option>
+              <option value="0">Sin turno</option>
+            </select>
           </div>
-          <select id="cond-filtro-nave" onchange="renderAdminConductores()" style="padding:9px 12px;border:1.5px solid #dde1e8;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;outline:none;background:white;">
-            <option value="">Todas las naves</option>
-          </select>
         </div>
-        <div class="admin-list" id="admin-lista-conductores" style="max-height:420px"></div>
+        <div class="adm-table-wrap" id="admin-lista-conductores"></div>
+        <div class="cond-pie" id="cond-pie"></div>
       </div>
     </div>
 
@@ -925,6 +938,65 @@
     </div>
 
 
+
+    <!-- MODAL: FICHA DEL CONDUCTOR (se abre al pulsar una fila de la lista) -->
+    <div id="modal-ficha-conductor" class="cond-ficha-overlay" style="display:none" onclick="if(event.target===this)cerrarFichaConductor()">
+      <div class="cond-ficha" role="dialog" aria-modal="true" aria-labelledby="ficha-cond-nombre">
+        <div class="cond-ficha-head">
+          <div class="cond-ficha-ini" id="ficha-cond-ini" aria-hidden="true"></div>
+          <div class="cond-ficha-tit">
+            <div class="cond-ficha-sup">Conductor · Nº <span id="ficha-cond-num"></span></div>
+            <h2 id="ficha-cond-nombre"></h2>
+          </div>
+          <button type="button" class="cond-ficha-x" id="ficha-cond-cerrar" onclick="cerrarFichaConductor()" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+
+        <div class="cond-ficha-body">
+          <div class="cond-ficha-grid">
+            <label class="cond-campo cond-campo-ancho">
+              <span>Nombre completo</span>
+              <input type="text" id="ficha-cond-in-nombre" oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+            </label>
+            <label class="cond-campo">
+              <span>DNI / NIE</span>
+              <input type="text" id="ficha-cond-in-dni" class="mono" oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+            </label>
+            <div class="cond-campo">
+              <span>Nº usuario</span>
+              <div class="cond-campo-fijo mono" id="ficha-cond-in-num" title="El Nº de usuario no se puede cambiar"></div>
+            </div>
+            <label class="cond-campo">
+              <span>Sociedad</span>
+              <input type="text" id="ficha-cond-in-sociedad" oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+            </label>
+            <label class="cond-campo">
+              <span>Nave</span>
+              <input type="text" id="ficha-cond-in-nave" oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+            </label>
+          </div>
+
+          <div>
+            <div class="cond-ficha-lbl" id="ficha-cond-turno-lbl">Turno</div>
+            <div class="cond-ficha-turno" role="radiogroup" aria-labelledby="ficha-cond-turno-lbl" id="ficha-cond-turno"></div>
+          </div>
+
+          <div id="ficha-cond-hab-sec">
+            <div class="cond-ficha-lbl-fila">
+              <span class="cond-ficha-lbl">Vehículos habituales</span>
+              <button type="button" class="adm-link" onclick="irAAsignacionesDesdeFicha()">Gestionar en Asignaciones</button>
+            </div>
+            <div class="cond-ficha-habs" id="ficha-cond-habituales"></div>
+          </div>
+        </div>
+
+        <div class="cond-ficha-pie">
+          <button type="button" class="adm-btn cond-btn-eliminar" onclick="eliminarDesdeFichaConductor()">Eliminar conductor</button>
+          <span style="flex:1"></span>
+          <button type="button" class="adm-btn" onclick="cerrarFichaConductor()">Cancelar</button>
+          <button type="button" class="adm-btn adm-btn-primary" id="ficha-cond-guardar" onclick="guardarFichaConductor()">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: NUEVO CONDUCTOR -->
     <div id="modal-nuevo-conductor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:4000;align-items:center;justify-content:center;">

@@ -1,122 +1,240 @@
 // ════════════════════════════════════════════════════════════════════════════
 // GESTIÓN CONDUCTORES (Panel Admin)
 // ════════════════════════════════════════════════════════════════════════════
+// ── Utilidades de presentación ───────────────────────────────────────────────
+// Los nombres se guardan en MAYÚSCULAS; en pantalla se muestran en formato nombre.
+function _condNombreBonito(nombre) {
+  const minus = ['DE', 'DEL', 'LA', 'LAS', 'LOS', 'Y', 'E', 'DA', 'DO', 'DOS', 'DAS'];
+  return String(nombre || '').trim().split(/\s+/).map((p, i) =>
+    (i > 0 && minus.includes(p.toUpperCase()))
+      ? p.toLowerCase()
+      : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+  ).join(' ');
+}
+function _condIniciales(nombre) {
+  const p = String(nombre || '').trim().split(/\s+/);
+  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase();
+}
+function _condTurnoEtiqueta(turno) {
+  if (turno === 1) return '<span class="cond-turno t1">Turno 1</span>';
+  if (turno === 2) return '<span class="cond-turno t2">Turno 2</span>';
+  return '<span class="cond-turno st">Sin turno</span>';
+}
+
+// ── Lista de conductores (tabla) ─────────────────────────────────────────────
 function renderAdminConductores() {
-  const lista   = document.getElementById('admin-lista-conductores');
-  const filtro  = (document.getElementById('cond-filtro')?.value || '').trim().toUpperCase();
-  const filtroNave = (document.getElementById('cond-filtro-nave')?.value || '').trim().toUpperCase();
+  const lista = document.getElementById('admin-lista-conductores');
+  if (!lista) return;
+  const filtro      = (document.getElementById('cond-filtro')?.value || '').trim().toUpperCase();
+  const filtroNave  = (document.getElementById('cond-filtro-nave')?.value || '').trim().toUpperCase();
+  const filtroTurno = document.getElementById('cond-filtro-turno')?.value ?? '';
 
   // Poblar select de naves
+  const navesLista = [...new Set(CONDUCTORES.map(c => (c.nave || '').toUpperCase()).filter(Boolean))].sort();
   const naveSelect = document.getElementById('cond-filtro-nave');
   if (naveSelect) {
-    const naves = [...new Set(CONDUCTORES.map(c => (c.nave||'').toUpperCase()).filter(Boolean))].sort();
     const valActual = naveSelect.value;
-    naveSelect.innerHTML = '<option value="">Todas las naves</option>' + naves.map(n => `<option value="${n}" ${n===valActual?'selected':''}>${n}</option>`).join('');
+    naveSelect.innerHTML = '<option value="">Todas las naves</option>' +
+      navesLista.map(n => `<option value="${esc(n)}" ${n === valActual ? 'selected' : ''}>${esc(n)}</option>`).join('');
   }
 
-  // Stats
-  const statsEl = document.getElementById('cond-stats');
-  if (statsEl) {
-    const total = CONDUCTORES.length;
-    const naves = new Set(CONDUCTORES.map(c => c.nave||'').filter(Boolean));
-    const sociedades = new Set(CONDUCTORES.map(c => c.sociedad||'').filter(Boolean));
-    statsEl.innerHTML = `
-      <div class="admin-stat-card">
-        <div class="admin-stat-icon">👷</div>
-        <div class="admin-stat-num">${total}</div>
-        <div class="admin-stat-label">Conductores</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-icon">🏭</div>
-        <div class="admin-stat-num">${naves.size}</div>
-        <div class="admin-stat-label">Naves</div>
-        <div class="admin-stat-sub">${[...naves].join(', ') || '—'}</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-icon">🏢</div>
-        <div class="admin-stat-num">${sociedades.size}</div>
-        <div class="admin-stat-label">Sociedades</div>
-        <div class="admin-stat-sub">${CONDUCTORES.filter(c => !c.turno).length} sin turno asignado</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat-icon">🔍</div>
-        <div class="admin-stat-num" id="cond-stat-visible">${total}</div>
-        <div class="admin-stat-label">Resultados</div>
-        <div class="admin-stat-sub">con filtro activo</div>
-      </div>`;
+  // Resumen bajo el título
+  const total = CONDUCTORES.length;
+  const sociedades = new Set(CONDUCTORES.map(c => c.sociedad || '').filter(Boolean));
+  const sinTurno = CONDUCTORES.filter(c => !c.turno).length;
+  const resumen = document.getElementById('cond-resumen');
+  if (resumen) {
+    resumen.textContent = `${total} conductores · ${navesLista.length} naves · ${sociedades.size} sociedades · ${sinTurno} sin turno`;
   }
 
   // Filtrado
-  let visible = CONDUCTORES.filter(c => {
+  const visible = CONDUCTORES.filter(c => {
     const matchFiltro = !filtro ||
-      c.nombre.toUpperCase().includes(filtro) ||
-      (c.dni||'').toUpperCase().includes(filtro) ||
+      (c.nombre || '').toUpperCase().includes(filtro) ||
+      (c.dni || '').toUpperCase().includes(filtro) ||
       String(c.numUsuario).includes(filtro) ||
-      (c.sociedad||'').toUpperCase().includes(filtro) ||
-      (c.nave||'').toUpperCase().includes(filtro);
-    const matchNave = !filtroNave || (c.nave||'').toUpperCase() === filtroNave;
-    return matchFiltro && matchNave;
-  });
+      (c.sociedad || '').toUpperCase().includes(filtro) ||
+      (c.nave || '').toUpperCase().includes(filtro);
+    const matchNave  = !filtroNave || (c.nave || '').toUpperCase() === filtroNave;
+    const matchTurno = filtroTurno === '' || String(c.turno || 0) === filtroTurno;
+    return matchFiltro && matchNave && matchTurno;
+  }).sort((a, b) =>
+    (a.nave || '~').localeCompare(b.nave || '~') || (a.nombre || '').localeCompare(b.nombre || '', 'es')
+  );
 
-  const visEl = document.getElementById('cond-stat-visible');
-  if (visEl) visEl.textContent = visible.length;
+  const pie = document.getElementById('cond-pie');
+  if (pie) {
+    pie.textContent = visible.length
+      ? `${visible.length} de ${total} conductores · pulsa una fila para abrir su ficha`
+      : '';
+  }
 
   if (!visible.length) {
-    lista.innerHTML = `<div style="padding:32px 16px;text-align:center;">
-      <div style="font-size:36px;margin-bottom:10px">🔍</div>
-      <div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:4px">Sin resultados</div>
-      <div style="font-size:11px;color:#8899aa">No hay conductores que coincidan con el filtro</div>
+    lista.innerHTML = `<div class="cond-vacio">
+      <strong>Sin resultados</strong>
+      <span>No hay conductores que coincidan con el filtro.</span>
     </div>`;
     return;
   }
 
-  // Agrupar por nave
-  const porNave = {};
-  visible.forEach(c => {
-    const nave = c.nave || '— Sin nave';
-    if (!porNave[nave]) porNave[nave] = [];
-    porNave[nave].push(c);
-  });
-
-  lista.innerHTML = Object.entries(porNave).sort(([a],[b]) => a.localeCompare(b)).map(([nave, conductores]) => {
-    const filas = conductores.map(c => {
-      const idx = CONDUCTORES.indexOf(c);
-      // Iniciales avatar
-      const partes = c.nombre.trim().split(' ');
-      const iniciales = (partes[0]?.[0]||'') + (partes[1]?.[0]||'');
-      // Color determinístico por inicial
-      const colores = ['#e84545','#3b5bdb','#16a34a','#d97706','#7c3aed','#0369a1','#b91c1c','#065f46'];
-      const col = colores[(c.nombre.charCodeAt(0)||0) % colores.length];
-      return `<div class="admin-item cond-item" style="padding:10px 14px;align-items:center;">
-        <div style="width:38px;height:38px;border-radius:10px;background:${col};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:white;flex-shrink:0;letter-spacing:0.5px;">${iniciales.toUpperCase()}</div>
-        <div style="display:flex;flex-direction:column;flex:1;min-width:0;gap:2px;">
-          <div style="font-size:13px;font-weight:900;color:#1a1a2e;line-height:1.2;">${esc(c.nombre)}</div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:9px;font-weight:800;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:4px;padding:1px 7px;">${esc(c.sociedad||'—')}</span>
-          </div>
-        </div>
-        <div class="adm-seg turno-seg" role="group" aria-label="Turno de ${esc(c.nombre)}">
-          ${[[1,'Turno 1'],[2,'Turno 2'],[0,'Sin turno']].map(([t, lbl]) =>
-            `<button type="button" class="${(c.turno || 0) === t ? 'on' : ''}${t ? ' t' + t : ''}" onclick="cambiarTurnoConductor(${idx}, ${t})">${lbl}</button>`).join('')}
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
-            <span style="font-size:10px;font-weight:700;color:#1a1a2e;background:#f0f2f5;border:1px solid #e2e8f0;border-radius:5px;padding:2px 9px;letter-spacing:0.5px;">${esc(c.dni||'—')}</span>
-            <span style="font-size:10px;font-weight:800;color:#3b5bdb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:2px 9px;">Nº ${esc(String(c.numUsuario))}</span>
-          </div>
-          <button class="btn-item-action btn-bloquear" onclick="eliminarConductorAdmin(${idx})" title="Eliminar conductor" style="font-size:11px;padding:6px 12px;">🗑 Eliminar</button>
-        </div>
-      </div>`;
-    }).join('');
-
-    return `<div style="margin-bottom:6px;">
-      <div style="font-size:9px;font-weight:900;letter-spacing:2.5px;color:#6b7a94;text-transform:uppercase;padding:8px 4px 5px;display:flex;align-items:center;gap:7px;border-top:2px solid #f0f3f8;">
-        📍 ${esc(nave)}
-        <span style="font-size:9px;font-weight:700;background:#f0f2f5;color:#6b7a94;border-radius:4px;padding:1px 7px;border:1px solid #e2e8f0;">${conductores.length} conductores</span>
-      </div>
-      ${filas}
-    </div>`;
+  const filas = visible.map(c => {
+    const idx = CONDUCTORES.indexOf(c);
+    return `<tr class="cond-fila" onclick="abrirFichaConductor(${idx})">
+      <td class="adm-mat cond-num">${esc(String(c.numUsuario ?? '—'))}</td>
+      <td><button type="button" class="cond-nombre" onclick="event.stopPropagation();abrirFichaConductor(${idx})">${esc(_condNombreBonito(c.nombre))}</button></td>
+      <td class="adm-mat cond-dni">${esc(c.dni || '—')}</td>
+      <td>${esc(c.sociedad || '—')}</td>
+      <td>${esc(c.nave || '—')}</td>
+      <td>${_condTurnoEtiqueta(c.turno || 0)}</td>
+      <td class="cond-chev"><svg class="adm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></td>
+    </tr>`;
   }).join('');
+
+  lista.innerHTML = `<table class="adm-table cond-table">
+    <thead><tr>
+      <th>Nº</th><th>Conductor</th><th>DNI / NIE</th><th>Sociedad</th><th>Nave</th><th>Turno</th>
+      <th><span class="adm-sr">Abrir ficha</span></th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>`;
+}
+
+// ── Ficha del conductor (modal) ──────────────────────────────────────────────
+let _condFicha = null;   // { num, turno, foco }
+
+function _condFichaConductor() {
+  if (!_condFicha) return null;
+  return CONDUCTORES.find(c => String(c.numUsuario) === _condFicha.num) || null;
+}
+
+function abrirFichaConductor(idx) {
+  const c = CONDUCTORES[idx];
+  if (!c) return;
+  _condFicha = { num: String(c.numUsuario), turno: c.turno || 0, foco: document.activeElement };
+
+  document.getElementById('ficha-cond-ini').textContent    = _condIniciales(c.nombre);
+  document.getElementById('ficha-cond-num').textContent    = String(c.numUsuario);
+  document.getElementById('ficha-cond-nombre').textContent = _condNombreBonito(c.nombre);
+  document.getElementById('ficha-cond-in-nombre').value    = c.nombre || '';
+  document.getElementById('ficha-cond-in-dni').value       = c.dni || '';
+  document.getElementById('ficha-cond-in-num').textContent = String(c.numUsuario);
+  document.getElementById('ficha-cond-in-sociedad').value  = c.sociedad || '';
+  document.getElementById('ficha-cond-in-nave').value      = c.nave || '';
+  _condPintarTurno();
+  _condPintarHabituales(c);
+
+  const guardar = document.getElementById('ficha-cond-guardar');
+  guardar.disabled = false;
+  guardar.textContent = 'Guardar cambios';
+
+  document.getElementById('modal-ficha-conductor').style.display = 'flex';
+  document.addEventListener('keydown', _condFichaTeclas, true);
+  setTimeout(() => document.getElementById('ficha-cond-cerrar')?.focus(), 50);
+}
+
+function cerrarFichaConductor() {
+  document.getElementById('modal-ficha-conductor').style.display = 'none';
+  document.removeEventListener('keydown', _condFichaTeclas, true);
+  const foco = _condFicha?.foco;
+  _condFicha = null;
+  if (foco && document.contains(foco)) foco.focus();
+}
+
+function _condFichaTeclas(e) {
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrarFichaConductor(); }
+}
+
+function _condPintarTurno() {
+  const cont = document.getElementById('ficha-cond-turno');
+  if (!cont || !_condFicha) return;
+  cont.innerHTML = [[1, 'Turno 1'], [2, 'Turno 2'], [0, 'Sin turno']].map(([t, lbl]) => {
+    const on = _condFicha.turno === t;
+    return `<button type="button" role="radio" aria-checked="${on}" class="${on ? 'on' : ''}" onclick="elegirTurnoFicha(${t})">${lbl}</button>`;
+  }).join('');
+}
+
+function elegirTurnoFicha(turno) {
+  if (!_condFicha) return;
+  _condFicha.turno = turno;
+  _condPintarTurno();
+  document.querySelector('#ficha-cond-turno button.on')?.focus();
+}
+
+function _condPintarHabituales(c) {
+  const sec  = document.getElementById('ficha-cond-hab-sec');
+  const cont = document.getElementById('ficha-cond-habituales');
+  if (!sec || !cont) return;
+  if (typeof HABITUALES === 'undefined' || (typeof _habitualesTablaOk !== 'undefined' && !_habitualesTablaOk)) {
+    sec.style.display = 'none';
+    return;
+  }
+  sec.style.display = '';
+  const mios = HABITUALES
+    .filter(h => String(h.num_usuario) === String(c.numUsuario))
+    .sort((a, b) => (a.suplente ? 1 : 0) - (b.suplente ? 1 : 0) || a.matricula.localeCompare(b.matricula));
+  cont.innerHTML = mios.length
+    ? mios.map(h => `<span class="cond-hab${h.suplente ? ' sup' : ''}">${esc(h.matricula)}${h.suplente ? '<em>suplente</em>' : ''}</span>`).join('')
+    : '<span class="cond-hab-vacio">No es habitual de ningún vehículo.</span>';
+}
+
+async function guardarFichaConductor() {
+  const c = _condFichaConductor();
+  if (!c) { cerrarFichaConductor(); return; }
+
+  const nombre   = document.getElementById('ficha-cond-in-nombre').value.trim().toUpperCase();
+  const dni      = document.getElementById('ficha-cond-in-dni').value.trim().toUpperCase();
+  const sociedad = document.getElementById('ficha-cond-in-sociedad').value.trim().toUpperCase();
+  const nave     = document.getElementById('ficha-cond-in-nave').value.trim().toUpperCase();
+  if (!nombre) { mostrarToast('El nombre es obligatorio', 'error'); return; }
+  if (!dni)    { mostrarToast('El DNI es obligatorio', 'error'); return; }
+
+  const cambiaDatos = nombre !== (c.nombre || '') || dni !== (c.dni || '') ||
+                      sociedad !== (c.sociedad || '') || nave !== (c.nave || '');
+  const cambiaTurno = (_condFicha.turno || 0) !== (c.turno || 0);
+  if (!cambiaDatos && !cambiaTurno) { cerrarFichaConductor(); return; }
+
+  const btn = document.getElementById('ficha-cond-guardar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+
+  let ok = true;
+  if (cambiaDatos) {
+    const { error } = await sb.from('conductores')
+      .update({ nombre, dni, sociedad, nave })
+      .eq('num_usuario', c.numUsuario);
+    if (error) {
+      ok = false;
+      mostrarToast('⚠️ No se pudieron guardar los datos: ' + error.message, 'error');
+    } else {
+      const antes = c.nombre;
+      Object.assign(c, { nombre, dni, sociedad, nave });
+      if (typeof registrarAccion === 'function') {
+        registrarAccion('ADMIN', 'Editar conductor', `${antes} → ${nombre} · DNI ${dni} · Nº${c.numUsuario}`);
+      }
+    }
+  }
+  if (ok && cambiaTurno) ok = await guardarTurnoConductor(c.numUsuario, _condFicha.turno);
+
+  btn.disabled = false;
+  btn.textContent = 'Guardar cambios';
+  if (!ok) { renderAdminConductores(); return; }
+
+  mostrarToast(`✓ ${_condNombreBonito(c.nombre)}: cambios guardados`, 'success');
+  cerrarFichaConductor();
+  renderAdminConductores();
+}
+
+function eliminarDesdeFichaConductor() {
+  const c = _condFichaConductor();
+  if (!c) return;
+  const idx = CONDUCTORES.indexOf(c);
+  cerrarFichaConductor();
+  eliminarConductorAdmin(idx);
+}
+
+function irAAsignacionesDesdeFicha() {
+  cerrarFichaConductor();
+  if (typeof cambiarTab === 'function') cambiarTab('asignaciones');
 }
 
 // Turno (equipo) del conductor: se guarda al momento en Supabase

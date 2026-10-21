@@ -630,6 +630,10 @@ async function _gSubirDocumento(overlay) {
     registrarAccion('VEHICULO', 'Subir documento', `${g.mat} · ${catLabel} · ${file.name}`);
     g.ocupado = false;
     await _gCargar(overlay);
+    // Informe ITV: leer la fecha de próxima inspección y ofrecer actualizarla (js/itv-ocr.js)
+    if (categoria === 'informe_itv' && typeof itvActualizarDesdeInforme === 'function') {
+      itvActualizarDesdeInforme(g.mat, file, overlay.querySelector('#docs-upload-status'));
+    }
   } catch (e) {
     g.ocupado = false;
     statusEl.style.color = '#b42318'; statusEl.textContent = 'No se pudo subir: ' + e.message;

@@ -3,6 +3,8 @@
 // - Cada conductor pertenece a un equipo: turno 1, turno 2 o sin turno
 //   (columna conductores.turno).
 // - Cada matrícula tiene sus choferes habituales (tabla conductores_habituales).
+//   Un habitual puede ser «suplente»: solo va a ese vehículo cuando no puede
+//   llevar el suyo (p. ej. «cuando no se pueda el grande»).
 // - Los equipos rotan cada lunes: una semana el turno 1 está de mañana y el
 //   turno 2 de tarde, y la siguiente al revés. La referencia se guarda en
 //   app_config, clave 'rotacion_turnos' → {"lunes":"AAAA-MM-DD","manana":1|2}.
@@ -10,7 +12,7 @@
 //   abierto (Mañana / Tarde) para la fecha del cuadrante.
 // ════════════════════════════════════════════════════════════════════════════
 
-let HABITUALES = [];               // [{ matricula, num_usuario }]
+let HABITUALES = [];               // [{ matricula, num_usuario, suplente }]
 let ROTACION_TURNOS = null;        // { lunes: 'AAAA-MM-DD', manana: 1|2 } o null
 let _habitualesTablaOk = true;     // false si la tabla aún no existe en Supabase
 let _asigFiltro = 'todas';         // 'todas' | 'con' | 'sin'
@@ -57,25 +59,38 @@ function _asigConductor(numUsuario) {
 function habitualesDeMatricula(matricula) {
   const m = String(matricula || '').trim().toUpperCase();
   return HABITUALES.filter(h => h.matricula === m)
+    .sort((a, b) => (a.suplente ? 1 : 0) - (b.suplente ? 1 : 0))   // habituales antes que suplentes
     .map(h => _asigConductor(h.num_usuario))
     .filter(Boolean);
 }
-// numUsuario de los habituales de una matrícula para el turno abierto del cuadrante
+function esSuplente(matricula, numUsuario) {
+  const m = String(matricula || '').trim().toUpperCase();
+  const h = HABITUALES.find(x => x.matricula === m && x.num_usuario === String(numUsuario));
+  return !!(h && h.suplente);
+}
+// Habituales de una matrícula para el turno abierto del cuadrante:
+// Map numUsuario → 'habitual' | 'suplente'
 function habitualesCuadrante(matricula) {
+  const res = new Map();
   const equipo = equipoDelCuadrante();
-  if (!equipo) return new Set();
-  return new Set(habitualesDeMatricula(matricula)
+  if (!equipo) return res;
+  habitualesDeMatricula(matricula)
     .filter(c => c.turno === equipo)
-    .map(c => String(c.numUsuario)));
+    .forEach(c => res.set(String(c.numUsuario), esSuplente(matricula, c.numUsuario) ? 'suplente' : 'habitual'));
+  return res;
 }
 
 // ── Carga desde Supabase ─────────────────────────────────────────────────────
 async function cargarHabituales() {
   try {
-    const [rh, rc] = await Promise.all([
-      sb.from('conductores_habituales').select('matricula,num_usuario'),
+    let [rh, rc] = await Promise.all([
+      sb.from('conductores_habituales').select('matricula,num_usuario,suplente'),
       sb.from('app_config').select('valor').eq('clave', 'rotacion_turnos').maybeSingle()
     ]);
+    // Por si la columna «suplente» aún no existe: cargar sin ella
+    if (rh.error && /suplente/i.test(rh.error.message || '')) {
+      rh = await sb.from('conductores_habituales').select('matricula,num_usuario');
+    }
     if (rh.error) {
       _habitualesTablaOk = false;
       HABITUALES = [];
@@ -84,7 +99,8 @@ async function cargarHabituales() {
       _habitualesTablaOk = true;
       HABITUALES = (rh.data || []).map(h => ({
         matricula: String(h.matricula || '').trim().toUpperCase(),
-        num_usuario: String(h.num_usuario)
+        num_usuario: String(h.num_usuario),
+        suplente: h.suplente === true
       }));
     }
     ROTACION_TURNOS = null;
@@ -139,7 +155,7 @@ function _asigErrorTabla(error) {
   return '';
 }
 
-async function añadirHabitual(matricula, numUsuario, turnoColumna) {
+async function añadirHabitual(matricula, numUsuario, turnoColumna, suplente) {
   const m = String(matricula).trim().toUpperCase();
   const c = _asigConductor(numUsuario);
   if (!c) return;
@@ -148,19 +164,37 @@ async function añadirHabitual(matricula, numUsuario, turnoColumna) {
     return;
   }
   const { error } = await sb.from('conductores_habituales').insert({
-    matricula: m, num_usuario: String(c.numUsuario), creado_por: usuarioActual?.nombre || 'Admin'
+    matricula: m, num_usuario: String(c.numUsuario), creado_por: usuarioActual?.nombre || 'Admin',
+    ...(suplente ? { suplente: true } : {})
   });
   if (error) { mostrarToast(_asigErrorTabla(error) || '⚠️ No se pudo añadir: ' + error.message, 'error'); return; }
-  HABITUALES.push({ matricula: m, num_usuario: String(c.numUsuario) });
+  HABITUALES.push({ matricula: m, num_usuario: String(c.numUsuario), suplente: !!suplente });
+  const queEs = suplente ? 'como suplente' : '';
   // Un conductor sin turno pasa al equipo de la columna donde se ha añadido
   if (!c.turno && (turnoColumna === 1 || turnoColumna === 2)) {
     if (await guardarTurnoConductor(c.numUsuario, turnoColumna)) {
-      mostrarToast(`✓ ${c.nombre} añadido a ${m} y puesto en Turno ${turnoColumna}`, 'success');
+      mostrarToast(`✓ ${c.nombre} añadido a ${m} ${queEs} y puesto en Turno ${turnoColumna}`.replace(/\s+/g, ' '), 'success');
     }
   } else {
-    mostrarToast(`✓ ${c.nombre} añadido a ${m}`, 'success');
+    mostrarToast(`✓ ${c.nombre} añadido a ${m} ${queEs}`.trim(), 'success');
   }
-  if (typeof registrarAccion === 'function') registrarAccion('ADMIN', 'Añadir habitual', `${m} · ${c.nombre}`);
+  if (typeof registrarAccion === 'function') registrarAccion('ADMIN', suplente ? 'Añadir suplente' : 'Añadir habitual', `${m} · ${c.nombre}`);
+}
+
+async function cambiarSuplente(matricula, numUsuario) {
+  const m = String(matricula).trim().toUpperCase();
+  const h = HABITUALES.find(x => x.matricula === m && x.num_usuario === String(numUsuario));
+  if (!h) return;
+  const nuevo = !h.suplente;
+  const { error } = await sb.from('conductores_habituales').update({ suplente: nuevo })
+    .eq('matricula', m).eq('num_usuario', String(numUsuario));
+  if (error) { mostrarToast('⚠️ No se pudo cambiar: ' + error.message, 'error'); return; }
+  h.suplente = nuevo;
+  const c = _asigConductor(numUsuario);
+  const nombre = c ? c.nombre : numUsuario;
+  mostrarToast(`✓ ${nombre}: ${nuevo ? 'suplente' : 'habitual'} de ${m}`, 'success');
+  if (typeof registrarAccion === 'function') registrarAccion('ADMIN', nuevo ? 'Marcar suplente' : 'Marcar habitual', `${m} · ${nombre}`);
+  renderAdminAsignaciones();
 }
 
 async function quitarHabitual(matricula, numUsuario) {
@@ -259,7 +293,13 @@ function renderAdminAsignaciones() {
     return;
   }
 
-  const chip = (m, c, cls = '') => `<span class="hab-chip ${cls}" title="${esc(c.nombre)} · Nº ${esc(String(c.numUsuario))}">${esc(c.nombre)}<button class="hab-x" title="Quitar" onclick="quitarHabitual('${esc(m)}','${esc(String(c.numUsuario))}')">✕</button></span>`;
+  const chip = (m, c, cls = '') => {
+    const sup = esSuplente(m, c.numUsuario);
+    const num = esc(String(c.numUsuario));
+    return `<span class="hab-chip ${cls}${sup ? ' suplente' : ''}" title="${esc(c.nombre)} · Nº ${num}">
+      <button class="hab-tipo${sup ? ' vacia' : ''}" title="${sup ? 'Suplente: solo cuando no pueda llevar el suyo. Pulsa para hacerlo habitual' : 'Habitual. Pulsa para marcarlo como suplente'}"
+        onclick="cambiarSuplente('${esc(m)}','${num}')">★</button>${esc(c.nombre)}${sup ? '<span class="hab-sup-tag">Suplente</span>' : ''}<button class="hab-x" title="Quitar" onclick="quitarHabitual('${esc(m)}','${num}')">✕</button></span>`;
+  };
 
   const celda = (v, turno, habs) => {
     const delTurno = habs.filter(c => c.turno === turno);
@@ -269,7 +309,9 @@ function renderAdminAsignaciones() {
         ${delTurno.map(c => chip(v.matricula, c)).join('')}
         ${abierto
           ? `<input class="hab-input" id="asig-buscador" placeholder="Nombre, DNI o Nº…" autocomplete="off"
-               oninput="asigFiltrarBuscador()" onkeydown="asigTeclaBuscador(event)">`
+               oninput="asigFiltrarBuscador()" onkeydown="asigTeclaBuscador(event)">
+             <label class="hab-check" onmousedown="event.preventDefault()"><input type="checkbox" id="asig-suplente"${_asigAñadiendo.suplente ? ' checked' : ''}
+               onchange="_asigAñadiendo.suplente=this.checked;document.getElementById('asig-buscador').focus()"> Suplente</label>`
           : `<button class="hab-add" onclick="asigAbrirBuscador('${esc(v.matricula)}',${turno})">+ Añadir</button>`}
       </div>
       ${abierto ? `<div class="operario-dropdown open asig-dd" id="asig-dd"><div class="operario-dropdown-header" id="asig-dd-header"></div><div class="operario-dropdown-list" id="asig-dd-list"></div></div>` : ''}
@@ -365,14 +407,14 @@ function asigTeclaBuscador(e) {
 async function asigElegir(i) {
   const c = _asigResultados[i];
   if (!c || !_asigAñadiendo) return;
-  const { matricula, turno } = _asigAñadiendo;
+  const { matricula, turno, suplente } = _asigAñadiendo;
   _asigAñadiendo = null;
-  await añadirHabitual(matricula, c.numUsuario, turno);
+  await añadirHabitual(matricula, c.numUsuario, turno, !!suplente);
   renderAdminAsignaciones();
 }
 document.addEventListener('mousedown', (e) => {
   if (!_asigAñadiendo) return;
-  if (e.target.closest('#asig-dd, #asig-buscador')) return;
+  if (e.target.closest('#asig-dd, #asig-buscador, .hab-check')) return;
   asigCerrarBuscador();
 });
 
@@ -399,9 +441,10 @@ function exportarAsignacionesPDF() {
   doc.setFontSize(9);
   _asigVehiculos().forEach((v, i) => {
     const habs = habitualesDeMatricula(v.matricula);
-    const t1 = habs.filter(c => c.turno === 1).map(c => c.nombre);
-    const t2 = habs.filter(c => c.turno === 2).map(c => c.nombre);
-    const st = habs.filter(c => !c.turno).map(c => c.nombre + ' (sin turno)');
+    const nom = c => c.nombre + (esSuplente(v.matricula, c.numUsuario) ? ' (suplente)' : '');
+    const t1 = habs.filter(c => c.turno === 1).map(nom);
+    const t2 = habs.filter(c => c.turno === 2).map(nom);
+    const st = habs.filter(c => !c.turno).map(c => nom(c) + ' (sin turno)');
     const l1 = doc.splitTextToSize([...t1, ...st].join('\n') || '—', cols[2].w - 5);
     const l2 = doc.splitTextToSize(t2.join('\n') || '—', cols[3].w - 5);
     const h = Math.max(l1.length, l2.length, 1) * 4.4 + 4;

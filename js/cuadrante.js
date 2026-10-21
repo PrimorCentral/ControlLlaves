@@ -87,8 +87,11 @@ function _renderDd(input, query) {
 
   const q = query.toUpperCase();
   // Choferes habituales de esta matrícula para el turno abierto: van primero y marcados
-  const habituales = (typeof habitualesCuadrante === 'function') ? habitualesCuadrante(_ddMat) : new Set();
-  const esHab = c => habituales.has(String(c.numUsuario));
+  // (los suplentes —«cuando no se pueda el grande»— van justo después de los habituales)
+  const habituales = (typeof habitualesCuadrante === 'function') ? habitualesCuadrante(_ddMat) : new Map();
+  const tipoHab = c => habituales.get(String(c.numUsuario)) || '';
+  const esHab = c => tipoHab(c) === 'habitual';
+  const esSup = c => tipoHab(c) === 'suplente';
   _ddResultados = CONDUCTORES.filter(c =>
     !q ||
     c.nombre.toUpperCase().includes(q) ||
@@ -96,12 +99,17 @@ function _renderDd(input, query) {
     String(c.numUsuario || '').includes(q)
   );
   if (habituales.size) {
-    _ddResultados = [..._ddResultados.filter(esHab), ..._ddResultados.filter(c => !esHab(c))];
+    _ddResultados = [..._ddResultados.filter(esHab), ..._ddResultados.filter(esSup), ..._ddResultados.filter(c => !tipoHab(c))];
   }
   _ddResultados = _ddResultados.slice(0, 60);
   const nHab = _ddResultados.filter(esHab).length;
+  const nSup = _ddResultados.filter(esSup).length;
   const equipo = (typeof equipoDelCuadrante === 'function') ? equipoDelCuadrante() : null;
-  const txtHab = nHab ? ` · ★ ${nHab} habitual${nHab !== 1 ? 'es' : ''}${equipo ? ' (turno ' + equipo + ')' : ''}` : '';
+  const txtHab = (nHab || nSup)
+    ? (nHab ? ` · ★ ${nHab} habitual${nHab !== 1 ? 'es' : ''}` : '')
+      + (nSup ? ` · ${nSup} suplente${nSup !== 1 ? 's' : ''}` : '')
+      + (equipo ? ` (turno ${equipo})` : '')
+    : '';
 
   hdr.textContent = q
     ? `${_ddResultados.length} resultado${_ddResultados.length !== 1 ? 's' : ''} para "${query}"${txtHab}`
@@ -111,13 +119,13 @@ function _renderDd(input, query) {
     list.innerHTML = `<div class="operario-dropdown-empty">Sin resultados para "${esc(query)}"</div>`;
   } else {
     list.innerHTML = _ddResultados.map((c, idx) => `
-      <div class="operario-dropdown-item${esHab(c) ? ' habitual' : ''}" data-idx="${idx}">
-        <div class="operario-item-nombre">${esHab(c) ? '<span class="estrella-hab">★</span> ' : ''}${highlight(c.nombre, query)}${esHab(c) ? '<span class="tag-habitual">Habitual</span>' : ''}</div>
+      <div class="operario-dropdown-item${esHab(c) ? ' habitual' : ''}${esSup(c) ? ' suplente' : ''}" data-idx="${idx}">
+        <div class="operario-item-nombre">${esHab(c) ? '<span class="estrella-hab">★</span> ' : ''}${esSup(c) ? '<span class="estrella-hab vacia">★</span> ' : ''}${highlight(c.nombre, query)}${esHab(c) ? '<span class="tag-habitual">Habitual</span>' : ''}${esSup(c) ? '<span class="tag-habitual sup">Suplente</span>' : ''}</div>
         <div class="operario-item-meta">
           DNI: ${highlight(c.dni || '—', query)} &nbsp;·&nbsp;
           Nº ${highlight(String(c.numUsuario || '—'), query)}
           ${c.sociedad ? ' &nbsp;·&nbsp; ' + esc(c.sociedad) : ''}
-          ${(() => { const otra = esHab(c) ? _matriculaYaAsignada(c.nombre, _ddMat) : null;
+          ${(() => { const otra = tipoHab(c) ? _matriculaYaAsignada(c.nombre, _ddMat) : null;
                      return otra ? ` &nbsp;·&nbsp; <span class="operario-item-ocupado">ya en ${esc(otra)}</span>` : ''; })()}
         </div>
       </div>`).join('');

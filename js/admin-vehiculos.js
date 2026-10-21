@@ -88,7 +88,7 @@ function renderAdminVehiculos() {
           <span class="adm-mat">${esc(v.matricula)}</span>
           <span class="adm-aviso-tipo">${esc(v.tipo)} · ${esc(GRUPOS[gi].nombre)}</span>
           <span class="adm-pill ${info.cls}">${esc(info.txt)}</span>
-          <button type="button" class="adm-btn adm-btn-sm" onclick="editarITV(${gi},${vi})">Actualizar ITV</button>
+          <button type="button" class="adm-btn adm-btn-sm" onclick="abrirFichaVehiculo('${esc(v.matricula)}');fichaTabSwitch('itv')">Actualizar ITV</button>
         </div>`).join('')}</div>` : ''}
     </div>`;
   }

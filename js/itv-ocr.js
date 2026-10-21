@@ -11,6 +11,16 @@
 
 const _ITV_OCR_LIB = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
 let _itvOcrCarga = null;
+// Matrículas en las que la lectura falló o la fecha leída no era correcta:
+// solo en ellas aparece el botón «Editar fecha» de la ficha.
+const _itvManual = new Set();
+function itvEdicionManualPermitida(matricula) { return _itvManual.has(matricula); }
+
+function _itvPonerAMano(matricula, gi, vi) {
+  _itvManual.add(matricula);
+  if (typeof fichaRepintar === 'function') fichaRepintar(); // aparece «Editar fecha»
+  editarITV(gi, vi);
+}
 
 function _itvCargarTesseract() {
   if (window.Tesseract) return Promise.resolve(window.Tesseract);
@@ -87,17 +97,17 @@ async function itvActualizarDesdeInforme(matricula, file, statusEl) {
   estado('Leyendo la fecha del informe ITV… (puede tardar unos segundos)');
   let datos;
   try { datos = await itvLeerInforme(file); }
-  catch (e) {
-    estado('');
-    mostrarToast('No se pudo leer el informe: pon la fecha con «Editar fecha»', 'info');
-    return;
-  }
+  catch (e) { datos = { fecha: null, error: true }; }
   estado('');
 
   const fmt = iso => iso ? iso.split('-').reverse().join('/') : '—';
   if (!datos.fecha) {
-    appAlert('No he encontrado la <strong>fecha de próxima inspección</strong> en el informe (puede que el escaneo no se lea bien).<br><br>Ponla a mano con el botón <strong>«Editar fecha»</strong> de la ficha, en ITV.',
-      { titulo: 'Fecha de ITV no encontrada', icono: '📄' });
+    const aMano = await appConfirm(
+      (datos.error ? 'No se ha podido leer el informe.' : 'No he encontrado la <strong>fecha de próxima inspección</strong> en el informe (puede que el escaneo no se lea bien).') +
+      '<br><br>El informe se ha guardado igualmente. ¿Pones la fecha a mano?',
+      { titulo: 'Fecha de ITV no encontrada', icono: '📄', labelOk: 'Poner la fecha a mano', labelCancel: 'Ahora no', colorOk: '#1a1a2e' });
+    if (aMano) _itvPonerAMano(v.matricula, gi, vi);
+    else { _itvManual.add(v.matricula); if (typeof fichaRepintar === 'function') fichaRepintar(); }
     return;
   }
   if (datos.fecha === v.itv_fin) { mostrarToast(`✓ La ITV ya estaba al día (${fmt(datos.fecha)})`, 'success'); return; }
@@ -115,10 +125,12 @@ async function itvActualizarDesdeInforme(matricula, file, statusEl) {
     `Ahora mismo está guardada: ${v.itv_fin ? fmt(v.itv_fin) : 'sin fecha'}.` +
     (avisos.length ? `<br><br>${avisos.join('<br>')}` : '') +
     `<br><br>¿Actualizo la fecha de la ITV de <strong>${esc(v.matricula)}</strong>?`,
-    { titulo: 'Fecha de ITV leída del informe', icono: '📋', labelOk: 'Sí, actualizar', colorOk: avisos.length ? '#e84545' : '#16a34a' });
-  if (!ok) return;
+    { titulo: 'Fecha de ITV leída del informe', icono: '📋', labelOk: 'Sí, actualizar', labelCancel: 'No, está mal leída', colorOk: avisos.length ? '#e84545' : '#16a34a' });
+  // Si la fecha leída no es buena, se abre la edición a mano
+  if (!ok) { _itvPonerAMano(v.matricula, gi, vi); return; }
 
   v.itv_fin = datos.fecha;
+  _itvManual.delete(v.matricula); // leída bien: ya no hace falta editarla a mano
   renderAdminVehiculos(); renderTabla();
   sincronizarVehiculosConSheets();
   registrarAccion('VEHICULO', 'Fecha ITV desde informe', `${v.matricula} · ${fmt(datos.fecha)}`);

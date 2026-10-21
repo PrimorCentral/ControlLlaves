@@ -1106,7 +1106,7 @@ function _crearOverlayModal(html) {
 // appConfirm(msg, {titulo, icono, labelOk, colorOk}) → Promise<boolean>
 function appConfirm(msg, opts = {}) {
   return new Promise(resolve => {
-    const { titulo = '¿Confirmar acción?', icono = '⚠️', labelOk = 'Confirmar', colorOk = '#e84545', peligro = false } = opts;
+    const { titulo = '¿Confirmar acción?', icono = '⚠️', labelOk = 'Confirmar', labelCancel = 'Cancelar', colorOk = '#e84545', peligro = false } = opts;
     const advertencia = peligro ? `<div style="font-size:11px;color:#e84545;font-weight:700;margin-bottom:20px;">⚠️ Esta acción no se puede deshacer.</div>` : '';
     const ov = _crearOverlayModal(`
       <div style="font-size:36px;margin-bottom:10px">${icono}</div>
@@ -1114,7 +1114,7 @@ function appConfirm(msg, opts = {}) {
       <div style="font-size:13px;color:#556;margin-bottom:20px;line-height:1.5">${msg}</div>
       ${advertencia}
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button id="_ac-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer">Cancelar</button>
+        <button id="_ac-cancel" style="padding:10px 22px;background:#f4f5f8;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:700;cursor:pointer">${labelCancel}</button>
         <button id="_ac-ok" style="padding:10px 22px;background:${colorOk};color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer">${labelOk}</button>
       </div>`);
     ov.querySelector('#_ac-cancel').onclick = () => { document.body.removeChild(ov); resolve(false); };

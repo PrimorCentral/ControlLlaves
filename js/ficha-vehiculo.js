@@ -447,13 +447,13 @@ function _fichaHtmlItv(v) {
   const e = _fichaEstado(v);
   const informes = (d.docs || []).concat(d.docsDrive || []).filter(x => x.categoria === 'informe_itv');
   const titulo = { mal: e.itv.dias === 0 ? 'Caduca hoy' : 'Caducada', aviso: `Vence en ${e.itv.dias} días`, ok: 'En vigor', nada: 'Sin fecha registrada' }[e.itv.cls];
-  const sub = !v.itv_fin ? (_fvEsAdmin() ? 'Pulsa «Editar fecha» para añadirla.' : 'Un administrador tiene que añadir la fecha.')
+  const sub = !v.itv_fin ? 'Sube el informe de ITV y la fecha se rellena sola.'
     : e.itv.dias < 0 ? `Venció el ${_fvFecha(v.itv_fin)}, hace ${-e.itv.dias} día${e.itv.dias === -1 ? '' : 's'}. El vehículo no debe circular.`
     : e.itv.dias === 0 ? `Vence hoy, ${_fvFecha(v.itv_fin)}. El vehículo no debe circular a partir de mañana.`
     : `Válida hasta el ${_fvFecha(v.itv_fin)}.`;
   let h = `<div class="fv-docs-cab">
       <h2 class="fv-h2">ITV</h2><span class="fv-card-nota"></span>
-      ${_fvEsAdmin() ? `<button type="button" class="fv-lapiz" onclick="fichaEditar('itv')">${_FV_LAPIZ}<span>Editar fecha</span></button>` : ''}
+      ${_fvEsAdmin() && typeof itvEdicionManualPermitida === 'function' && itvEdicionManualPermitida(_fichaMat) ? `<button type="button" class="fv-lapiz" onclick="fichaEditar('itv')" title="El informe no se pudo leer bien: pon la fecha a mano">${_FV_LAPIZ}<span>Editar fecha</span></button>` : ''}
       <label class="fv-btn fv-btn-oscuro fv-subir-itv${_fichaSubiendoItv ? ' ocupado' : ''}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
         <span>Subir nuevo informe</span>

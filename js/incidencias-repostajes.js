@@ -1601,8 +1601,15 @@ async function eliminarIncidencia(idx) {
       renderTabIncidencias();
       mostrarToast(json.vehiculoDesbloqueado ? '✓ Incidencia eliminada · Vehículo desbloqueado' : '✓ Incidencia eliminada', 'success');
       actualizarBotonIncidenciasPendientes();
+      // Al borrar la incidencia se borra también su avería abierta (trigger en Supabase):
+      // recargar el resumen para que desaparezca la llave del cuadrante.
+      if (typeof mantCargarResumen === 'function') mantCargarResumen();
     } catch(e) {
-      mostrarToast('Error al eliminar: ' + e.message, 'error');
+      if (/gestionada/i.test(e.message || '')) {
+        appAlert('No se puede borrar esta incidencia porque su avería ya está gestionada (en taller o reparada).', { titulo: 'No se puede borrar', icono: '🔧' });
+      } else {
+        mostrarToast('Error al eliminar: ' + e.message, 'error');
+      }
     } finally {
       document.body.removeChild(overlayBorrando);
     }

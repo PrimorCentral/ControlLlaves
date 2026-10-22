@@ -164,6 +164,7 @@
 .mant-anadir-body { padding: 20px 22px 6px; }
 .mant-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .mant-tiles.cuatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mant-tiles.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .mant-tiles.cuatro .mant-tile-emoji { font-size: 30px; }
 .mant-tiles.cuatro .mant-tile-tit { font-size: 14px; }
 .mant-tiles.cuatro .mant-tile-sub { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -200,6 +201,8 @@
 .mant-anadir-cancel:hover { background: #E3E7EE; }
 @media (max-width: 460px) {
   .mant-tiles, .mant-tiles.cuatro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mant-tiles.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .mant-tiles.tres .mant-tile-tit { font-size: 13px; }
 }
 
 /* ── Tipo de incidencia (formulario "Registrar incidencia") ── */

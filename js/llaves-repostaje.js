@@ -764,18 +764,10 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
 
     const turnoLabel = f.turno === 'MANANA' ? 'Mañana' : (f.turno || '—');
 
-    // Tipo de incidencia (editable mientras está pendiente) y avería enlazada
+    // Tipo de incidencia (solo se muestra; no se puede cambiar desde aquí)
     const tiposIncid = (typeof MANT_TIPOS_INCID !== 'undefined') ? MANT_TIPOS_INCID : {};
-    let tipoIncidHtml = '';
-    if (!modoResueltas && f.id) {
-      tipoIncidHtml = `<select class="incid-tipo-sel${f.tipo ? '' : ' sin-tipo'}" aria-label="Tipo de incidencia" data-tipo="${esc(f.tipo || '')}"
-          onchange="this.classList.toggle('sin-tipo', !this.value); mantCambiarTipoIncidencia('${esc(f.id)}', this.value, this)">
-          <option value=""${f.tipo ? '' : ' selected'}>Sin tipo</option>
-          ${Object.keys(tiposIncid).map(k => `<option value="${k}"${f.tipo === k ? ' selected' : ''}>${tiposIncid[k].emoji} ${tiposIncid[k].txt}</option>`).join('')}
-        </select>`;
-    } else if (f.tipo && tiposIncid[f.tipo]) {
-      tipoIncidHtml = `<span class="incid-tipo-pill">${tiposIncid[f.tipo].emoji} ${tiposIncid[f.tipo].txt}</span>`;
-    }
+    const tipoIncidHtml = (f.tipo && tiposIncid[f.tipo])
+      ? `<span class="incid-tipo-pill">${tiposIncid[f.tipo].emoji} ${tiposIncid[f.tipo].txt}</span>` : '';
     const av = averiasMap[f.id];
     const estadosAv = { abierta: 'Abierta', en_taller: 'En taller', reparada: 'Reparada' };
     const averiaHtml = av ? `<button type="button" class="incid-averia-pill est-${esc(av.estado)}" title="Ver en Averías"

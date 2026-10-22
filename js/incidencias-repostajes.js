@@ -9,7 +9,9 @@ const INCID_TIPOS = [
   { id: 'otro',      emoji: '📝', txt: 'Otro' }
 ];
 
-function abrirModalIncidencia(matricula) {
+function abrirModalIncidencia(matricula, opts) {
+  // opts.tipo: tipo ya fijado (p. ej. 'accidente' desde «¿Qué quieres añadir?»)
+  const tipoFijo = (opts && INCID_TIPOS.some(t => t.id === opts.tipo)) ? opts.tipo : null;
   const d = getDato(matricula);
   const textoActual = d.incidencias || '';
 
@@ -30,7 +32,7 @@ function abrirModalIncidencia(matricula) {
       <div style="background:${textoActual ? '#1a1a2e' : '#1a1a2e'};padding:22px 26px 18px;display:flex;align-items:center;gap:14px;">
         <div style="width:44px;height:44px;background:#e84545;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⚠️</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.3px;">${textoActual ? 'Incidencia registrada' : 'Registrar incidencia'}</div>
+          <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.3px;">${textoActual ? 'Incidencia registrada' : (tipoFijo === 'accidente' ? 'Registrar accidente' : 'Registrar incidencia')}</div>
           <div style="font-size:11px;color:#6b7a94;margin-top:2px;">Gestión de Flota · Primor</div>
         </div>
         <button onclick="this.closest('div[style*=fixed]').remove()"
@@ -53,7 +55,7 @@ function abrirModalIncidencia(matricula) {
 
       <!-- CUERPO -->
       <div style="padding:22px 26px 24px;">
-        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px;">Descripción de la incidencia</label>
+        <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px;">${tipoFijo === 'accidente' ? 'Descripción del accidente' : 'Descripción de la incidencia'}</label>
         <textarea id="incid-texto" rows="5"
           style="width:100%;padding:12px 14px;border:1.5px solid ${textoActual ? '#e8eaf0' : '#dde1ea'};border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;line-height:1.6;color:${textoActual ? '#556' : '#1a1a2e'};resize:vertical;outline:none;background:${textoActual ? '#f8f9fc' : 'white'};transition:border-color .2s,box-shadow .2s;"
           ${textoActual ? 'readonly' : "onfocus=\"this.style.borderColor='#e84545';this.style.boxShadow='0 0 0 3px rgba(232,69,69,0.08)'\" onblur=\"this.style.borderColor='#dde1ea';this.style.boxShadow='none'\""}
@@ -80,7 +82,7 @@ function abrirModalIncidencia(matricula) {
           </div>
         </label>` : ''}
 
-        ${textoActual ? '' : `<fieldset class="incid-tipo-grupo">
+        ${textoActual ? '' : tipoFijo ? `<input type="radio" name="incid-tipo" value="${tipoFijo}" checked hidden>` : `<fieldset class="incid-tipo-grupo">
           <legend>Tipo de incidencia *</legend>
           <div class="incid-tipo-opciones">
             ${INCID_TIPOS.map(t => `<label class="incid-tipo-op"><input type="radio" name="incid-tipo" value="${t.id}"><span><b aria-hidden="true">${t.emoji}</b>${t.txt}</span></label>`).join('')}
@@ -92,7 +94,7 @@ function abrirModalIncidencia(matricula) {
           <button onclick="this.closest('div[style*=fixed]').remove()"
             style="padding:10px 22px;background:#f4f5f8;color:#667;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s;"
             onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='#f4f5f8'">${textoActual ? 'Cerrar' : 'Cancelar'}</button>
-          ${textoActual ? '' : '<button id="btn-guardar-incidencia" style="padding:10px 26px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(232,69,69,0.3);transition:background .15s,transform .1s;" onmouseover="this.style.background=\'#c63030\'" onmouseout="this.style.background=\'#e84545\'">Registrar incidencia</button>'}
+          ${textoActual ? '' : '<button id="btn-guardar-incidencia" style="padding:10px 26px;background:#e84545;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(232,69,69,0.3);transition:background .15s,transform .1s;" onmouseover="this.style.background=\'#c63030\'" onmouseout="this.style.background=\'#e84545\'">' + (tipoFijo === 'accidente' ? 'Registrar accidente' : 'Registrar incidencia') + '</button>'}
         </div>
       </div>
     </div>`;

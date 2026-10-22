@@ -899,9 +899,7 @@ function mantPasarIncidenciaAAveria(inc) {
 
 // ════════════════════════════════════════════════════════════════════════════
 // VENTANA "¿QUÉ QUIERES AÑADIR?" (botón "Añadir Incidencia" del cuadrante)
-// Permite registrar desde el cuadrante, sin entrar al Panel Admin:
-//   · Todos: incidencia del turno, avería, fotos y documentos (sin poder borrar).
-//   · Admin: además, mantenimiento realizado y programar revisión.
+// Permite registrar desde el cuadrante: incidencia del turno, avería o accidente.
 // ════════════════════════════════════════════════════════════════════════════
 let _mantMenuAbierto = null;
 
@@ -947,12 +945,10 @@ function mantMenuAnadir(boton, matricula) {
         <button type="button" class="mant-anadir-x" data-accion="cerrar" aria-label="Cerrar">✕</button>
       </div>
       <div class="mant-anadir-body">
-        <div class="mant-tiles${admin ? '' : ' cuatro'}">
+        <div class="mant-tiles tres">
           ${tile('incidencia', '⚠️', 'Incidencia', motivoIncid || 'Del turno de hoy', !!motivoIncid)}
           ${tile('averia', '🔧', 'Avería', 'Dar parte')}
-          ${tile('fotos', '📷', 'Fotos', 'Entrega, daños…')}
-          ${tile('docs', '📄', 'Documento', 'Permiso, ITV…')}
-          ${admin ? tile('mant', '🛠️', 'Mantenimiento', 'Ya realizado') + tile('revision', '📅', 'Revisión', 'Programar aviso') : ''}
+          ${tile('accidente', '💥', 'Accidente', motivoIncid || 'Dar parte', !!motivoIncid)}
         </div>
       </div>
       <div class="mant-anadir-pie">
@@ -973,10 +969,7 @@ function mantMenuAnadir(boton, matricula) {
     switch (accion) {
       case 'incidencia': abrirModalIncidencia(matricula); break;
       case 'averia':     mantAbrirFormAveria(matricula); break;
-      case 'fotos':      abrirGestorDocumentos(matricula, 'fotos', { puedeBorrar: admin }); break;
-      case 'docs':       abrirGestorDocumentos(matricula, 'docs', { puedeBorrar: admin }); break;
-      case 'mant':       mantAbrirFormMantenimiento(matricula); break;
-      case 'revision':   mantAbrirFormRevision(matricula); break;
+      case 'accidente':  abrirModalIncidencia(matricula, { tipo: 'accidente' }); break;
       case 'ficha':      abrirFichaVehiculo(matricula); fichaTabSwitch(mantPestanaFicha(matricula)); break;
     }
   });

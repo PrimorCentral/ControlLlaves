@@ -244,7 +244,7 @@
       <span class="bsq-label">Imprimir cuadrante</span>
     </button>
   </div>
-  <button class="btn-action btn-secondary" id="btn-incidencias-pendientes" onclick="abrirModalIncidenciasPendientes()">✅ Sin incidencias pendientes</button>
+  <button class="btn-action btn-secondary" id="btn-incidencias-pendientes" onclick="abrirModalIncidenciasPendientes()">✅ Sin incidencias activas</button>
 
   <!-- LOGO DE FONDO — rellena el hueco libre antes del reloj -->
   <div style="flex:1; min-height:20px; display:flex; align-items:center; justify-content:center; padding:10px 0; overflow:hidden;">
@@ -1865,7 +1865,7 @@
   </div>
 </div>
 
-<!-- MODAL: INCIDENCIAS PENDIENTES -->
+<!-- MODAL: INCIDENCIAS ACTIVAS -->
 <div class="modal-overlay" id="modal-incidencias-pendientes">
   <div style="background:white;border-radius:20px;width:1360px;max-width:97vw;max-height:94vh;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;display:flex;flex-direction:column;">
 
@@ -1873,7 +1873,7 @@
     <div style="background:#1a1a2e;padding:22px 26px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;">
       <div style="width:44px;height:44px;background:#e84545;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⚠️</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.5px;">INCIDENCIAS PENDIENTES</div>
+        <div style="font-size:17px;font-weight:900;color:#ffffff;letter-spacing:0.5px;">INCIDENCIAS ACTIVAS</div>
         <div id="incid-pend-subtitulo" style="font-size:11px;color:#6b7a94;margin-top:2px;">Incidencias de flota que aún no se han resuelto</div>
       </div>
       <button onclick="cerrarModalIncidenciasPendientes()"

@@ -511,7 +511,7 @@ function mantAbrirFormAveria(matricula) {
       <span><strong>El vehículo no puede circular</strong><br>
       ${yaBloqueado ? 'El vehículo ya está NO DISPONIBLE.' : 'Pasará a NO DISPONIBLE en el cuadrante hasta que se repare.'}</span></label>`;
   _mantModal(`Dar parte de avería · ${_fichaMatReal(matricula)}`, '⚠️', cuerpo, 'Dar parte', async form => {
-    const descripcion = form.descripcion.value.trim();
+    const descripcion = form.descripcion.value.trim().toUpperCase();
     if (!descripcion) { form.descripcion.focus(); return 'Describe qué le pasa al vehículo.'; }
     const inmoviliza = form.inmoviliza.checked;
     const fecha = form.fecha.value || _mantHoyISO();
@@ -569,6 +569,7 @@ function mantAbrirFormAveria(matricula) {
     if (typeof abrirFichaVehiculo === 'function' && _fichaMat === matricula) _mantActualizarCabeceraFicha(matricula);
     return null;
   });
+  if (typeof forzarMayusculas === 'function' && _mantModalAbierto) forzarMayusculas(_mantModalAbierto.querySelector('textarea[name="descripcion"]'));
 }
 
 // ── Avería: pasar a taller (admin) ───────────────────────────────────────────

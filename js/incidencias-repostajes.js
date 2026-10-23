@@ -9,6 +9,19 @@ const INCID_TIPOS = [
   { id: 'otro',      emoji: '📝', txt: 'Otro' }
 ];
 
+/** Pasa a mayúsculas lo que se escribe (o pega) en un campo, sin mover el cursor. */
+function forzarMayusculas(el) {
+  if (!el || el.readOnly) return;
+  el.style.textTransform = 'uppercase';
+  el.addEventListener('input', () => {
+    const v = el.value, up = v.toUpperCase();
+    if (v === up) return;
+    const a = el.selectionStart, b = el.selectionEnd;
+    el.value = up;
+    try { el.setSelectionRange(a, b); } catch (e) {}
+  });
+}
+
 function abrirModalIncidencia(matricula, opts) {
   // opts.tipo: tipo ya fijado (p. ej. 'accidente' desde «¿Qué quieres añadir?»)
   const tipoFijo = (opts && INCID_TIPOS.some(t => t.id === opts.tipo)) ? opts.tipo : null;
@@ -24,7 +37,7 @@ function abrirModalIncidencia(matricula, opts) {
   const turnoBorde = turnoActual === 'MANANA' ? '#fde68a' : '#fecaca';
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.7);backdrop-filter:blur(3px);z-index:4500;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.7);z-index:4500;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:20px;width:500px;max-width:96vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
 
@@ -99,6 +112,7 @@ function abrirModalIncidencia(matricula, opts) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  forzarMayusculas(overlay.querySelector('#incid-texto'));
 
   // ── Animar toggle bloqueo ──────────────────────────────────────────────
   const cbBloqueo = overlay.querySelector('#incid-bloquear-cb');
@@ -131,7 +145,7 @@ function abrirModalIncidencia(matricula, opts) {
 
   const btnGuardar = overlay.querySelector('#btn-guardar-incidencia');
   if (btnGuardar) btnGuardar.onclick = async () => {
-    const texto = document.getElementById('incid-texto').value.trim();
+    const texto = document.getElementById('incid-texto').value.trim().toUpperCase();
     if (!texto) { mostrarToast('Escribe la incidencia antes de guardar', 'error'); return; }
     const tipoSel = overlay.querySelector('input[name="incid-tipo"]:checked');
     if (!tipoSel) {
@@ -147,7 +161,7 @@ function abrirModalIncidencia(matricula, opts) {
     if (quiereBloquear) {
       const confirmar = await new Promise(resolve => {
         const dlg = document.createElement('div');
-        dlg.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.75);backdrop-filter:blur(3px);z-index:5500;display:flex;align-items:center;justify-content:center;';
+        dlg.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.75);z-index:5500;display:flex;align-items:center;justify-content:center;';
         dlg.innerHTML = `
           <div style="background:white;border-radius:18px;width:400px;max-width:94vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
             <div style="background:#1a1a2e;padding:20px 24px 16px;display:flex;align-items:center;gap:12px;">

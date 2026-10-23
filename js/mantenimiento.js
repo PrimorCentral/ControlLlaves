@@ -34,7 +34,7 @@ const MANT_ESTADOS = {
 let mantResumen = {};
 let _mantIncidsFicha = []; // incidencias pendientes mostradas en la ficha abierta
 
-/** Abre "Incidencias pendientes" filtrado por la matrícula. */
+/** Abre "Incidencias activas" filtrado por la matrícula. */
 function mantVerIncidenciasDe(matricula) {
   if (typeof abrirModalIncidenciasPendientes !== 'function') return;
   cerrarFichaVehiculo();
@@ -144,7 +144,7 @@ function mantIconoCuadrante(matricula) {
   if (r.averias) partes.push(r.averias === 1 ? 'Avería abierta' : `${r.averias} averías abiertas`);
   if (r.incid) {
     const tipos = (r.incidTipos || []).map(t => (MANT_TIPOS_INCID[t] || {}).txt).filter(Boolean).join(', ');
-    partes.push((r.incid === 1 ? 'Incidencia pendiente' : `${r.incid} incidencias pendientes`) + (tipos ? ` (${tipos.toLowerCase()})` : ''));
+    partes.push((r.incid === 1 ? 'Incidencia activa' : `${r.incid} incidencias activas`) + (tipos ? ` (${tipos.toLowerCase()})` : ''));
   }
   if (r.revVencida) partes.push('revisión vencida');
   if (r.averias || r.incid) { cls = 'grave'; titulo = partes.join(' · '); }
@@ -253,7 +253,7 @@ function _mantRenderAverias() {
   // Incidencias pendientes que aún no son avería
   if (incids.length) {
     h += `<section class="mf-sec mf-sec-auto">
-      ${_mfCabecera(_MF_ICO_INCID, 'INCIDENCIAS PENDIENTES', `<span class="mf-num">${incids.length}</span>`,
+      ${_mfCabecera(_MF_ICO_INCID, 'INCIDENCIAS ACTIVAS', `<span class="mf-num">${incids.length}</span>`,
         `<button type="button" class="mf-btn-head" onclick="mantVerIncidenciasDe('${mat}')">Ver todas</button>`)}
       <div class="mf-lista">`;
     incids.forEach((i, idx) => {
@@ -285,7 +285,7 @@ function _mantRenderAverias() {
   if (!lista.length) {
     if (filtro === 'abiertas') {
       h += `<div class="mf-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
-        <div><strong>Sin averías abiertas</strong><span>${incids.length ? 'Revisa las incidencias pendientes.' : 'El vehículo puede circular.'}</span></div></div>`;
+        <div><strong>Sin averías abiertas</strong><span>${incids.length ? 'Revisa las incidencias activas.' : 'El vehículo puede circular.'}</span></div></div>`;
     } else {
       h += `<div class="mf-vacio">${filtro === 'inmov' ? 'Ninguna avería impide circular.' : 'No hay averías reparadas en el historial.'}</div>`;
     }

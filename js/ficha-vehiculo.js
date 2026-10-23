@@ -236,7 +236,7 @@ function _fichaPintarCabecera(v) {
   if (!e.taco.no && e.taco.cls === 'mal') chips.push(chip('mal', 'Tacógrafo caducado'));
   else if (!e.taco.no && e.taco.cls === 'aviso' && e.taco.dias != null) chips.push(chip('aviso', `Tacógrafo en ${e.taco.dias} d`));
   if (e.averias.length) chips.push(chip('aviso', e.averias.length === 1 ? '1 avería abierta' : `${e.averias.length} averías abiertas`));
-  if (e.incid.length) chips.push(chip('aviso', e.incid.length === 1 ? '1 incidencia pendiente' : `${e.incid.length} incidencias pendientes`));
+  if (e.incid.length) chips.push(chip('aviso', e.incid.length === 1 ? '1 incidencia activa' : `${e.incid.length} incidencias activas`));
   if (!chips.length && _fichaDatos && _fichaDatos.cargado) chips.push(chip('ok', 'Todo en regla'));
 
   const marca = _fvMarca(_fichaMat);

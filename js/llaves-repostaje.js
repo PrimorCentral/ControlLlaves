@@ -589,7 +589,7 @@ function _aplicarDesbloqueoTrasResolver(json, matricula) {
   return true;
 }
 
-// ── MODAL: INCIDENCIAS PENDIENTES ───────────────────────────────────────────
+// ── MODAL: INCIDENCIAS ACTIVAS ───────────────────────────────────────────
 async function actualizarBotonIncidenciasPendientes() {
   if (!APPS_SCRIPT_URL || !usuarioActual) return;
   const btn = document.getElementById('btn-incidencias-pendientes');
@@ -600,10 +600,10 @@ async function actualizarBotonIncidenciasPendientes() {
     const pendientes = (json.ok ? (json.filas||[]) : []).filter(f => (f.estado||'').toUpperCase() !== 'COMPLETADO');
     if (pendientes.length > 0) {
       btn.classList.add('btn-incidencias-alerta');
-      btn.textContent = `⚠️ ${pendientes.length} incidencia${pendientes.length === 1 ? '' : 's'} pendiente${pendientes.length === 1 ? '' : 's'}`;
+      btn.textContent = `⚠️ ${pendientes.length} incidencia${pendientes.length === 1 ? '' : 's'} activa${pendientes.length === 1 ? '' : 's'}`;
     } else {
       btn.classList.remove('btn-incidencias-alerta');
-      btn.textContent = '✅ Sin incidencias pendientes';
+      btn.textContent = '✅ Sin incidencias activas';
     }
   } catch(e) { /* si falla, se deja el último estado conocido */ }
 }
@@ -612,7 +612,7 @@ let incidPendModalState = { verResueltas: false };
 
 function abrirModalIncidenciasPendientes() {
   if (!usuarioActual) {
-    mostrarToast('Debes iniciar sesión para ver las incidencias pendientes', 'error');
+    mostrarToast('Debes iniciar sesión para ver las incidencias activas', 'error');
     return;
   }
   incidPendModalState.verResueltas = false;
@@ -654,7 +654,7 @@ function toggleIncidenciasResueltasModal() {
   const btn = document.getElementById('btn-toggle-incid-resueltas');
   if (btn) {
     if (incidPendModalState.verResueltas) {
-      btn.textContent = '⬅ Ver pendientes';
+      btn.textContent = '⬅ Ver activas';
       btn.style.background = '#eef0f5';
       btn.style.color = '#1a1a2e';
       btn.style.borderColor = '#d5d9e2';
@@ -717,11 +717,12 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
 
   filas.sort((a, b) => (b.timestamp||'').localeCompare(a.timestamp||''));
   incidPendModalFilas = filas;
+  lista.style.overflowY = 'auto'; // en modo activas cada columna lleva su propio scroll
 
   if (subt) {
     subt.textContent = modoResueltas
       ? `${filas.length} incidencia${filas.length===1?'':'s'} resuelta${filas.length===1?'':'s'}`
-      : `${filas.length} incidencia${filas.length===1?'':'s'} pendiente${filas.length===1?'':'s'} de resolver`;
+      : `${filas.length} incidencia${filas.length===1?'':'s'} activa${filas.length===1?'':'s'}`;
   }
 
   if (!filas.length) {
@@ -733,7 +734,7 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
       </div>` : `
       <div style="text-align:center;padding:50px 20px;color:#8899aa">
         <div style="font-size:36px;margin-bottom:12px">✅</div>
-        <div style="font-size:15px;font-weight:800;color:#1a1a2e">Sin incidencias pendientes</div>
+        <div style="font-size:15px;font-weight:800;color:#1a1a2e">Sin incidencias activas</div>
         <div style="font-size:12px;margin-top:6px">No hay incidencias de flota por resolver.</div>
       </div>`;
     return;
@@ -741,7 +742,7 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
 
-  lista.innerHTML = filas.map((f, idx) => {
+  const tarjetas = filas.map((f, idx) => {
     let fechaLabel = f.fecha || '—';
     try { fechaLabel = new Date(f.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
 
@@ -808,7 +809,11 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
         </div>`;
     }
 
-    return `
+    // En reparación = su avería está en taller; si no, está sin gestionar
+    // (al marcar la avería como reparada la incidencia se resuelve sola y sale de aquí)
+    const gestionada = !!(av && av.estado === 'en_taller');
+
+    const html = `
       <div style="border:1.5px solid ${cardBorder};background:${cardBg};border-radius:13px;padding:14px 16px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -823,7 +828,35 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
         <div style="margin-top:10px;font-size:13px;color:#334;line-height:1.55;word-break:break-word;">${esc(f.descripcion||'—')}</div>
         ${footer}
       </div>`;
-  }).join('');
+    return { html, gestionada };
+  });
+
+  if (modoResueltas) {
+    lista.innerHTML = tarjetas.map(t => t.html).join('');
+    return;
+  }
+
+  // Activas: dos columnas, sin gestionar a la izquierda y en reparación a la derecha
+  const sinGest = tarjetas.filter(t => !t.gestionada);
+  const gest    = tarjetas.filter(t => t.gestionada);
+  const columna = (titulo, ico, items, c, vacio) => `
+    <div style="display:flex;flex-direction:column;min-height:0;min-width:0;background:${c.fondo};border:1.5px solid ${c.borde};border-radius:14px;">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 14px 10px;flex-shrink:0;">
+        <span style="font-size:14px;">${ico}</span>
+        <span style="font-size:12.5px;font-weight:900;letter-spacing:0.6px;color:${c.texto};">${titulo}</span>
+        <span style="background:${c.chip};color:${c.texto};border-radius:10px;padding:1px 9px;font-size:11px;font-weight:800;">${items.length}</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:0 12px 12px;">
+        ${items.length ? items.map(t => t.html).join('') : `<div style="text-align:center;padding:30px 10px;color:#8899aa;font-size:12px;font-weight:700;">${vacio}</div>`}
+      </div>
+    </div>`;
+
+  lista.style.overflowY = 'hidden';
+  lista.innerHTML = `
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;flex:1;min-height:0;">
+      ${columna('SIN GESTIONAR', '⚠️', sinGest, { fondo:'#fdf6f6', borde:'#f5d0d0', texto:'#b91c1c', chip:'#fde2e2' }, 'Ninguna sin gestionar')}
+      ${columna('EN REPARACIÓN', '🔧', gest, { fondo:'#fffaf0', borde:'#f3dfb5', texto:'#a8620a', chip:'#fdecc8' }, 'Ninguna en reparación')}
+    </div>`;
 }
 
 function mostrarFormResolverModal(idx) {

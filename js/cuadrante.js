@@ -799,7 +799,7 @@ function renderTabla() {
 
   const colCount = 2 + COLUMNAS.filter(c => !(c.key === 'itv' && !esHoy)).length + (esHoy ? 1 : 0);
   let hayRestringidos = false;
-  GRUPOS.forEach((grupo, gi) => {
+  _gruposParaCuadrante().forEach((grupo, gi) => {
     html += `<tr class="group-header ${gi===0?'first':''}"><td colspan="${colCount}">${grupo.nombre}</td></tr>`;
     grupo.vehiculos.forEach(v => {
       // Vehículos archivados: solo visibles en fechas pasadas donde tuvieron actividad
@@ -1083,6 +1083,22 @@ function renderTabla() {
 
   html += `</tbody></table>`;
   wrap.innerHTML = html;
+}
+
+// En días pasados cada vehículo sale en la nave que tenía ese día (guardada en
+// su registro); hoy y en el futuro, en su nave actual.
+function _gruposParaCuadrante() {
+  const n = new Date();
+  const hoyStr = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+  if (fechaActual >= hoyStr) return GRUPOS;
+  const res = GRUPOS.map(g => ({ nombre: g.nombre, vehiculos: [] }));
+  GRUPOS.forEach(g => g.vehiculos.forEach(v => {
+    const nave = getDato(v.matricula)._grupo || g.nombre;
+    let destino = res.find(x => x.nombre.toUpperCase() === nave.toUpperCase());
+    if (!destino) { destino = { nombre: nave, vehiculos: [] }; res.push(destino); }
+    destino.vehiculos.push(v);
+  }));
+  return res.filter(g => g.vehiculos.length);
 }
 
 function getDato(matricula) {

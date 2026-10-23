@@ -87,6 +87,7 @@ async function cargarCuadrante() {
           num_tarjeta:     fila.num_tarjeta||'',
           itv:             fila.itv||'',
           incidencias:     fila.incidencias||'',
+          _grupo:          fila.grupo||'',   // nave que tenía ese día
         };
       });
       mostrarToast(`✓ Cuadrante cargado — ${json.filas.length} vehículo(s) con datos`, 'success');

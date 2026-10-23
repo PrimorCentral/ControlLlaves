@@ -571,6 +571,13 @@ function editarVehiculo(gi, vi) {
     const ok = await sincronizarVehiculosConSheets();
     if (!ok) { restaurarBtn(); renderAdminVehiculos(); renderAdminStats(); renderTabla(); return; }
     overlay.remove();
+    // Nave nueva: solo para hoy en adelante; los días pasados conservan la que tenían
+    if (nuevaNave !== naveActual.toUpperCase() && typeof sb !== 'undefined' && sb) {
+      try {
+        await sb.from('registros').update({ grupo: nuevaNave })
+          .eq('matricula', v.matricula).gte('fecha', _registroHoyISO());
+      } catch (e) { /* si falla, se corrige sola al guardar la fila de hoy */ }
+    }
     renderAdminVehiculos(); renderAdminStats(); renderTabla();
     registrarAccion('VEHICULO', 'Editar vehículo', `${antes} → ${v.matricula} · ${v.tipo} · ${nuevaNave}${nuevaSoc ? ' · ' + nuevaSoc : ''}`);
     mostrarToast(`✓ ${v.matricula} actualizado`, 'success');

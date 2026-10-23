@@ -22,6 +22,17 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ════════════════════════════════════════════════════════════════════════════
 // Al resolver una incidencia, su avería enlazada (js/mantenimiento.js) se marca
 // también como reparada, para no tener que cerrar las dos cosas por separado.
+// Nave actual de un vehículo (según la flota cargada) y fecha de hoy (AAAA-MM-DD)
+function _registroGrupoActual(matricula) {
+  if (typeof GRUPOS === 'undefined') return '';
+  const g = GRUPOS.find(x => (x.vehiculos || []).some(v => v.matricula === matricula));
+  return g ? g.nombre : '';
+}
+function _registroHoyISO() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+
 async function cerrarAveriaDeIncidencia(incidenciaId, quien, comentario) {
   if (!incidenciaId) return false;
   try {
@@ -206,6 +217,8 @@ async function manejarPeticionSupabase(urlStr, options) {
     }
 
     case 'guardarFila': {
+      // Nave del vehículo: se guarda con cada registro para que los cuadrantes
+      // pasados sigan mostrando la nave que tenía ese día.
       const f = params.fila || {};
       if (!f.matricula || !f.fecha || !f.turno) {
         return { ok: false, error: 'Faltan datos obligatorios (fecha, turno o matrícula)' };
@@ -224,15 +237,18 @@ async function manejarPeticionSupabase(urlStr, options) {
         itv:             f.itv             || '',
         incidencias:     f.incidencias     || ''
       };
+      const naveHoy = _registroGrupoActual(f.matricula);
+      // En días pasados no se cambia la nave guardada; hoy y futuro, la actual
+      const payloadUpd = (f.fecha >= _registroHoyISO() && naveHoy) ? { ...payload, grupo: naveHoy } : payload;
       // Solo tocamos la fila "activa" (no una fila congelada por una reasignación)
       const { data: actualizadas, error: errUpd } = await sb.from('registros')
-        .update(payload)
+        .update(payloadUpd)
         .eq('fecha', f.fecha).eq('turno', f.turno).eq('matricula', f.matricula)
         .or('reasignado.is.null,reasignado.eq.false')
         .select('id');
       if (errUpd) return { ok: false, error: errUpd.message };
       if (!actualizadas || !actualizadas.length) {
-        const { error: errIns } = await sb.from('registros').insert(payload);
+        const { error: errIns } = await sb.from('registros').insert({ ...payload, grupo: naveHoy || null });
         if (errIns) return { ok: false, error: errIns.message };
       }
       return { ok: true };
@@ -417,6 +433,7 @@ async function manejarPeticionSupabase(urlStr, options) {
         num_tarjeta:     f.num_tarjeta     || '',
         itv:             f.itv             || '',
         incidencias:     f.incidencias     || '',
+        grupo:           _registroGrupoActual(f.matricula) || null,
         reasignado:      true
       });
       if (error) return { ok: false, error: error.message };

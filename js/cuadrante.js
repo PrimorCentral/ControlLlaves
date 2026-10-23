@@ -1480,12 +1480,12 @@ function verDetalleReasignacion(matricula) {
           <div style="font-size:16px;font-weight:900;color:#e84545;line-height:1.25">${esc(r.operario||'—')}</div>
         </div>
         <div>
-          <div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:5px">Hora reasignación</div>
-          <div style="font-size:22px;font-weight:900;color:#1a1a2e;font-variant-numeric:tabular-nums;line-height:1">${horaResg}</div>
-        </div>
-        <div>
           <div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:5px">Hora entrega</div>
           <div style="font-size:22px;font-weight:900;color:#1a1a2e;font-variant-numeric:tabular-nums;line-height:1">${horaEnt}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:5px">Hora reasignación</div>
+          <div style="font-size:22px;font-weight:900;color:#1a1a2e;font-variant-numeric:tabular-nums;line-height:1">${horaResg}</div>
         </div>
         <div>
           <div style="font-size:10px;font-weight:700;color:#8899aa;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:5px">Resp. entrega</div>

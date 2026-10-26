@@ -169,6 +169,12 @@ async function manejarPeticionSupabase(urlStr, options) {
           .select('matricula, nave_anterior, nave_nueva, fecha').order('fecha', { ascending: true });
         window.CAMBIOS_NAVE = cn || [];
       } catch (e) { window.CAMBIOS_NAVE = window.CAMBIOS_NAVE || []; }
+      // Historial de bloqueos (para que los días pasados muestren lo que estaba bloqueado)
+      try {
+        const { data: bh } = await sb.from('bloqueos_historial')
+          .select('matricula, motivo, bloqueado_por, desde, hasta').order('desde', { ascending: true });
+        window.BLOQUEOS_HIST = bh || [];
+      } catch (e) { window.BLOQUEOS_HIST = window.BLOQUEOS_HIST || []; }
       return { ok: true, flota };
     }
 

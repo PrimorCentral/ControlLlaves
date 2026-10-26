@@ -463,8 +463,10 @@ function _fmtFechaHoraBloqueo(iso) {
   } catch(e) { return ''; }
 }
 
-function mostrarInfoBloqueo(mat, motivo, bloqueado_por, fecha_bloqueo) {
+function mostrarInfoBloqueo(mat, motivo, bloqueado_por, fecha_bloqueo, hastaHist) {
   const fechaLabel = _fmtFechaHoraBloqueo(fecha_bloqueo);
+  const historico = !!hastaHist;   // viene de un cuadrante pasado
+  const hastaLabel = historico ? (hastaHist === 'ABIERTO' ? 'Sigue bloqueado' : _fmtFechaHoraBloqueo(hastaHist)) : '';
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
@@ -479,10 +481,11 @@ function mostrarInfoBloqueo(mat, motivo, bloqueado_por, fecha_bloqueo) {
       <div style="text-align:left;display:flex;flex-direction:column;gap:4px;margin-bottom:18px;font-size:11px;color:#8899aa;">
         ${bloqueado_por ? `<div>Bloqueado por <strong style="color:#556">${esc(bloqueado_por)}</strong></div>` : ''}
         ${fechaLabel ? `<div>Fecha de bloqueo: <strong style="color:#556">${esc(fechaLabel)}</strong></div>` : ''}
+        ${hastaLabel ? `<div>Desbloqueado: <strong style="color:#556">${esc(hastaLabel)}</strong></div>` : ''}
       </div>
       <div style="display:flex;gap:8px;">
         <button id="btn-info-bloqueo-cerrar" style="flex:1;padding:12px;background:#f0f2f5;color:#556;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">Cerrar</button>
-        <button id="btn-info-bloqueo-desbloquear" style="flex:1;padding:12px;background:#2ecc71;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Desbloquear</button>
+        <button id="btn-info-bloqueo-desbloquear" style="${historico ? 'display:none;' : ''}flex:1;padding:12px;background:#2ecc71;color:white;border:none;border-radius:9px;font-family:Barlow,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✓ Desbloquear</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -814,9 +817,12 @@ function renderTabla() {
       const devuelto = asignado && d.resp_recibe && d.resp_recibe.trim();
       // "reasignado" = operario original existe pero está marcado como reasignado
       const reasignado = d._reasignado && d._operarioAnterior;
-      // El bloqueo solo aplica si la fecha visualizada es HOY.
-      // En cuadrantes históricos, el vehículo puede no estar bloqueado.
-      const esBloqueado = !!v.bloqueado && esFechaHoy();
+      // Hoy: el bloqueo actual. Días pasados: el que tenía ese día según el
+      // historial, solo si esa fila no tuvo actividad (si se usó, se ven sus datos).
+      const _hoyRow = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+      const bloqHist = (fechaActual < _hoyRow && !asignado && !d.resp_entrega && !d.hora_entrega)
+        ? _bloqueoEnFecha(v.matricula, fechaActual) : null;
+      const esBloqueado = (!!v.bloqueado && esFechaHoy()) || !!bloqHist;
       const rowClass = esBloqueado ? 'vehiculo-bloqueado' : (devuelto ? 'devuelto' : (asignado ? 'asignado' : ''));
       if (v.restringido) hayRestringidos = true;
 
@@ -835,7 +841,9 @@ function renderTabla() {
       if (esBloqueado) {
         // VEHÍCULO BLOQUEADO: la matrícula ya lleva el badge "NO DISPONIBLE",
         // así que aquí solo mostramos un acceso a los detalles (sin repetir el texto).
-        html += `<td><div class="operario-locked" style="cursor:pointer;opacity:0.85" onclick="mostrarInfoBloqueo('${esc(v.matricula)}','${esc(v.motivo_bloqueo||'')}','${esc(v.bloqueado_por||'')}','${esc(v.fecha_bloqueo||'')}')">
+        html += `<td><div class="operario-locked" style="cursor:pointer;opacity:0.85" onclick="${bloqHist
+          ? `mostrarInfoBloqueo('${esc(v.matricula)}','${esc(bloqHist.motivo||'')}','${esc(bloqHist.bloqueado_por||'')}','${esc(bloqHist.desde||'')}','${esc(bloqHist.hasta||'ABIERTO')}')`
+          : `mostrarInfoBloqueo('${esc(v.matricula)}','${esc(v.motivo_bloqueo||'')}','${esc(v.bloqueado_por||'')}','${esc(v.fecha_bloqueo||'')}')`}">
           <span class="operario-locked-name" style="color:#c63030">ℹ️ Ver motivo del bloqueo</span>
         </div></td>`;
       } else if (cuadranteBloqueado) {
@@ -1088,6 +1096,25 @@ function renderTabla() {
 // En días pasados cada vehículo sale en la nave que tenía ese día: la guardada
 // en su registro o, si ese día no tiene registro, la que dice el historial de
 // cambios de nave. Hoy y en el futuro, en su nave actual.
+// Bloqueo que tenía un vehículo en una fecha pasada (o null). Cuenta como
+// bloqueado desde el día en que se bloqueó hasta el día anterior a desbloquearse
+// (el día del desbloqueo ya vuelve a estar disponible, salvo que se bloqueara y
+// desbloqueara ese mismo día).
+function _diaLocal(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _bloqueoEnFecha(matricula, fecha) {
+  const lista = (typeof window !== 'undefined' && window.BLOQUEOS_HIST) || [];
+  return lista.find(b => {
+    if (b.matricula !== matricula) return false;
+    const ini = _diaLocal(b.desde), fin = _diaLocal(b.hasta);
+    if (fecha < ini) return false;
+    return !b.hasta || fecha < fin || fecha === ini;
+  }) || null;
+}
+
 function _naveEnFecha(matricula, fecha, naveActual) {
   const lista = (typeof window !== 'undefined' && window.CAMBIOS_NAVE) || [];
   // El primer cambio posterior a esa fecha dice qué nave tenía entonces

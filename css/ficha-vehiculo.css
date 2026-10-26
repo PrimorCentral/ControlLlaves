@@ -305,6 +305,67 @@
   .fv-acciones, .fv-check { grid-template-columns: 1fr; }
 }
 
+/* ── Historial (solo admin) · js/ficha-historial.js ── */
+.fh-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.fh-cab .fv-card-nota { margin-top: 4px; font-size: 14px; }
+.fh-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.fh-resumen .fv-card { padding: 16px 18px; gap: 6px; }
+.fh-resumen .fv-card-big { font-size: 24px; }
+.fh-filtros { display: flex; gap: 8px; flex-wrap: wrap; }
+.fh-filtro {
+  height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #D5DBE4; background: #fff;
+  font: 700 13.5px 'Barlow', sans-serif; color: #3A4456; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+}
+.fh-filtro b { font-weight: 700; font-size: 12px; color: #8899AA; }
+.fh-filtro.activo { background: #0E1726; border-color: #0E1726; color: #fff; }
+.fh-filtro.activo b { color: #9AA6B8; }
+.fh-filtro i { width: 8px; height: 8px; border-radius: 50%; }
+
+.fh-lista { background: #fff; border: 1px solid #E3E7EE; border-radius: 14px; padding: 6px 22px 14px; }
+.fh-mes {
+  font-size: 12.5px; font-weight: 800; letter-spacing: .12em; color: #5B6576; text-transform: uppercase;
+  padding: 16px 0 8px; border-bottom: 1px solid #EEF1F5; margin-bottom: 4px;
+}
+.fh-ev { display: grid; grid-template-columns: 92px 40px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 12px 0; position: relative; }
+.fh-ev + .fh-ev { border-top: 1px dashed #EEF1F5; }
+.fh-fecha { display: flex; flex-direction: column; gap: 1px; padding-top: 2px; }
+.fh-dia { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; }
+.fh-hora { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #8899AA; }
+.fh-ico {
+  width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.fh-ico svg { width: 19px; height: 19px; }
+.fh-ico.nave   { background: #E8EEFC; color: #1D3FA8; }
+.fh-ico.bloq   { background: #FDECEA; color: #B42318; }
+.fh-ico.desb   { background: #E7F5EC; color: #166534; }
+.fh-ico.averia { background: #FFF4DD; color: #9A5B00; }
+.fh-ico.docs   { background: #EEF1F5; color: #3A4456; }
+.fh-ico.rep    { background: #F1EAFD; color: #5B2DB0; }
+.fh-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fh-tit { font-size: 15.5px; font-weight: 700; }
+.fh-det { font-size: 14px; color: #3A4456; line-height: 1.45; overflow-wrap: anywhere; }
+.fh-det .fh-flecha { color: #8899AA; margin: 0 6px; }
+.fh-tag {
+  display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; margin-left: 6px; vertical-align: 1px;
+}
+.fh-tag.rojo  { background: #FDECEA; color: #B42318; }
+.fh-tag.verde { background: #E7F5EC; color: #166534; }
+.fh-tag.gris  { background: #EEF1F5; color: #3A4456; }
+.fh-quien { font-size: 12.5px; color: #8899AA; }
+.fh-tramo {
+  margin-top: 6px; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #5B6576; font-weight: 600;
+}
+.fh-tramo span.barra { flex: 0 1 260px; height: 6px; border-radius: 6px; background: repeating-linear-gradient(90deg, #C93636 0 10px, #E26D6D 10px 14px); }
+.fh-mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.fh-mas { display: flex; justify-content: center; padding-top: 12px; }
+.fh-vacio { padding: 28px 0 18px; text-align: center; font-size: 14.5px; color: #8899AA; }
+.fh-filtro:focus-visible { outline: 2px solid #C93636; outline-offset: 2px; }
+@media (max-width: 900px) {
+  .fh-resumen { grid-template-columns: 1fr 1fr; }
+  .fh-ev { grid-template-columns: 64px 38px minmax(0, 1fr); }
+  .fh-quien { grid-column: 3; }
+}
+
 /* Rendimiento: mientras la ficha está abierta no se anima nada de lo que queda
    detrás (cuadrante), y la escena del acceso se para cuando el acceso está oculto. */
 body:has(#modal-ficha-vehiculo.visible) .mant-badge.grave::after { animation-play-state: paused; }

@@ -1085,15 +1085,22 @@ function renderTabla() {
   wrap.innerHTML = html;
 }
 
-// En días pasados cada vehículo sale en la nave que tenía ese día (guardada en
-// su registro); hoy y en el futuro, en su nave actual.
+// En días pasados cada vehículo sale en la nave que tenía ese día: la guardada
+// en su registro o, si ese día no tiene registro, la que dice el historial de
+// cambios de nave. Hoy y en el futuro, en su nave actual.
+function _naveEnFecha(matricula, fecha, naveActual) {
+  const lista = (typeof window !== 'undefined' && window.CAMBIOS_NAVE) || [];
+  // El primer cambio posterior a esa fecha dice qué nave tenía entonces
+  const sig = lista.find(c => c.matricula === matricula && c.fecha > fecha);
+  return sig ? sig.nave_anterior : naveActual;
+}
 function _gruposParaCuadrante() {
   const n = new Date();
   const hoyStr = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
   if (fechaActual >= hoyStr) return GRUPOS;
   const res = GRUPOS.map(g => ({ nombre: g.nombre, vehiculos: [] }));
   GRUPOS.forEach(g => g.vehiculos.forEach(v => {
-    const nave = getDato(v.matricula)._grupo || g.nombre;
+    const nave = getDato(v.matricula)._grupo || _naveEnFecha(v.matricula, fechaActual, g.nombre);
     let destino = res.find(x => x.nombre.toUpperCase() === nave.toUpperCase());
     if (!destino) { destino = { nombre: nave, vehiculos: [] }; res.push(destino); }
     destino.vehiculos.push(v);

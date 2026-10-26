@@ -571,8 +571,17 @@ function editarVehiculo(gi, vi) {
     const ok = await sincronizarVehiculosConSheets();
     if (!ok) { restaurarBtn(); renderAdminVehiculos(); renderAdminStats(); renderTabla(); return; }
     overlay.remove();
+    // Si cambió la matrícula, el historial de naves la sigue
+    if (cambiaMat && typeof sb !== 'undefined' && sb) {
+      try { await sb.from('cambios_nave').update({ matricula: nuevaMat }).eq('matricula', matAnterior); } catch (e) {}
+      (window.CAMBIOS_NAVE || []).forEach(c => { if (c.matricula === matAnterior) c.matricula = nuevaMat; });
+    }
     // Nave nueva: solo para hoy en adelante; los días pasados conservan la que tenían
     if (nuevaNave !== naveActual.toUpperCase() && typeof sb !== 'undefined' && sb) {
+      const cambio = { matricula: v.matricula, nave_anterior: naveActual, nave_nueva: nuevaNave, fecha: _registroHoyISO() };
+      try { await sb.from('cambios_nave').insert(cambio); } catch (e) {}
+      if (!window.CAMBIOS_NAVE) window.CAMBIOS_NAVE = [];
+      window.CAMBIOS_NAVE.push(cambio);
       try {
         await sb.from('registros').update({ grupo: nuevaNave })
           .eq('matricula', v.matricula).gte('fecha', _registroHoyISO());

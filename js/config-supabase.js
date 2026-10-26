@@ -163,6 +163,12 @@ async function manejarPeticionSupabase(urlStr, options) {
         tacografo: !!v.tacografo,
         sociedad: v.sociedad || ''
       }));
+      // Historial de cambios de nave (para montar bien los días pasados)
+      try {
+        const { data: cn } = await sb.from('cambios_nave')
+          .select('matricula, nave_anterior, nave_nueva, fecha').order('fecha', { ascending: true });
+        window.CAMBIOS_NAVE = cn || [];
+      } catch (e) { window.CAMBIOS_NAVE = window.CAMBIOS_NAVE || []; }
       return { ok: true, flota };
     }
 

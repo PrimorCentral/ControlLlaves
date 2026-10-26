@@ -2,7 +2,7 @@
 // FLOTA PRIMOR · js/ficha-vehiculo.js — FICHA DEL VEHÍCULO
 //
 // Ventana que se abre al pulsar una matrícula. Menú lateral con:
-//   Resumen · Seguro · ITV · Documentos · Averías · Mantenimiento
+//   Resumen · Seguro · ITV · Documentos · Averías · Mantenimiento · Historial (admin)
 // · Resumen: bloqueo, tarjetas de ITV / Seguro / Mantenimiento, qué
 //   documentación falta y acciones rápidas.
 // · Averías y Mantenimiento: los pinta js/mantenimiento.js (mantCargarFicha).
@@ -35,6 +35,7 @@ const FICHA_SECCIONES = [
   { id: 'docs',    label: 'Documentos' },
   { id: 'averias', label: 'Averías' },
   { id: 'mant',    label: 'Mantenimiento' },
+  { id: 'hist',    label: 'Historial', admin: true }, // solo administradores (js/ficha-historial.js)
   { id: 'gestion', label: 'Gestión', admin: true }   // solo administradores
 ];
 // Secciones que puede ver el usuario actual
@@ -110,6 +111,10 @@ function abrirFichaVehiculo(matricula) {
   // La pestaña Gestión se vacía al abrir: solo se pinta si el usuario es admin
   const pGest = modal.querySelector('.fv-panel[data-tab="gestion"]');
   if (pGest) pGest.innerHTML = '';
+  // El historial se vuelve a leer cada vez que se abre una ficha
+  const pHist = modal.querySelector('.fv-panel[data-tab="hist"]');
+  if (pHist) pHist.innerHTML = '';
+  if (typeof fichaHistInvalidar === 'function') fichaHistInvalidar();
   _fichaPintarTodo();
   _fichaCargarDatos(matricula);
   setTimeout(() => { const b = modal.querySelector('.fv-cerrar'); if (b) b.focus(); }, 50);
@@ -288,6 +293,7 @@ function _fichaPintarNav(v) {
                   : (e.revProxima ? String(e.revs.filter(r => r.estado === 'proxima').length) : ''),
                globo: e.revVencida ? true : (e.revProxima ? 'ambar' : false),
                titulo: e.revVencida ? 'Revisiones vencidas' : (e.revProxima ? 'Revisiones próximas' : '') },
+    hist:    { dot: 'nada', txt: '' },
     gestion: { dot: v.archivado ? 'nada' : (v.bloqueado ? 'mal' : (v.restringido ? 'aviso' : 'ok')),
                txt: v.archivado ? 'Baja' : (v.bloqueado ? 'Bloq.' : (v.restringido ? 'Restr.' : '')) }
   };
@@ -309,7 +315,8 @@ function _fichaPintarPanel(tab) {
   const v = _getVehiculo(_fichaMat);
   const cont = document.querySelector(`#modal-ficha-vehiculo .fv-panel[data-tab="${tab}"]`);
   if (!v || !cont) return;
-  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, taco: _fichaHtmlTaco, docs: _fichaHtmlDocs, gestion: _fichaHtmlGestion }[tab];
+  const html = { resumen: _fichaHtmlResumen, seguro: _fichaHtmlSeguro, itv: _fichaHtmlItv, taco: _fichaHtmlTaco, docs: _fichaHtmlDocs, gestion: _fichaHtmlGestion,
+                 hist: (typeof fichaHistHtml === 'function' && _fvEsAdmin()) ? fichaHistHtml : null }[tab];
   if (html) cont.innerHTML = html(v);
 }
 

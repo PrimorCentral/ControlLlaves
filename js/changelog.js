@@ -10,6 +10,25 @@
 // ---------------------------------------------------------------
 const CHANGELOG_FLOTA = [
   {
+    version: '3.10.0',
+    fecha: '2026-11-09',
+    cambios: [
+      { tipo: 'mejora', texto: 'Nueva ventana de Orden de Trabajo: cabecera con vehículo, chofer, fecha y turno en una franja, empresa en pestañas y rutas en tarjetas por parejas de ida y vuelta (GAITE a la izquierda y el resto a la derecha)' },
+      { tipo: 'mejora', texto: 'Un clic en la tarjeta marca la ida y la vuelta; pulsando un sentido se quita solo ese. Al abrir no hay ninguna empresa marcada' },
+      { tipo: 'nuevo',  texto: 'Rutas habituales de cada vehículo: se marcan con la ★ de la tarjeta y, al elegir la empresa, vienen ya marcadas para imprimir directamente' },
+      { tipo: 'nuevo',  texto: 'Atajos en la Orden de Trabajo: ⭐ Habituales, ↺ Como ayer (las rutas del último día que se imprimió ese vehículo) y ✕ Ninguna' },
+      { tipo: 'mejora', texto: 'Reimprimir todo de golpe: si las rutas ya están impresas, el botón pasa a "Reimprimir orden" y las saca todas juntas. Si se mezclan nuevas y ya impresas, se imprimen juntas y en el registro solo se apuntan las nuevas' },
+      { tipo: 'nuevo',  texto: 'Nueva pestaña "Historial" en la ficha del vehículo (solo administradores): cambios de nave, bloqueos, averías y demás movimientos del vehículo' },
+      { tipo: 'mejora', texto: 'Los cuadrantes de días pasados respetan la nave que tenía cada vehículo ese día: cambiar un vehículo de nave ya no altera los cuadrantes anteriores' },
+      { tipo: 'mejora', texto: 'Los cuadrantes de días pasados muestran como bloqueado o no disponible el vehículo que lo estuvo esos días, aunque ya se haya desbloqueado' },
+      { tipo: 'mejora', texto: '"Incidencias pendientes" pasa a llamarse "Incidencias activas" y se divide en dos columnas: sin gestionar a la izquierda y en reparación (averías en taller) a la derecha' },
+      { tipo: 'mejora', texto: 'En Incidencias activas el tipo de incidencia solo se muestra y ya no se puede cambiar' },
+      { tipo: 'mejora', texto: 'La ventana "¿Qué quieres añadir?" del cuadrante queda con Incidencia, Avería y Accidente' },
+      { tipo: 'mejora', texto: 'Los textos de incidencias, averías y accidentes del cuadrante se escriben siempre en mayúsculas' },
+      { tipo: 'correccion', texto: 'Al borrar una incidencia se borra también su avería si sigue abierta; si la avería ya está en taller o reparada, la incidencia no se puede borrar y se avisa de que está gestionada' }
+    ]
+  },
+  {
     version: '3.9.0',
     fecha: '2026-10-21',
     cambios: [

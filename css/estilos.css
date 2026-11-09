@@ -542,6 +542,7 @@
     .ot-chip:hover { border-color: #e84545; color: #e84545; }
     .ot-banner { font-size: 11px; font-weight: 700; color: #1e3a5f; background: #eef3fa; border: 1px solid #c9d6e8; border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; }
     .ot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .ot-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
     .ot-card { border: 1.5px solid #dde1e8; border-radius: 10px; padding: 10px 11px 9px; cursor: pointer; background: white; transition: all 0.15s; display: flex; flex-direction: column; gap: 8px; user-select: none; }
     .ot-card:hover { border-color: #e84545; }
     .ot-card.sel { border-color: #e84545; background: #fff5f5; }

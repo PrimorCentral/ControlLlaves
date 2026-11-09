@@ -515,51 +515,71 @@
     .mlr-btn:hover { background: #c63030; }
 
     /* ─── MODAL ORDEN DE TRABAJO ─── */
-    .modal-orden { background: white; border-radius: 16px; padding: 28px 26px; width: 520px; max-width: 95vw; max-height: 92vh; overflow-y: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.35); display: flex; flex-direction: column; }
-    .modal-orden-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-    .modal-orden-title { font-size: 16px; font-weight: 900; color: #1a1a2e; }
     .modal-orden-sub { font-size: 11px; color: #8899aa; margin-top: 3px; }
     .modal-orden-close { background: none; border: 1.5px solid #dde1e8; border-radius: 7px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; color: #889; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
     .modal-orden-close:hover { background: #e84545; color: white; border-color: #e84545; }
-    .orden-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-    .orden-info-field { background: #f7f8fa; border-radius: 8px; padding: 10px 12px; border: 1px solid #dde1e8; }
-    .orden-info-label { font-size: 9px; font-weight: 700; color: #8899aa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
-    .orden-info-val { font-size: 14px; font-weight: 800; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .orden-section-label { font-size: 10px; font-weight: 700; color: #8899aa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 7px; }
-    .orden-empresa-btns { display: flex; gap: 8px; margin-bottom: 14px; }
-    .orden-emp-btn { flex: 1; padding: 9px; border: 1.5px solid #dde1e8; border-radius: 8px; background: white; color: #556; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
-    .orden-emp-btn.active { background: #e84545; border-color: #e84545; color: white; }
-    .orden-emp-btn:hover:not(.active) { border-color: #e84545; color: #e84545; }
-    .orden-empresa-hint { font-size: 10px; color: #e84545; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 10px; display: none; }
-    .orden-empresa-hint.visible { display: block; }
-    .orden-rutas-wrapper { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    .orden-rutas-wrapper.oculto { display: none; }
-    .orden-sin-empresa { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px 0; }
-    .orden-sin-empresa-icon { font-size: 32px; opacity: 0.3; }
-    .orden-sin-empresa-txt { font-size: 12px; color: #aab; font-weight: 600; text-align: center; }
-    .orden-rutas-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; overflow-y: auto; flex: 1; min-height: 0; }
-    .orden-rutas-bloque { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .orden-ruta-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1.5px solid #dde1e8; border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none; }
-    .orden-ruta-item:hover { border-color: #e84545; background: #fff5f5; }
-    .orden-ruta-item.selected { border-color: #e84545; background: #fff0f0; }
-    .orden-ruta-item input[type=checkbox] { accent-color: #e84545; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
-    .orden-ruta-item label { font-size: 13px; font-weight: 600; color: #1a1a2e; cursor: pointer; flex: 1; }
-    .orden-ruta-count { font-size: 10px; font-weight: 800; color: #e84545; background: #fff0f0; border: 1.5px solid #e84545; border-radius: 5px; padding: 1px 7px; margin-left: auto; display: none; }
-    .orden-ruta-count.visible { display: inline-block; }
-    .orden-sel-hint { font-size: 10px; color: #8899aa; margin-bottom: 8px; }
-    .orden-ruta-item.ya-impresa { border-color: #16a34a; background: #f0fdf4; }
-    .orden-ruta-item.ya-impresa:hover { border-color: #15803d; background: #dcfce7; }
-    .orden-ruta-item.ya-impresa label { color: #166534; }
-    .badge-impresa { font-size: 9px; font-weight: 800; color: #16a34a; background: #dcfce7; border: 1.5px solid #16a34a; border-radius: 5px; padding: 1px 6px; letter-spacing: 0.3px; white-space: nowrap; }
-    .btn-reimprimir { padding: 4px 9px; background: #16a34a; color: white; border: none; border-radius: 6px; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: background 0.15s; flex-shrink: 0; }
-    .btn-reimprimir:hover { background: #15803d; }
-    .orden-actions { display: flex; gap: 8px; justify-content: flex-end; }
-    .btn-modal-cancelar { padding: 11px 18px; background: #f4f5f8; color: #556; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
-    .btn-modal-cancelar:hover { background: #eaecf2; }
+    .modal-ot { background: white; border-radius: 16px; width: 640px; max-width: 95vw; max-height: 94vh; box-shadow: 0 24px 64px rgba(0,0,0,0.35); overflow: hidden; display: flex; flex-direction: column; font-family: 'Barlow', sans-serif; }
+    .ot-head { background: #1a1a2e; color: white; padding: 18px 22px 16px; flex-shrink: 0; }
+    .ot-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .ot-title { font-size: 16px; font-weight: 900; letter-spacing: 0.2px; }
+    .ot-sub { color: #9aa3b8 !important; }
+    .ot-close { background: none; border: 1.5px solid #3a3a5a; border-radius: 7px; width: 30px; height: 30px; color: #c9cbd6; font-size: 14px; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+    .ot-close:hover { background: #e84545; border-color: #e84545; color: white; }
+    .ot-strip { display: grid; grid-template-columns: 1.1fr 1.6fr 0.9fr 0.8fr; gap: 1px; margin-top: 14px; background: #2c2c48; border-radius: 9px; overflow: hidden; }
+    .ot-cell { background: #242440; padding: 8px 11px; min-width: 0; }
+    .ot-lbl { font-size: 9px; font-weight: 700; color: #9aa3b8; letter-spacing: 1px; text-transform: uppercase; }
+    .ot-val { font-size: 13px; font-weight: 800; color: #f5f5f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .ot-turno { display: inline-block; background: #e84545; color: white; border-radius: 5px; padding: 0 6px; font-size: 11px; }
+    .ot-body { padding: 18px 22px 4px; overflow-y: auto; flex: 1; min-height: 0; }
+    .ot-seg { display: flex; background: #f4f5f8; border-radius: 9px; padding: 3px; gap: 3px; margin-bottom: 16px; }
+    .ot-seg button { flex: 1; padding: 9px; border: none; border-radius: 7px; background: transparent; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800; color: #556; cursor: pointer; letter-spacing: 0.3px; transition: all 0.15s; }
+    .ot-seg button:hover:not(.on) { color: #e84545; }
+    .ot-seg button.on { background: white; color: #e84545; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+    .ot-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; flex-wrap: wrap; }
+    .ot-label { font-size: 10px; font-weight: 700; color: #8899aa; letter-spacing: 1px; text-transform: uppercase; }
+    .ot-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ot-chip { padding: 5px 9px; border: 1.5px solid #dde1e8; border-radius: 20px; background: white; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 800; color: #556; cursor: pointer; transition: all 0.15s; }
+    .ot-chip:hover { border-color: #e84545; color: #e84545; }
+    .ot-banner { font-size: 11px; font-weight: 700; color: #1e3a5f; background: #eef3fa; border: 1px solid #c9d6e8; border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; }
+    .ot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .ot-card { border: 1.5px solid #dde1e8; border-radius: 10px; padding: 10px 11px 9px; cursor: pointer; background: white; transition: all 0.15s; display: flex; flex-direction: column; gap: 8px; user-select: none; }
+    .ot-card:hover { border-color: #e84545; }
+    .ot-card.sel { border-color: #e84545; background: #fff5f5; }
+    .ot-card.imp { border-color: #16a34a; background: #f0fdf4; }
+    .ot-card.imp:hover { border-color: #15803d; }
+    .ot-c-top { display: flex; align-items: center; gap: 8px; }
+    .ot-chk { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #c3c9d4; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: white; flex-shrink: 0; }
+    .ot-card.sel .ot-chk { background: #e84545; border-color: #e84545; }
+    .ot-card.imp .ot-chk { background: #16a34a; border-color: #16a34a; }
+    .ot-name { font-size: 14px; font-weight: 900; color: #1a1a2e; flex: 1; letter-spacing: 0.2px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ot-card.imp .ot-name { color: #166534; }
+    .ot-star { background: none; border: none; font-size: 16px; line-height: 1; color: #d1d5db; cursor: pointer; padding: 0 2px; transition: color 0.15s; }
+    .ot-star:hover { color: #fbbf24; }
+    .ot-star.on { color: #f59e0b; }
+    .ot-dirs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+    .ot-dirs.uno { grid-template-columns: 1fr; }
+    .ot-dir { padding: 5px 4px; border: 1.5px solid #e5e8ee; border-radius: 6px; background: #f7f8fa; font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 800; color: #99a; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.15s; }
+    .ot-dir.on { border-color: #e84545; color: #e84545; background: white; }
+    .ot-card.imp .ot-dir.on { border-color: #16a34a; color: #166534; }
+    .ot-estado { font-size: 9px; font-weight: 800; border-radius: 5px; padding: 1px 6px; letter-spacing: 0.3px; white-space: nowrap; }
+    .ot-estado.imp { color: #16a34a; background: #dcfce7; border: 1.5px solid #16a34a; }
+    .ot-estado.nueva { color: #e84545; background: #fff0f0; border: 1.5px solid #e84545; }
+    .ot-estado.hecha { color: #6b8f78; background: #f3f6f4; border: 1.5px solid #c5d6cb; }
+    .ot-ayuda { font-size: 10px; color: #8899aa; margin-top: 9px; text-align: center; }
+    .ot-vacio { grid-column: 1 / -1; text-align: center; font-size: 12px; color: #aab; font-weight: 600; padding: 20px 0; }
+    .ot-foot { border-top: 1px solid #eef0f4; background: #fafbfc; padding: 12px 22px 16px; margin-top: 12px; flex-shrink: 0; }
+    .ot-resumen { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #556; margin-bottom: 10px; flex-wrap: wrap; }
+    .ot-duplex { margin-left: auto; font-size: 11px; font-weight: 800; color: #1e3a5f; cursor: help; }
+    .ot-acc { display: flex; gap: 8px; }
+    .ot-cancel { padding: 11px 16px; background: #f4f5f8; color: #556; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+    .ot-cancel:hover { background: #eaecf2; }
+    .ot-pack { padding: 11px 14px; background: white; color: #1e3a5f; border: 1.5px solid #1e3a5f; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800; cursor: pointer; letter-spacing: 0.3px; white-space: nowrap; transition: background 0.15s; }
+    .ot-pack:hover { background: #eef3fa; }
     .btn-modal-imprimir { flex: 1; padding: 11px; background: #e84545; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; transition: background 0.15s; }
     .btn-modal-imprimir:hover { background: #c63030; }
-    .btn-packing-list { width: 100%; padding: 10px; background: #1e3a5f; color: white; border: none; border-radius: 8px; font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: background 0.15s; letter-spacing: 0.3px; margin-bottom: 12px; }
-    .btn-packing-list:hover { background: #162c48; }
+    .btn-modal-imprimir.reimp { background: #16a34a; }
+    .btn-modal-imprimir.reimp:hover { background: #15803d; }
+    .btn-modal-imprimir.off, .btn-modal-imprimir.off:hover { background: #e84545; opacity: 0.38; cursor: not-allowed; }
     .modal-packing { background: white; border-radius: 16px; padding: 24px 22px 20px; width: min(780px, 96vw); height: min(90vh, 960px); display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
     .modal-packing-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; flex-shrink: 0; }
     .modal-packing-title { font-size: 15px; font-weight: 900; color: #1a1a2e; }
@@ -1249,7 +1269,12 @@
       #modal-nueva-version .nv-box { width: 90vw; padding: 26px 18px 20px; }
       #modal-devol-pendientes .dp-box { width: 96vw; max-width: 96vw; }
       .modal-repo  { width: 96vw !important; padding: 20px 16px !important; }
-      .modal-orden { width: 96vw !important; padding: 20px 16px !important; max-height: 94vh !important; }
+      .modal-ot { width: 96vw !important; max-height: 94vh !important; }
+      .ot-head, .ot-body, .ot-foot { padding-left: 14px !important; padding-right: 14px !important; }
+      .ot-strip { grid-template-columns: 1fr 1fr !important; }
+      .ot-grid { grid-template-columns: 1fr !important; }
+      .ot-acc { flex-wrap: wrap; }
+      .ot-print { flex-basis: 100%; order: -1; }
       .modal-admin {
         width: 100vw !important; max-width: 100vw !important;
         height: 100vh !important; max-height: 100vh !important;
@@ -1283,7 +1308,7 @@
       #banner-devol-pendientes { font-size: 11px; padding: 8px 12px; flex-wrap: wrap; }
 
       /* Listas en modales */
-      .orden-rutas-lista, .dp-lista,
+      .dp-lista,
       #recibir-llaves-lista, #repostajes-pendientes-lista { max-height: 42vh; }
     }
 

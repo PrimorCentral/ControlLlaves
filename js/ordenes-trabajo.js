@@ -4,7 +4,8 @@
 // autoOpen: true = viene de asignar operario (pregunta si imprimir)
 //           false = viene del botón "🖨️ Orden" (abre directamente)
 //
-// Las rutas se muestran en tarjetas por parejas (ida ⇄ vuelta). Al abrir:
+// Las rutas se muestran en tarjetas por parejas (ida ⇄ vuelta). Al abrir no
+// hay empresa marcada; al elegirla:
 //   1) si ya hay rutas impresas hoy para este vehículo/turno → vienen marcadas
 //      (el botón pasa a "Reimprimir orden" y las saca todas juntas)
 //   2) si no, se marcan las rutas habituales del vehículo (tabla rutas_habituales)
@@ -84,16 +85,11 @@ async function abrirModalOrden(matricula, autoOpen) {
   })();
   await Promise.all([cargarImpresas, cargarHabituales]);
 
-  // Empresa inicial: la que tenga órdenes impresas hoy → la que tenga habituales → la primera
-  const keys = Object.keys(EMPRESAS);
-  const conImpresas = keys.find(k => [..._rutasImpresasModal].some(x => x.startsWith(k + '|')));
-  const conHab      = keys.find(k => _otHab[k] && _otHab[k].size);
-  const empInicial  = conImpresas || conHab || keys[0];
-
+  // Ninguna empresa marcada al abrir: el responsable la elige y entonces
+  // se marcan las rutas ya impresas hoy o, si no hay, las habituales
   if (_cargaOrden) _cargaOrden.classList.remove('visible');
   _otPintarEmpresas();
-  if (empInicial) selOrdenEmpresa(empInicial);
-  else resetOrdenEmpresa();
+  resetOrdenEmpresa();
   document.getElementById('modal-orden').classList.add('open');
 
   const sub = document.querySelector('.modal-orden-sub');
@@ -127,7 +123,9 @@ function resetOrdenEmpresa() {
   _otPares = [];
   _otBanner('');
   document.querySelectorAll('#orden-empresas button').forEach(b => b.classList.remove('on'));
-  document.getElementById('orden-rutas-lista').innerHTML = '<div class="ot-vacio">No hay empresas configuradas</div>';
+  document.getElementById('orden-rutas-lista').innerHTML = Object.keys(EMPRESAS).length
+    ? '<div class="ot-vacio">🏢 Elige una empresa arriba para ver las rutas</div>'
+    : '<div class="ot-vacio">No hay empresas configuradas</div>';
   actualizarContadorRutas();
 }
 
@@ -251,7 +249,8 @@ async function otToggleHabitual(i) {
 }
 
 function otMarcarHabituales() {
-  const key = _ordenEmpresaKey; if (!key) return;
+  const key = _ordenEmpresaKey;
+  if (!key) { mostrarToast('Elige primero la empresa', 'info'); return; }
   const hab = _otHab[key] ? [..._otHab[key]] : [];
   if (!hab.length) {
     mostrarToast('Este vehículo no tiene rutas habituales: márcalas con la ★', 'info');
@@ -264,7 +263,8 @@ function otMarcarHabituales() {
 
 // Marca las rutas del último día anterior en que se imprimieron órdenes de este vehículo
 async function otComoAyer() {
-  const key = _ordenEmpresaKey; if (!key) return;
+  const key = _ordenEmpresaKey;
+  if (!key) { mostrarToast('Elige primero la empresa', 'info'); return; }
   const emp = EMPRESAS[key];
   try {
     const { data, error } = await sb.from('log_ordenes').select('fecha,turno,empresa,ruta')

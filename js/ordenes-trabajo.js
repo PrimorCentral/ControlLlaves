@@ -3,10 +3,33 @@
 // ════════════════════════════════════════════════════════════════════════════
 // autoOpen: true = viene de asignar operario (pregunta si imprimir)
 //           false = viene del botón "🖨️ Orden" (abre directamente)
+//
+// Las rutas se muestran en tarjetas por parejas (ida ⇄ vuelta). Al abrir:
+//   1) si ya hay rutas impresas hoy para este vehículo/turno → vienen marcadas
+//      (el botón pasa a "Reimprimir orden" y las saca todas juntas)
+//   2) si no, se marcan las rutas habituales del vehículo (tabla rutas_habituales)
+// Atajos: ⭐ Habituales · ↺ Como ayer (último día con órdenes) · ✕ Ninguna
 
-// Rutas ya impresas para el vehículo actualmente abierto en el modal
-// Set de strings con formato "empresaKey|rutaId"  (se rellena al abrir el modal)
+// Rutas ya impresas hoy para el vehículo abierto: Set "empresaKey|labelRuta"
 let _rutasImpresasModal = new Set();
+// Rutas marcadas ahora mismo (labels de la empresa activa)
+let _otSel = new Set();
+// Rutas habituales del vehículo: { empresaKey: Set(labels) }
+let _otHab = {};
+// Parejas de la empresa activa: [[ruta, rutaVuelta?], …]
+let _otPares = [];
+
+function _otEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Busca la empresa a partir del label guardado en el log
+function _otEmpresaDeLabel(label) {
+  return Object.keys(EMPRESAS).find(k => {
+    const l = EMPRESAS[k].label || '';
+    return l === label || l.replace(' & ', ' &amp; ') === label;
+  });
+}
 
 async function abrirModalOrden(matricula, autoOpen) {
   if (!usuarioActual) {
@@ -30,61 +53,280 @@ async function abrirModalOrden(matricula, autoOpen) {
   const _cargaOrden = document.getElementById('carga-orden-overlay');
   if (_cargaOrden) _cargaOrden.classList.add('visible');
 
-  // Cargar rutas ya impresas para este vehículo/turno/fecha desde LogOrdenes
   _rutasImpresasModal.clear();
-  try {
-    if (APPS_SCRIPT_URL) {
+  _otHab = {};
+  const matUp = matricula.trim().toUpperCase();
+
+  // Rutas ya impresas hoy (LogOrdenes) y rutas habituales, en paralelo
+  const cargarImpresas = (async () => {
+    try {
+      if (!APPS_SCRIPT_URL) return;
       const url = `${APPS_SCRIPT_URL}?accion=cargarLog&desde=${encodeURIComponent(fechaActual)}&hasta=${encodeURIComponent(fechaActual)}&_t=${Date.now()}`;
       const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(6000) });
-      if (resp.ok) {
-        const json = await resp.json();
-        const filas = json.filas || [];
-        filas.forEach(f => {
-          const matLog   = (f.matricula || '').trim().toUpperCase();
-          const turnoLog = (f.turno || '').trim().toUpperCase();
-          if (matLog !== matricula.trim().toUpperCase()) return;
-          if (turnoLog !== turnoActual.toUpperCase()) return;
-          // Buscar empresa y ruta correspondiente al label guardado en el log
-          Object.entries(EMPRESAS).forEach(([empKey, emp]) => {
-            if (emp.label === f.empresa || emp.label.replace(' & ',' &amp; ') === f.empresa) {
-              const ruta = emp.rutas.find(r => r.label === f.ruta);
-              if (ruta) _rutasImpresasModal.add(`${empKey}|${ruta.id}`);
-            }
-          });
-        });
-      }
-    }
-  } catch(e) { /* sin conexión — no crítico */ }
+      if (!resp.ok) return;
+      const json = await resp.json();
+      (json.filas || []).forEach(f => {
+        if ((f.matricula || '').trim().toUpperCase() !== matUp) return;
+        if ((f.turno || '').trim().toUpperCase() !== turnoActual.toUpperCase()) return;
+        const empKey = _otEmpresaDeLabel(f.empresa);
+        if (empKey && f.ruta) _rutasImpresasModal.add(`${empKey}|${f.ruta}`);
+      });
+    } catch(e) { /* sin conexión — no crítico */ }
+  })();
+  const cargarHabituales = (async () => {
+    try {
+      const { data, error } = await sb.from('rutas_habituales').select('empresa_codigo,ruta').eq('matricula', matricula);
+      if (error) return;
+      (data || []).forEach(h => {
+        (_otHab[h.empresa_codigo] = _otHab[h.empresa_codigo] || new Set()).add(h.ruta);
+      });
+    } catch(e) { /* no crítico */ }
+  })();
+  await Promise.all([cargarImpresas, cargarHabituales]);
 
-  // Ocultar spinner y abrir modal
+  // Empresa inicial: la que tenga órdenes impresas hoy → la que tenga habituales → la primera
+  const keys = Object.keys(EMPRESAS);
+  const conImpresas = keys.find(k => [..._rutasImpresasModal].some(x => x.startsWith(k + '|')));
+  const conHab      = keys.find(k => _otHab[k] && _otHab[k].size);
+  const empInicial  = conImpresas || conHab || keys[0];
+
   if (_cargaOrden) _cargaOrden.classList.remove('visible');
-  resetOrdenEmpresa();
+  _otPintarEmpresas();
+  if (empInicial) selOrdenEmpresa(empInicial);
+  else resetOrdenEmpresa();
   document.getElementById('modal-orden').classList.add('open');
 
-  // Si viene de autoOpen, mostrar un pequeño indicador visual
-  if (autoOpen) {
-    const sub = document.querySelector('.modal-orden-sub');
-    if (sub) sub.textContent = '✓ Operario asignado — ¿deseas imprimir la orden ahora?';
-  } else {
-    const sub = document.querySelector('.modal-orden-sub');
-    if (sub) sub.textContent = 'Configura e imprime la orden para este vehículo';
-  }
+  const sub = document.querySelector('.modal-orden-sub');
+  if (sub) sub.textContent = autoOpen
+    ? '✓ Operario asignado — ¿deseas imprimir la orden ahora?'
+    : 'Configura e imprime la orden para este vehículo';
 }
 
 function cerrarModalOrden() {
   document.getElementById('modal-orden').classList.remove('open');
 }
 
-// Reimprimir una ruta específica ya registrada en el log
-function reimprimirRuta(empKey, rutaId) {
-  const emp  = EMPRESAS[empKey];
-  const ruta = emp ? emp.rutas.find(r => r.id === rutaId) : null;
-  if (!emp || !ruta) return;
-  _ordenEmpresaKey = empKey;
-  cerrarModalOrden();
-  const modalGen = document.getElementById('modal-generando-orden');
-  if (modalGen) modalGen.classList.add('visible');
-  imprimirOrden(ordenActual.matricula, ordenActual.operario, emp, [ruta]);
+function _otPintarEmpresas() {
+  const cont = document.getElementById('orden-empresas');
+  if (!cont) return;
+  cont.innerHTML = Object.keys(EMPRESAS).map(k =>
+    `<button id="orden-emp-${_otEsc(k)}" onclick="selOrdenEmpresa('${_otEsc(k)}')">${_otEsc(EMPRESAS[k].label || k)}</button>`
+  ).join('');
+}
+
+function _otBanner(txt) {
+  const b = document.getElementById('orden-banner');
+  if (!b) return;
+  b.textContent = txt || '';
+  b.style.display = txt ? '' : 'none';
+}
+
+function resetOrdenEmpresa() {
+  _ordenEmpresaKey = null;
+  _otSel = new Set();
+  _otPares = [];
+  _otBanner('');
+  document.querySelectorAll('#orden-empresas button').forEach(b => b.classList.remove('on'));
+  document.getElementById('orden-rutas-lista').innerHTML = '<div class="ot-vacio">No hay empresas configuradas</div>';
+  actualizarContadorRutas();
+}
+
+// Agrupa las rutas de la empresa en parejas ida/vuelta (las que no tienen vuelta van solas)
+function _otConstruirPares(rutas) {
+  const usadas = new Set(), pares = [];
+  rutas.forEach((r, i) => {
+    if (usadas.has(i)) return;
+    usadas.add(i);
+    const j = rutas.findIndex((x, k) => !usadas.has(k) && x.origen === r.destino && x.destino === r.origen);
+    if (j >= 0) { usadas.add(j); pares.push([r, rutas[j]]); }
+    else pares.push([r]);
+  });
+  return pares;
+}
+
+function selOrdenEmpresa(key) {
+  if (!EMPRESAS[key]) return;
+  _ordenEmpresaKey = key;
+  document.querySelectorAll('#orden-empresas button').forEach(b => b.classList.toggle('on', b.id === 'orden-emp-' + key));
+  _otPares = _otConstruirPares(EMPRESAS[key].rutas || []);
+
+  // Marcado inicial: lo ya impreso hoy; si no hay nada, las habituales
+  const impresas = (EMPRESAS[key].rutas || []).filter(r => _rutasImpresasModal.has(`${key}|${r.label}`)).map(r => r.label);
+  const hab = _otHab[key] ? [..._otHab[key]] : [];
+  if (impresas.length) {
+    _otSel = new Set(impresas);
+    _otBanner('✓ Estas rutas ya se imprimieron hoy — pulsa «Reimprimir» para sacarlas otra vez');
+  } else if (hab.length) {
+    _otSel = new Set(hab);
+    _otBanner('⭐ Marcadas las rutas habituales de este vehículo — pulsa Imprimir o cambia lo que quieras');
+  } else {
+    _otSel = new Set();
+    _otBanner('');
+  }
+  _otPintarRutas();
+}
+
+function _otPintarRutas() {
+  const key = _ordenEmpresaKey;
+  const lista = document.getElementById('orden-rutas-lista');
+  if (!key) return;
+  if (!_otPares.length) {
+    lista.innerHTML = '<div class="ot-vacio">Esta empresa no tiene rutas configuradas</div>';
+    actualizarContadorRutas();
+    return;
+  }
+  const hab = _otHab[key] || new Set();
+  lista.innerHTML = _otPares.map((par, i) => {
+    const labels   = par.map(r => r.label);
+    const marcadas = labels.filter(l => _otSel.has(l));
+    const impresa  = l => _rutasImpresasModal.has(`${key}|${l}`);
+    const any      = marcadas.length > 0;
+    const todasImp = any && marcadas.every(impresa);
+    const algunaImp = labels.some(impresa);
+    let estado = '';
+    if (todasImp) estado = '<span class="ot-estado imp">✓ IMPRESA</span>';
+    else if (any && algunaImp) estado = '<span class="ot-estado nueva">NUEVA</span>';
+    else if (!any && algunaImp) estado = '<span class="ot-estado hecha">✓ IMPRESA</span>';
+    const cls  = 'ot-card' + (todasImp ? ' imp' : (any ? ' sel' : ''));
+    const name = par.length === 2 ? `${par[0].origen} ⇄ ${par[0].destino}` : par[0].label;
+    const star = labels.every(l => hab.has(l));
+    const dirs = par.map((r, j) =>
+      `<button class="ot-dir${_otSel.has(r.label) ? ' on' : ''}" onclick="event.stopPropagation();otToggleSentido(${i},${j})" title="${_otEsc(r.label)}">${_otEsc(r.label)}</button>`
+    ).join('');
+    return `
+    <div class="${cls}" onclick="otTogglePar(${i})">
+      <div class="ot-c-top">
+        <span class="ot-chk">${any ? '✓' : ''}</span>
+        <span class="ot-name">${_otEsc(name)}</span>
+        ${estado}
+        <button class="ot-star${star ? ' on' : ''}" onclick="event.stopPropagation();otToggleHabitual(${i})" title="${star ? 'Quitar de habituales' : 'Marcar como ruta habitual de este vehículo'}" aria-label="Ruta habitual">★</button>
+      </div>
+      <div class="ot-dirs${par.length === 1 ? ' uno' : ''}">${dirs}</div>
+    </div>`;
+  }).join('');
+  actualizarContadorRutas();
+}
+
+function otTogglePar(i) {
+  const par = _otPares[i]; if (!par) return;
+  const any = par.some(r => _otSel.has(r.label));
+  par.forEach(r => any ? _otSel.delete(r.label) : _otSel.add(r.label));
+  _otBanner('');
+  _otPintarRutas();
+}
+
+function otToggleSentido(i, j) {
+  const r = (_otPares[i] || [])[j]; if (!r) return;
+  if (_otSel.has(r.label)) _otSel.delete(r.label); else _otSel.add(r.label);
+  _otBanner('');
+  _otPintarRutas();
+}
+
+async function otToggleHabitual(i) {
+  const key = _ordenEmpresaKey, par = _otPares[i];
+  if (!key || !par) return;
+  const hab = _otHab[key] = _otHab[key] || new Set();
+  const labels = par.map(r => r.label);
+  const quitar = labels.every(l => hab.has(l));
+  // Cambio visual inmediato; si falla Supabase se deshace
+  labels.forEach(l => quitar ? hab.delete(l) : hab.add(l));
+  _otPintarRutas();
+  try {
+    let error;
+    if (quitar) {
+      ({ error } = await sb.from('rutas_habituales').delete()
+        .eq('matricula', ordenActual.matricula).eq('empresa_codigo', key).in('ruta', labels));
+    } else {
+      ({ error } = await sb.from('rutas_habituales').upsert(
+        labels.map(l => ({ matricula: ordenActual.matricula, empresa_codigo: key, ruta: l, creado_por: usuarioActual ? usuarioActual.nombre : null })),
+        { onConflict: 'matricula,empresa_codigo,ruta', ignoreDuplicates: true }));
+    }
+    if (error) throw error;
+    mostrarToast(quitar ? 'Ruta quitada de habituales' : '⭐ Ruta guardada como habitual', 'info');
+  } catch (e) {
+    labels.forEach(l => quitar ? hab.add(l) : hab.delete(l));
+    _otPintarRutas();
+    mostrarToast('No se pudo guardar la ruta habitual', 'error');
+  }
+}
+
+function otMarcarHabituales() {
+  const key = _ordenEmpresaKey; if (!key) return;
+  const hab = _otHab[key] ? [..._otHab[key]] : [];
+  if (!hab.length) {
+    mostrarToast('Este vehículo no tiene rutas habituales: márcalas con la ★', 'info');
+    return;
+  }
+  _otSel = new Set(hab);
+  _otBanner('⭐ Marcadas las rutas habituales de este vehículo');
+  _otPintarRutas();
+}
+
+// Marca las rutas del último día anterior en que se imprimieron órdenes de este vehículo
+async function otComoAyer() {
+  const key = _ordenEmpresaKey; if (!key) return;
+  const emp = EMPRESAS[key];
+  try {
+    const { data, error } = await sb.from('log_ordenes').select('fecha,turno,empresa,ruta')
+      .eq('matricula', ordenActual.matricula).lt('fecha', fechaActual)
+      .order('fecha', { ascending: false }).limit(60);
+    if (error) throw error;
+    const filas = (data || []).filter(f => _otEmpresaDeLabel(f.empresa) === key);
+    if (!filas.length) {
+      mostrarToast('No hay órdenes anteriores de este vehículo con ' + (emp.label || key), 'info');
+      return;
+    }
+    const dia = filas[0].fecha;
+    const delDia = filas.filter(f => f.fecha === dia);
+    // Preferir el mismo turno; si ese día no lo hubo, todas las del día
+    const mismoTurno = delDia.filter(f => (f.turno || '').toUpperCase() === turnoActual.toUpperCase());
+    const usar = mismoTurno.length ? mismoTurno : delDia;
+    const validas = new Set((emp.rutas || []).map(r => r.label));
+    _otSel = new Set(usar.map(f => f.ruta).filter(l => validas.has(l)));
+    _otBanner('↺ Marcadas las mismas rutas que el ' + String(dia).split('-').reverse().join('/'));
+    _otPintarRutas();
+  } catch (e) {
+    mostrarToast('No se pudieron cargar las órdenes anteriores', 'error');
+  }
+}
+
+function otQuitarTodas() {
+  _otSel = new Set();
+  _otBanner('');
+  _otPintarRutas();
+}
+
+function actualizarContadorRutas() {
+  const key = _ordenEmpresaKey;
+  const sel = getRutasSeleccionadas();
+  const total  = sel.length;
+  const nuevas = sel.filter(r => !_rutasImpresasModal.has(`${key}|${r.label}`)).length;
+  const reimp  = total - nuevas;
+
+  const counter = document.getElementById('orden-ruta-count');
+  if (counter) counter.textContent = total ? `Rutas · ${total} ${total === 1 ? 'seleccionada' : 'seleccionadas'}` : 'Rutas';
+
+  const resumen = document.getElementById('orden-resumen');
+  if (resumen) resumen.textContent = total
+    ? `${total} ${total === 1 ? 'orden' : 'órdenes'} — se imprimen juntas`
+    : 'Ninguna ruta marcada';
+
+  const btn = document.getElementById('orden-btn-imprimir');
+  if (!btn) return;
+  btn.classList.remove('off', 'reimp');
+  btn.disabled = total === 0;
+  const n = t => t + (t === 1 ? ' ruta' : ' rutas');
+  if (total === 0) { btn.classList.add('off'); btn.textContent = '🖨️ Imprimir orden'; }
+  else if (nuevas === 0) { btn.classList.add('reimp'); btn.textContent = `🔁 Reimprimir orden (${n(total)})`; }
+  else if (reimp > 0) btn.textContent = `🖨️ Imprimir orden · ${nuevas} nueva${nuevas > 1 ? 's' : ''} + ${reimp} reimpresión`;
+  else btn.textContent = `🖨️ Imprimir orden (${n(total)})`;
+}
+
+function getRutasSeleccionadas() {
+  const emp = EMPRESAS[_ordenEmpresaKey];
+  if (!emp) return [];
+  // En el orden en que aparecen las tarjetas (ida y luego vuelta)
+  return _otPares.flat().filter(r => _otSel.has(r.label));
 }
 
 // Packing List: usamos el HTML propio (mismo origen que index.html), igual que la Orden de Trabajo.
@@ -118,90 +360,6 @@ function imprimirPackingList() {
   iframe.contentWindow.print();
 }
 
-function resetOrdenEmpresa() {
-  _ordenEmpresaKey = null;
-  ['JD','LD'].forEach(k => {
-    const btn = document.getElementById('orden-emp-'+k);
-    if (btn) btn.classList.remove('active');
-  });
-  document.getElementById('orden-rutas-wrapper').classList.add('oculto');
-  document.getElementById('orden-sin-empresa').style.display = '';
-  document.getElementById('orden-rutas-lista').innerHTML = '';
-  const counter = document.getElementById('orden-ruta-count');
-  if (counter) counter.classList.remove('visible');
-  // Deshabilitar botón imprimir
-  const btn = document.querySelector('.btn-modal-imprimir');
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.38'; btn.style.cursor = 'not-allowed'; }
-}
-
-function selOrdenEmpresa(key) {
-  _ordenEmpresaKey = key;
-  ['JD','LD'].forEach(k => {
-    document.getElementById('orden-emp-'+k).classList.toggle('active', k===key);
-  });
-  // Mostrar rutas y ocultar placeholder
-  document.getElementById('orden-sin-empresa').style.display = 'none';
-  document.getElementById('orden-rutas-wrapper').classList.remove('oculto');
-  const lista = document.getElementById('orden-rutas-lista');
-  lista.innerHTML = EMPRESAS[key].rutas.map(r => {
-    const yaImpresa = _rutasImpresasModal.has(`${key}|${r.id}`);
-    return `
-    <div class="orden-ruta-item${yaImpresa ? ' ya-impresa' : ''}" id="ruta-item-${r.id}" onclick="toggleRutaItem('${r.id}')">
-      <input type="checkbox" id="ruta-chk-${r.id}" value="${r.id}" ${yaImpresa ? 'checked' : ''} onchange="actualizarContadorRutas()" onclick="event.stopPropagation()">
-      <label for="ruta-chk-${r.id}">${r.label}</label>
-      ${yaImpresa ? '<span class="badge-impresa">✓ YA IMPRESA</span><button class="btn-reimprimir" onclick="event.stopPropagation();reimprimirRuta(\''+key+'\',\''+r.id+'\')">🔁 REIMPRIMIR</button>' : ''}
-    </div>`;
-  }).join('');
-  actualizarContadorRutas();
-}
-
-function toggleRutaItem(id) {
-  const chk = document.getElementById('ruta-chk-' + id);
-  const item = document.getElementById('ruta-item-' + id);
-  chk.checked = !chk.checked;
-  item.classList.toggle('selected', chk.checked);
-  actualizarContadorRutas();
-}
-
-function actualizarContadorRutas() {
-  // Sincronizar clases selected con estado real del checkbox
-  const emp = EMPRESAS[_ordenEmpresaKey];
-  if (!emp) return;
-  emp.rutas.forEach(r => {
-    const chk  = document.getElementById('ruta-chk-' + r.id);
-    const item = document.getElementById('ruta-item-' + r.id);
-    if (chk && item) item.classList.toggle('selected', chk.checked);
-  });
-
-  const checkedIds = [...document.querySelectorAll('#orden-rutas-lista input[type=checkbox]:checked')].map(c => c.value);
-  const nuevas = checkedIds.filter(id => !_rutasImpresasModal.has(`${_ordenEmpresaKey}|${id}`));
-  const total  = checkedIds.length;
-
-  const counter = document.getElementById('orden-ruta-count');
-  if (total > 1) {
-    counter.textContent = total + ' seleccionadas';
-    counter.classList.add('visible');
-  } else {
-    counter.classList.remove('visible');
-  }
-
-  // Activar/desactivar botón según haya rutas nuevas (no ya impresas)
-  const btn = document.querySelector('.btn-modal-imprimir');
-  if (btn) {
-    const ok = nuevas.length > 0;
-    btn.disabled = !ok;
-    btn.style.opacity = ok ? '1' : '0.38';
-    btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
-  }
-}
-
-function getRutasSeleccionadas() {
-  const emp = EMPRESAS[_ordenEmpresaKey];
-  const ids = [...document.querySelectorAll('#orden-rutas-lista input[type=checkbox]:checked')]
-    .map(c => c.value);
-  return ids.map(id => emp.rutas.find(r => r.id === id)).filter(Boolean);
-}
-
 async function ejecutarOrden() {
   const rutas = getRutasSeleccionadas();
   const emp   = EMPRESAS[_ordenEmpresaKey];
@@ -215,8 +373,9 @@ async function ejecutarOrden() {
   if (modalGen) modalGen.classList.add('visible');
   cerrarModalOrden();
 
-  // Registrar log por cada ruta seleccionada
+  // Registrar en el log solo las rutas nuevas (las reimpresiones ya constan)
   for (const ruta of rutas) {
+    if (_rutasImpresasModal.has(`${_ordenEmpresaKey}|${ruta.label}`)) continue;
     await registrarLog(ordenActual.matricula, ordenActual.operario, emp.label, ruta.label);
   }
 

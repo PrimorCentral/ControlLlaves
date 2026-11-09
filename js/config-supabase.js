@@ -522,6 +522,8 @@ async function manejarPeticionSupabase(urlStr, options) {
       if (!data || !data.length) return { ok: false, error: 'No se encontró el vehículo ' + anterior + ' en la base de datos' };
       // Choferes habituales: siguen a la matrícula nueva (si la tabla aún no existe, se ignora)
       try { await sb.from('conductores_habituales').update({ matricula: nueva }).eq('matricula', anterior); } catch (e) {}
+      // Rutas habituales de la Orden de Trabajo: también siguen a la matrícula nueva
+      try { await sb.from('rutas_habituales').update({ matricula: nueva }).eq('matricula', anterior); } catch (e) {}
       return { ok: true };
     }
 

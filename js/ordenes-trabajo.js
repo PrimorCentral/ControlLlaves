@@ -139,7 +139,18 @@ function _otConstruirPares(rutas) {
     if (j >= 0) { usadas.add(j); pares.push([r, rutas[j]]); }
     else pares.push([r]);
   });
-  return pares;
+  // Columnas: a la izquierda las rutas de GAITE (la nave base) y a la derecha el resto.
+  // Si no existe GAITE, se usa como base el sitio que más aparece.
+  const freq = {};
+  pares.forEach(p => p.forEach(r => { freq[r.origen] = (freq[r.origen] || 0) + 1; freq[r.destino] = (freq[r.destino] || 0) + 1; }));
+  const base = freq['GAITE'] ? 'GAITE' : (Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0] || '');
+  const peso = l => l === base ? Infinity : (freq[l] || 0);
+  pares.forEach(p => {
+    // Ida primero = la que sale del sitio principal (GAITE ⇄ PTA, PTA ⇄ CARTAMA…)
+    if (p.length === 2 && peso(p[1].origen) > peso(p[0].origen)) p.reverse();
+    p._col = p.some(r => r.origen === base || r.destino === base) ? 0 : 1;
+  });
+  return [...pares.filter(p => p._col === 0), ...pares.filter(p => p._col === 1)];
 }
 
 function selOrdenEmpresa(key) {
@@ -174,7 +185,7 @@ function _otPintarRutas() {
     return;
   }
   const hab = _otHab[key] || new Set();
-  lista.innerHTML = _otPares.map((par, i) => {
+  const tarjetas = _otPares.map((par, i) => {
     const labels   = par.map(r => r.label);
     const marcadas = labels.filter(l => _otSel.has(l));
     const impresa  = l => _rutasImpresasModal.has(`${key}|${l}`);
@@ -201,7 +212,9 @@ function _otPintarRutas() {
       </div>
       <div class="ot-dirs${par.length === 1 ? ' uno' : ''}">${dirs}</div>
     </div>`;
-  }).join('');
+  });
+  const col = c => tarjetas.filter((_, i) => _otPares[i]._col === c).join('');
+  lista.innerHTML = `<div class="ot-col">${col(0)}</div><div class="ot-col">${col(1)}</div>`;
   actualizarContadorRutas();
 }
 

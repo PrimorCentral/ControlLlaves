@@ -476,60 +476,43 @@
 
 <!-- MODAL: ORDEN DE TRABAJO -->
 <div class="modal-overlay" id="modal-orden">
-  <div class="modal-orden">
-    <div class="modal-orden-header">
-      <div>
-        <div class="modal-orden-title">🖨️ Orden de Trabajo</div>
-        <div class="modal-orden-sub">Configura e imprime la orden para este vehículo</div>
+  <div class="modal-ot">
+    <div class="ot-head">
+      <div class="ot-top">
+        <div>
+          <div class="ot-title">🖨️ Orden de Trabajo</div>
+          <div class="modal-orden-sub ot-sub">Configura e imprime la orden para este vehículo</div>
+        </div>
+        <button class="ot-close" onclick="cerrarModalOrden()" aria-label="Cerrar">✕</button>
       </div>
-      <button class="modal-orden-close" onclick="cerrarModalOrden()">✕</button>
-    </div>
-    <div class="orden-info-grid">
-      <div class="orden-info-field">
-        <div class="orden-info-label">Vehículo</div>
-        <div class="orden-info-val" id="orden-matricula">—</div>
-      </div>
-      <div class="orden-info-field">
-        <div class="orden-info-label">Operario / Chofer</div>
-        <div class="orden-info-val" id="orden-operario">—</div>
-      </div>
-      <div class="orden-info-field">
-        <div class="orden-info-label">Fecha</div>
-        <div class="orden-info-val" id="orden-fecha">—</div>
-      </div>
-      <div class="orden-info-field">
-        <div class="orden-info-label">Turno</div>
-        <div class="orden-info-val" id="orden-turno">—</div>
+      <div class="ot-strip">
+        <div class="ot-cell"><div class="ot-lbl">Vehículo</div><div class="ot-val" id="orden-matricula">—</div></div>
+        <div class="ot-cell"><div class="ot-lbl">Chofer</div><div class="ot-val" id="orden-operario">—</div></div>
+        <div class="ot-cell"><div class="ot-lbl">Fecha</div><div class="ot-val" id="orden-fecha">—</div></div>
+        <div class="ot-cell"><div class="ot-lbl">Turno</div><div class="ot-val"><span class="ot-turno" id="orden-turno">—</span></div></div>
       </div>
     </div>
-    <div class="orden-section-label">Empresa</div>
-    <div class="orden-empresa-btns">
-      <button class="orden-emp-btn" id="orden-emp-JD" onclick="selOrdenEmpresa('JD')">JIMENEZ &amp; DÍAZ</button>
-      <button class="orden-emp-btn" id="orden-emp-LD" onclick="selOrdenEmpresa('LD')">LOCURA DESMEDIDA</button>
-    </div>
-    <!-- Placeholder cuando no hay empresa seleccionada -->
-    <div class="orden-sin-empresa" id="orden-sin-empresa">
-      <div class="orden-sin-empresa-icon">🏢</div>
-      <div class="orden-sin-empresa-txt">Elige una empresa arriba<br>para ver las rutas disponibles</div>
-    </div>
-
-    <!-- Rutas: sólo visible tras elegir empresa -->
-    <div class="orden-rutas-wrapper oculto" id="orden-rutas-wrapper">
-      <div class="orden-section-label" style="display:flex;align-items:center;gap:8px">
-        Rutas
-        <span class="orden-ruta-count" id="orden-ruta-count">0 seleccionadas</span>
+    <div class="ot-body">
+      <div class="ot-seg" id="orden-empresas"></div>
+      <div class="ot-fila">
+        <span class="ot-label" id="orden-ruta-count">Rutas</span>
+        <div class="ot-chips">
+          <button class="ot-chip" onclick="otMarcarHabituales()" title="Marcar las rutas habituales de este vehículo">⭐ Habituales</button>
+          <button class="ot-chip" onclick="otComoAyer()" title="Marcar las mismas rutas que el último día que se imprimió">↺ Como ayer</button>
+          <button class="ot-chip" onclick="otQuitarTodas()">✕ Ninguna</button>
+        </div>
       </div>
-      <div class="orden-sel-hint">Selecciona una o varias rutas — se imprimirán juntas en una sola hoja</div>
-      <div class="orden-rutas-lista" id="orden-rutas-lista"></div>
+      <div class="ot-banner" id="orden-banner" style="display:none"></div>
+      <div class="ot-grid" id="orden-rutas-lista"></div>
+      <div class="ot-ayuda">Pulsa la tarjeta para marcar ida y vuelta · pulsa un sentido para quitarlo · ★ = ruta habitual</div>
     </div>
-    <div style="flex-shrink:0">
-    <div class="orden-actions">
-      <button class="btn-modal-cancelar" onclick="cerrarModalOrden()">Cancelar</button>
-      <button class="btn-modal-imprimir" onclick="ejecutarOrden()">🖨️ Imprimir orden</button>
-    </div>
-    <div style="margin-top:10px">
-      <button class="btn-packing-list" onclick="abrirPackingList()">📋 IMPRIMIR PACKING LIST</button>
-    </div>
+    <div class="ot-foot">
+      <div class="ot-resumen"><span id="orden-resumen">Ninguna ruta marcada</span><span class="ot-duplex" title="La doble cara se activa en las preferencias de la impresora (o en «Más ajustes» del diálogo de imprimir)">⇆ Doble cara si la impresora lo permite</span></div>
+      <div class="ot-acc">
+        <button class="ot-cancel" onclick="cerrarModalOrden()">Cancelar</button>
+        <button class="ot-pack" onclick="abrirPackingList()">📋 PACKING LIST</button>
+        <button class="btn-modal-imprimir ot-print off" id="orden-btn-imprimir" onclick="ejecutarOrden()" disabled>🖨️ Imprimir orden</button>
+      </div>
     </div>
   </div>
 </div>

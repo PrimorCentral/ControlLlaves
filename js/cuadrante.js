@@ -1091,6 +1091,20 @@ function renderTabla() {
 
   html += `</tbody></table>`;
   wrap.innerHTML = html;
+
+  // Móvil (css/movil.css): cada fila se ve como una tarjeta. Aquí solo se
+  // anota qué es cada celda y cuáles están vacías, para no enseñarlas.
+  const _colsFila = ['mat', 'operario',
+    ...COLUMNAS.filter(c => !(c.key === 'itv' && !esHoy)).map(c => c.key), ...(esHoy ? ['orden'] : [])];
+  wrap.querySelectorAll('tbody tr[data-mat]').forEach(tr => {
+    [...tr.children].forEach((td, i) => {
+      const col = _colsFila[i] || '';
+      td.dataset.col = col;
+      const inp = td.querySelector('input.cell-input-locked');
+      const txt = td.textContent.trim();
+      if ((inp && !inp.value.trim()) || txt === '—' || (col === 'itv' && !/caducada/i.test(txt))) td.classList.add('mv-vacia');
+    });
+  });
 }
 
 // En días pasados cada vehículo sale en la nave que tenía ese día: la guardada
@@ -1334,7 +1348,7 @@ function pedirReasignacion(matricula, forzarAdmin) {
 
         <!-- Desvío: ¿querías cambiar de turno? — solo visible si estamos en MAÑANA -->
         ${turnoActual === 'MANANA' ? `
-        <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;">
+        <div class="reasig-desvio" style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;align-items:center;">
           <span style="font-size:24px;flex-shrink:0;">☀️🌆</span>
           <div style="flex:1;">
             <div style="font-size:13px;font-weight:900;color:#1d4ed8;margin-bottom:4px;">¿Quieres asignar este vehículo en el turno de tarde?</div>

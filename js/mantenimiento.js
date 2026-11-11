@@ -332,9 +332,11 @@ function _mantHtmlAccidentes(accidentes, admin) {
   const num = !accidentes.length ? '' : pend.length
     ? `<span class="mf-num rojo">${pend.length} pendiente${pend.length === 1 ? '' : 's'}</span>`
     : `<span class="mf-num gris">${accidentes.length}</span>`;
-  let h = `<section class="mf-sec mf-sec-auto mf-sec-acc">${_mfCabecera(_MF_ICO_ACC, 'ACCIDENTES Y GOLPES', num)}`;
+  const mat = esc(_mantFicha ? _mantFicha.matricula : '');
+  const boton = `<button type="button" class="mf-btn-head rojo" onclick="mantDarParteAccidente('${mat}')">+ Dar parte de accidente</button>`;
+  let h = `<section class="mf-sec mf-sec-auto mf-sec-acc">${_mfCabecera(_MF_ICO_ACC, 'ACCIDENTES Y GOLPES', num, boton)}`;
   if (!lista.length) {
-    return h + `<div class="mf-vacio">Sin accidentes registrados. Se dan desde el cuadrante: «Añadir incidencia» → Accidente, con sus fotos.</div></section>`;
+    return h + `<div class="mf-vacio">Sin accidentes registrados.</div></section>`;
   }
   h += `<div class="mf-lista">`;
   lista.forEach(x => {
@@ -369,6 +371,25 @@ function _mantHtmlAccidentes(accidentes, admin) {
     </div>`;
   });
   return h + `</div></section>`;
+}
+
+/**
+ * Ficha → Averías → «+ Dar parte de accidente». Abre el mismo parte que el
+ * cuadrante («Añadir incidencia» → Accidente), con las mismas condiciones:
+ * solo en el cuadrante de hoy, con el vehículo disponible y sin otra
+ * incidencia registrada en este turno.
+ */
+function mantDarParteAccidente(matricula) {
+  if (!usuarioActual) { mostrarToast('Inicia sesión para dar parte', 'error'); return; }
+  const v = _getVehiculo(matricula);
+  const d = (typeof getDato === 'function') ? getDato(matricula) : {};
+  const esHoy = typeof esFechaHoy === 'function' ? esFechaHoy() : true;
+  let motivo = '';
+  if (!esHoy) motivo = 'Solo se puede dar parte de un accidente en el cuadrante de hoy. Vuelve al día de hoy en el cuadrante e inténtalo de nuevo.';
+  else if (v && v.bloqueado) motivo = 'El vehículo está NO DISPONIBLE. Si el golpe es nuevo, añade las fotos a la avería o al accidente que ya tiene abierto.';
+  else if (d.incidencias && String(d.incidencias).trim()) motivo = 'Este vehículo ya tiene una incidencia registrada en este turno. Si es el mismo golpe, añade las fotos al accidente desde aquí.';
+  if (motivo) { appAlert(motivo, { titulo: 'No se puede dar parte ahora', icono: '💥' }); return; }
+  abrirModalIncidencia(matricula, { tipo: 'accidente' });
 }
 
 /** Nombre de la carpeta de fotos de un accidente (también se ve en Documentos → Fotos). */

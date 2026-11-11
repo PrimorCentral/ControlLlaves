@@ -36,8 +36,11 @@ function abrirModalIncidencia(matricula, opts) {
   const turnoBg    = turnoActual === 'MANANA' ? '#fffbeb' : '#fff5f0';
   const turnoBorde = turnoActual === 'MANANA' ? '#fde68a' : '#fecaca';
 
+  // Si se abre desde la ficha del vehículo, todo va por encima de ella
+  const zBase = document.getElementById('modal-ficha-vehiculo')?.classList.contains('visible') ? 10200 : 4500;
+
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.7);z-index:4500;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.7);z-index:' + zBase + ';display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:white;border-radius:20px;width:500px;max-width:96vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
 
@@ -206,7 +209,7 @@ function abrirModalIncidencia(matricula, opts) {
     if (quiereBloquear) {
       const confirmar = await new Promise(resolve => {
         const dlg = document.createElement('div');
-        dlg.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.75);z-index:5500;display:flex;align-items:center;justify-content:center;';
+        dlg.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,30,0.75);z-index:' + (zBase + 1000) + ';display:flex;align-items:center;justify-content:center;';
         dlg.innerHTML = `
           <div style="background:white;border-radius:18px;width:400px;max-width:94vw;box-shadow:0 40px 100px rgba(0,0,0,0.5);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
             <div style="background:#1a1a2e;padding:20px 24px 16px;display:flex;align-items:center;gap:12px;">
@@ -241,7 +244,7 @@ function abrirModalIncidencia(matricula, opts) {
 
     // ── Modal de progreso ────────────────────────────────────────────────
     const modalEnvio = document.createElement('div');
-    modalEnvio.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:5000;display:flex;align-items:center;justify-content:center;';
+    modalEnvio.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:' + (zBase + 500) + ';display:flex;align-items:center;justify-content:center;';
     modalEnvio.innerHTML = `
       <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
         <div style="font-size:44px;margin-bottom:14px;">⚠️</div>
@@ -317,7 +320,8 @@ function abrirModalIncidencia(matricula, opts) {
     if (resFotos && resFotos.fallos.length) {
       appAlert(`El accidente se ha guardado, pero no se pudieron subir todas las fotos:<br><br>${resFotos.fallos.map(esc).join('<br>')}`, { titulo: 'Fotos sin subir', icono: '⚠️' });
     }
-    if (resFotos && resFotos.ok && typeof _mantRefrescar === 'function') _mantRefrescar(matricula);
+    // Accidente o fotos: se repinta la ficha (si está abierta) y el aviso del cuadrante
+    if ((tipoIncid === 'accidente' || (resFotos && resFotos.ok)) && typeof _mantRefrescar === 'function') _mantRefrescar(matricula);
   };
 }
 

@@ -1,0 +1,321 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   MÓVIL — ajustes para pantallas estrechas (teléfono en vertical)
+   Se carga el último para que mande sobre el resto de hojas. Todo va dentro
+   de @media (max-width: 768px): en ordenador y tableta no cambia nada.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── 1. LOGIN: marca arriba y formulario en una tarjeta centrada ─────────── */
+  #pantalla-login {
+    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    padding: 24px 18px calc(20px + env(safe-area-inset-bottom)); box-sizing: border-box;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background:
+      radial-gradient(120% 60% at 50% 0%, rgba(201,54,54,0.20) 0%, rgba(201,54,54,0) 60%),
+      linear-gradient(180deg, #0E1726 0%, #131D30 100%);
+  }
+  /* El panel de marca deja de ser una caja: sus piezas se colocan sueltas */
+  #pantalla-login .login-brand { display: contents !important; }
+  #pantalla-login .login-brand-hero, #pantalla-login .login-escena { display: none !important; }
+  #pantalla-login .login-brand-cabecera { order: 1; justify-content: center; color: #E9EDF3; flex-shrink: 0; }
+  #pantalla-login .login-form-panel {
+    order: 2; flex: 0 0 auto !important; width: 100%; padding: 0 !important; background: transparent !important;
+  }
+  #pantalla-login .login-form-box {
+    position: relative; max-width: 400px; margin: 0 auto; box-sizing: border-box;
+    background: #fff; border-radius: 16px; padding: 30px 24px 22px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.45); overflow: hidden;
+  }
+  #pantalla-login .login-form-box::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px;
+    background: linear-gradient(90deg, #C93636, #E86A5A, #C93636);
+  }
+  #pantalla-login .login-form-title { font-size: 26px; }
+  #pantalla-login .login-form-sub { font-size: 14px; margin-bottom: 22px; }
+  #pantalla-login .login-field input { height: 52px; font-size: 16px; } /* 16 px: el iPhone no hace zoom al escribir */
+  #pantalla-login .login-btn { height: 54px; font-size: 17px; }
+  #pantalla-login .login-ayuda { margin-top: 18px; padding-top: 14px; font-size: 12.5px; text-align: center; }
+  /* Servidor · Hoy · Versión: una línea discreta bajo la tarjeta */
+  #pantalla-login .login-brand-fichas {
+    order: 3; display: flex !important; justify-content: center; flex-wrap: wrap; gap: 6px 18px;
+    width: 100%; max-width: 400px; margin: 0; flex-shrink: 0;
+  }
+  #pantalla-login .login-brand-ficha {
+    background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important;
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+    display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0;
+  }
+  #pantalla-login .login-brand-ficha-lbl { font-size: 11.5px; color: #8593A8; }
+  #pantalla-login .login-brand-ficha-val { font-size: 12px; color: #D4DBE6; }
+  @media (max-height: 620px) {
+    #pantalla-login { justify-content: flex-start; }
+    #pantalla-login .login-form-sub, #pantalla-login .login-ayuda { display: none; }
+  }
+
+  /* ── 2. CUADRANTE: cada vehículo es una tarjeta (sin desplazar de lado) ───── */
+  .main { background: #EEF1F5; }
+  #table-wrap {
+    margin: 0 !important; padding: 8px 10px 16px; border: none !important; border-radius: 0 !important;
+    background: transparent !important; box-shadow: none !important; overflow-x: hidden !important;
+  }
+  #table-wrap table { display: block; width: 100%; min-width: 0 !important; font-size: 13px; }
+  #table-wrap thead { display: none; }
+  #table-wrap tbody { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Nave: rótulo que se queda arriba mientras se desliza su lista */
+  #table-wrap tr.group-header { display: block; position: sticky; top: -8px; z-index: 6; border: none; padding-top: 6px; background: #EEF1F5; }
+  #table-wrap tr.group-header td {
+    display: block; background: #0E1726 !important; color: #fff; border: none !important; border-radius: 8px;
+    padding: 8px 12px; font-size: 11px; letter-spacing: 2px;
+  }
+
+  #table-wrap tr[data-mat] {
+    position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px 8px; align-items: end;
+    background: #fff; border: none; border-left: 4px solid #D5DBE4; border-radius: 12px; padding: 12px 12px 12px 10px;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 0 0 1px #E3E7EE;
+  }
+  #table-wrap tr[data-mat].asignado { border-left-color: #3b82f6; background: #F7F9FF !important; }
+  #table-wrap tr[data-mat].devuelto { border-left-color: #22c55e; background: #F4FDF7 !important; }
+  #table-wrap tr[data-mat].vehiculo-bloqueado { border-left-color: #e84545; background: #FFF4F4 !important; }
+  #table-wrap tr[data-mat] > td {
+    display: block; grid-column: span 6; min-width: 0 !important; padding: 0 !important; border: none !important;
+    background: transparent !important; text-align: left !important;
+  }
+  #table-wrap tr[data-mat] > td.mv-vacia { display: none; }
+
+  /* Matrícula */
+  #table-wrap .col-mat-cell { flex-wrap: wrap; gap: 6px 8px; padding: 0; }
+  #table-wrap .estado-dot { display: none; } /* el estado ya lo marca el borde de color */
+  #table-wrap .mat-badge { font-size: 15px; padding: 6px 10px; border-radius: 8px; }
+  #table-wrap .tipo-tag { font-size: 11px; color: #6B7688; white-space: normal; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+
+  /* Chofer */
+  #table-wrap .operario-locked { padding: 0; min-width: 0; gap: 8px; }
+  #table-wrap .operario-locked-name { font-size: 15px; font-weight: 800; white-space: normal; overflow: visible; line-height: 1.25; }
+  #table-wrap .btn-unlock { width: 40px; height: 40px; font-size: 18px; border-radius: 9px; }
+  #table-wrap .operario-search-wrap { min-width: 0; }
+  #table-wrap .operario-search-input {
+    height: 46px; min-height: 46px; padding: 0 38px 0 12px !important; font-size: 16px !important; font-weight: 600;
+    background: #fff; border: 1.5px solid #D5DBE4; border-radius: 10px; box-sizing: border-box;
+  }
+  #table-wrap .operario-search-icon { right: 12px; font-size: 15px; }
+
+  /* Entrega / devolución: quién y a qué hora, con su rótulo */
+  #table-wrap tr[data-mat] > td[data-col="resp_entrega"], #table-wrap tr[data-mat] > td[data-col="resp_recibe"] { grid-column: span 4; }
+  #table-wrap tr[data-mat] > td[data-col="hora_entrega"], #table-wrap tr[data-mat] > td[data-col="hora_devolucion"] { grid-column: span 2; }
+  #table-wrap tr[data-mat] > td[data-col="resp_entrega"]::before, #table-wrap tr[data-mat] > td[data-col="hora_entrega"]::before,
+  #table-wrap tr[data-mat] > td[data-col="resp_recibe"]::before, #table-wrap tr[data-mat] > td[data-col="hora_devolucion"]::before {
+    display: block; font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px; color: #8593A8; margin-bottom: 1px;
+  }
+  #table-wrap tr[data-mat] > td[data-col="resp_entrega"]::before   { content: 'ENTREGA'; }
+  #table-wrap tr[data-mat] > td[data-col="hora_entrega"]::before   { content: 'HORA'; }
+  #table-wrap tr[data-mat] > td[data-col="resp_recibe"]::before    { content: 'RECIBE'; }
+  #table-wrap tr[data-mat] > td[data-col="hora_devolucion"]::before { content: 'HORA'; }
+  #table-wrap tr[data-mat] > td:has(> button)::before { content: none !important; }
+  #table-wrap tr[data-mat] > td[data-col="resp_recibe"]:has(> button) { grid-column: span 6; }
+  #table-wrap .cell-input-locked, #table-wrap .cell-input {
+    width: 100%; max-width: none !important; min-width: 0; padding: 0 !important; min-height: 0; border: none;
+    font-size: 13.5px !important; font-weight: 700; color: #1a1a2e; opacity: 1; text-overflow: ellipsis; background: transparent;
+  }
+  #table-wrap tr[data-mat] > td[data-col="hora_entrega"] input, #table-wrap tr[data-mat] > td[data-col="hora_devolucion"] input { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  /* Botones de la tarjeta: tamaño cómodo para el dedo */
+  #table-wrap tr[data-mat] > td > button, #table-wrap tr[data-mat] > td > span[onclick], #table-wrap .celda-incid > button {
+    width: 100%; min-height: 42px; box-sizing: border-box; font-size: 12.5px !important; padding: 6px 8px !important;
+    border-radius: 9px !important; white-space: normal !important; line-height: 1.15 !important;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  #table-wrap tr[data-mat] > td[data-col="resp_recibe"] > button { font-size: 14px !important; min-height: 46px; }
+  #table-wrap tr[data-mat] > td[data-col="num_tarjeta"], #table-wrap tr[data-mat] > td[data-col="incidencias"], #table-wrap tr[data-mat] > td[data-col="orden"] { grid-column: span 2; align-self: stretch; }
+  #table-wrap .celda-incid { display: flex; gap: 6px; height: 100%; }
+  #table-wrap .celda-incid > button.solo-icono { width: 42px; flex: 0 0 42px; font-size: 18px !important; }
+  /* Si falta alguno de los tres, los que quedan se reparten el ancho */
+  #table-wrap tr[data-mat] > td[data-col="orden"]:has(> button:disabled) { display: none; }
+  #table-wrap tr:has(> td[data-col="num_tarjeta"].mv-vacia) > td[data-col="incidencias"],
+  #table-wrap tr:has(> td[data-col="num_tarjeta"].mv-vacia) > td[data-col="orden"],
+  #table-wrap tr:has(> td[data-col="orden"] > button:disabled) > td[data-col="num_tarjeta"],
+  #table-wrap tr:has(> td[data-col="orden"] > button:disabled) > td[data-col="incidencias"],
+  #table-wrap tr:not(:has(> td[data-col="orden"])) > td[data-col="num_tarjeta"],
+  #table-wrap tr:not(:has(> td[data-col="orden"])) > td[data-col="incidencias"] { grid-column: span 3; }
+  #table-wrap tr:has(> td[data-col="num_tarjeta"].mv-vacia):has(> td[data-col="orden"] > button:disabled) > td[data-col="incidencias"],
+  #table-wrap tr:has(> td[data-col="num_tarjeta"].mv-vacia):not(:has(> td[data-col="orden"])) > td[data-col="incidencias"] { grid-column: span 6; }
+  /* ITV: solo se ve si está caducada, arriba a la derecha */
+  #table-wrap tr[data-mat] > td[data-col="itv"] { position: absolute; top: 12px; right: 12px; width: auto; }
+  #table-wrap tr[data-mat] > td[data-col="itv"] span { font-size: 10.5px !important; padding: 4px 8px !important; }
+
+  /* Lista de conductores al buscar */
+  .operario-dropdown { left: 10px !important; width: calc(100vw - 20px) !important; max-width: none; }
+  .operario-dropdown-item { padding-top: 11px; padding-bottom: 11px; }
+
+  /* ── 3. MENÚ LATERAL ───────────────────────────────────────────────────── */
+  .sidebar { width: min(86vw, 320px); padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+  .sidebar > * { flex-shrink: 0; }
+  .sidebar > div[style*="flex:1"] { display: none !important; } /* marca de agua del logo */
+  .sidebar .sb-clock { margin-top: 14px !important; }
+  .sidebar .btn-logout, .sidebar .turno-btn { min-height: 42px; font-size: 13px !important; }
+  .sidebar #fecha-input { min-height: 44px; font-size: 15px !important; }
+  .sidebar .btn-action { min-height: 46px; }
+  #mob-topbar { padding-top: env(safe-area-inset-top); }
+  #mob-bottombar { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* Aviso emergente: por encima de la barra inferior */
+  .toast { bottom: calc(74px + env(safe-area-inset-bottom)) !important; left: 12px; right: 12px; max-width: none; }
+
+  /* ── 4. FICHA DEL VEHÍCULO ─────────────────────────────────────────────── */
+  /* Cabecera compacta: matrícula y «Editar» arriba, datos en dos columnas */
+  .fv-franja { font-size: 11.5px; padding: 6px 48px; }
+  .fv-cab-fila { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 12px; padding: 10px 14px 12px; }
+  .fv-cab-fila .fv-placa { grid-column: 1; grid-row: 1; }
+  .fv-cab-fila .fv-cab-der { display: contents; }
+  .fv-cab-fila .fv-lapiz { grid-column: 2; grid-row: 1; justify-self: end; }
+  .fv-cab-fila .fv-cab-cols { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: 1.25fr 1fr; gap: 8px 14px; }
+  .fv-cab-fila .fv-cab-col { padding: 0; border-left: none; gap: 1px; }
+  .fv-cab-fila .fv-cab-lbl { font-size: 10px; }
+  .fv-cab-fila .fv-cab-val { font-size: 13.5px; line-height: 1.2; }
+  .fv-cab-fila .fv-chips { grid-column: 1 / -1; grid-row: 3; gap: 6px; }
+  .fv-cab-fila .fv-chips:empty { display: none; }
+  .fv-cab-fila .fv-chip { font-size: 12px; padding: 4px 10px; }
+  .fv-nav { padding: 6px 8px; scrollbar-width: none; }
+  .fv-nav::-webkit-scrollbar { display: none; }
+  .fv-nav .fv-km { display: none; }
+
+  /* Averías y Mantenimiento: la pestaña entera se desliza (antes se cortaba) */
+  #ficha-panel-averias.active, #ficha-panel-mant.active { overflow-y: auto !important; padding: 12px; -webkit-overflow-scrolling: touch; }
+  .mf-panel { display: flex; flex-direction: column; gap: 12px; height: auto; }
+  .mf-panel > .mf-sec, .mf-panel > .mf-sec-llena, .mf-panel > .mf-sec-auto, .mf-panel > .mf-sec-acc, .mf-columnas > .mf-sec {
+    flex: 0 0 auto; max-height: none; overflow: visible;
+  }
+  .mf-sec > .mf-head { border-radius: 12px 12px 0 0; }
+  .mf-tabla-wrap, .mf-lista { flex: none; overflow: visible; }
+
+  /* Tablas de averías y mantenimientos: una ficha por fila, sin desplazar de lado */
+  .mf-tabla, .mf-tabla tbody { display: block; min-width: 0 !important; }
+  .mf-tabla thead { display: none; }
+  .mf-tabla tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 12px 14px; border-bottom: 1px solid #EEF1F5; }
+  .mf-tabla tbody tr:last-child { border-bottom: none; }
+  .mf-tabla tbody td { display: block; padding: 0 !important; border: none !important; background: transparent !important; text-align: left !important; min-width: 0; }
+  .mf-tabla tr.inmov { background: #FFF7F6; }
+  .mf-tabla td.mf-quien::before, .mf-tabla td.mf-mono::before { font: 700 11px 'Barlow', sans-serif; color: #8593A8; letter-spacing: .04em; margin-right: 6px; }
+  /* Averías: estado + fecha / descripción / parte de + km / acciones */
+  .mf-tabla-av td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .mf-tabla-av td:nth-child(4) { grid-column: 2; grid-row: 1; text-align: right !important; }
+  .mf-tabla-av td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .mf-tabla-av td:nth-child(3) { grid-column: 1; grid-row: 3; }
+  .mf-tabla-av td:nth-child(3)::before { content: 'Parte de'; }
+  .mf-tabla-av td:nth-child(5) { grid-column: 2; grid-row: 3; }
+  .mf-tabla-av td:nth-child(5)::before { content: 'Km'; }
+  .mf-tabla-av td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
+  .mf-tabla-av td:nth-child(6):not(:has(button)) { display: none; }
+  .mf-tabla .mf-acciones { display: flex; justify-content: stretch; }
+  .mf-tabla-av .mf-acciones .mf-btn { flex: 1; height: 42px; font-size: 14px; }
+  /* Mantenimientos: fecha + coste / trabajo / taller + km / documentos */
+  .mf-tabla-mt td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .mf-tabla-mt td:nth-child(5) { grid-column: 2; grid-row: 1; }
+  .mf-tabla-mt td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .mf-tabla-mt td:nth-child(3) { grid-column: 1; grid-row: 3; }
+  .mf-tabla-mt td:nth-child(3)::before { content: 'Taller'; }
+  .mf-tabla-mt td:nth-child(4) { grid-column: 2; grid-row: 3; }
+  .mf-tabla-mt td:nth-child(4)::before { content: 'Km'; }
+  .mf-tabla-mt td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
+  .mf-tabla-mt .mf-acciones { justify-content: flex-start; gap: 10px; }
+  .mf-head { padding: 10px 14px; }
+  .mf-head .mf-btn-head { height: 40px; }
+  .mf-btn, .mf-acc .mf-btn { height: 40px; }
+  .mf-acc-top .mf-acciones .mf-btn { flex: 1 1 auto; justify-content: center; }
+  .mf-acc-foto { width: 92px; height: 70px; }
+  .mf-pie { flex-wrap: wrap; gap: 4px 12px; }
+
+  /* ── 5. INCIDENCIAS ACTIVAS: una columna (primero sin gestionar) ───────── */
+  #incidencias-pendientes-lista { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+  #incidencias-pendientes-lista > div[style*="grid-template-columns"] {
+    display: flex !important; flex-direction: column; gap: 12px !important; flex: none !important; min-height: auto !important;
+  }
+  #incidencias-pendientes-lista > div[style*="grid-template-columns"] > div { min-height: auto !important; flex: none; }
+  #incidencias-pendientes-lista > div[style*="grid-template-columns"] > div > div:last-child { overflow: visible !important; flex: none !important; }
+  #incidencias-pendientes-lista button { min-height: 40px; }
+  /* A pantalla completa, con menos márgenes */
+  #modal-incidencias-pendientes > div {
+    width: 100vw !important; max-width: 100vw !important; height: 100% !important; max-height: 100% !important; border-radius: 0 !important;
+  }
+  #modal-incidencias-pendientes > div > div:nth-child(1) { padding: 14px 16px 12px !important; }
+  #modal-incidencias-pendientes > div > div:nth-child(2) { padding: 12px 14px 0 !important; }
+  #modal-incidencias-pendientes > div > div:nth-child(2) input[type="text"] { flex: 1 1 100%; width: auto !important; }
+  #modal-incidencias-pendientes > div > div:nth-child(2) input[type="date"] { flex: 1 1 38%; min-width: 0; }
+  #modal-incidencias-pendientes > div > div:nth-child(2) input,
+  #modal-incidencias-pendientes > div > div:nth-child(2) button { min-height: 42px; font-size: 14px !important; }
+  #modal-incidencias-pendientes > div > div:nth-child(2) > div[style*="flex:1"] { display: none; }
+  #modal-incidencias-pendientes > div > div:nth-child(2) button { flex: 1 1 auto; }
+  #incidencias-pendientes-lista { padding: 12px 12px 16px !important; }
+  #modal-incidencias-pendientes > div > div:nth-child(4) { padding: 10px 14px calc(10px + env(safe-area-inset-bottom)) !important; }
+  #modal-incidencias-pendientes > div > div:nth-child(4) button { min-height: 44px; flex: 1; }
+
+  /* ── 6. PANEL DE ADMINISTRACIÓN ────────────────────────────────────────── */
+  .hist-filters { gap: 8px; }
+  .hist-filters input, .hist-filters select { flex: 1 1 140px; min-width: 0; min-height: 42px; font-size: 14px; box-sizing: border-box; }
+  .hist-filters button { min-height: 42px; flex: 1 1 auto; }
+  .hist-table-wrap { -webkit-overflow-scrolling: touch; }
+  .hist-empty { text-align: left !important; }
+
+  /* Listas de Conductores, Vehículos y Asignaciones: una ficha por fila */
+  .cond-table, .cond-table tbody, #admin-lista-vehiculos .adm-table, #admin-lista-vehiculos .adm-table tbody,
+  .asig-table, .asig-table tbody { display: block; min-width: 0 !important; width: 100%; }
+  .cond-table thead, #admin-lista-vehiculos .adm-table thead, .asig-table thead { display: none; }
+  .cond-table tbody tr, #admin-lista-vehiculos .adm-table tbody tr, .asig-table tbody tr {
+    display: grid; gap: 4px 10px; align-items: center; padding: 12px 14px; border-top: 1px solid #e3e6eb;
+  }
+  .cond-table tbody tr:first-child, #admin-lista-vehiculos .adm-table tbody tr:first-child, .asig-table tbody tr:first-child { border-top: none; }
+  .cond-table tbody td, #admin-lista-vehiculos .adm-table tbody td, .asig-table tbody td {
+    display: block; padding: 0 !important; border: none !important; min-width: 0; text-align: left !important;
+  }
+  .adm-table td.vacio { grid-column: 1 / -1; text-align: center !important; padding: 18px 0 !important; }
+
+  /* Conductores: nombre y, debajo, nº · nave · turno (el resto está en su ficha) */
+  .cond-table tbody tr { grid-template-columns: auto auto minmax(0, 1fr) auto; }
+  .cond-table td:nth-child(2) { grid-column: 1 / 4; grid-row: 1; font-size: 15px; }
+  .cond-table td:nth-child(7) { grid-column: 4; grid-row: 1 / 3; }
+  .cond-table td:nth-child(1) { grid-column: 1; grid-row: 2; font-size: 12.5px; color: #5b6475; }
+  .cond-table td:nth-child(1)::before { content: 'Nº '; }
+  .cond-table td:nth-child(5) { grid-column: 2; grid-row: 2; font-size: 12.5px; color: #5b6475; }
+  .cond-table td:nth-child(6) { grid-column: 3; grid-row: 2; font-size: 12.5px; }
+  .cond-table td:nth-child(3), .cond-table td:nth-child(4) { display: none; }
+
+  /* Vehículos: matrícula y orden / tipo · nave · propiedad / ITV / estado */
+  #admin-lista-vehiculos .adm-table tbody tr { grid-template-columns: auto auto minmax(0, 1fr); }
+  #admin-lista-vehiculos .adm-table td:nth-child(1) { grid-column: 1 / 3; grid-row: 1; }
+  #admin-lista-vehiculos .adm-table td:nth-child(7) { grid-column: 3; grid-row: 1; justify-self: end; }
+  #admin-lista-vehiculos .adm-table td:nth-child(2) { grid-column: 1; grid-row: 2; font-size: 13px; }
+  #admin-lista-vehiculos .adm-table td:nth-child(3) { grid-column: 2; grid-row: 2; font-size: 13px; font-weight: 700; }
+  #admin-lista-vehiculos .adm-table td:nth-child(4) { grid-column: 3; grid-row: 2; font-size: 13px; }
+  #admin-lista-vehiculos .adm-table td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
+  #admin-lista-vehiculos .adm-table td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
+  .veh-flecha { width: 38px; height: 38px; }
+
+  /* Asignaciones: matrícula y tipo / turno 1 / turno 2 */
+  .asig-table tbody tr { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 10px; }
+  .asig-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .asig-table td:nth-child(2) { grid-column: 2; grid-row: 1; font-size: 13px; color: #5b6475; }
+  .asig-table td:nth-child(3), .asig-table td:nth-child(4) { grid-column: 1 / -1; position: relative; }
+  .asig-table td:nth-child(3)::before, .asig-table td:nth-child(4)::before {
+    display: block; font-size: 10.5px; font-weight: 800; letter-spacing: 1.2px; color: #8593A8; margin-bottom: 5px;
+  }
+  .asig-table td:nth-child(3)::before { content: 'TURNO 1'; }
+  .asig-table td:nth-child(4)::before { content: 'TURNO 2'; }
+  .asig-table .hab-add, .asig-table .hab-input { min-height: 38px; }
+
+  /* ── 7. VENTANAS EMERGENTES ────────────────────────────────────────────── */
+  /* Ninguna ventana se sale de la pantalla: si no cabe, se desliza por dentro */
+  body > div[style*="position:fixed"][style*="inset:0"] > div {
+    max-width: calc(100vw - 16px) !important; max-height: calc(100dvh - 16px) !important; overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch; box-sizing: border-box;
+  }
+  .modal-box { max-height: calc(100dvh - 24px); }
+  .reasig-desvio { flex-wrap: wrap; }
+  .reasig-desvio > div { flex: 1 1 60% !important; }
+  .reasig-desvio > button { flex: 1 1 100%; min-height: 42px; }
+  .mant-anadir { width: calc(100vw - 20px); max-width: 480px; }
+  .mant-tile { min-height: 118px; }
+  .mant-modal { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; }
+  .mant-modal input, .mant-modal select, .mant-modal textarea { font-size: 16px; } /* sin zoom al escribir en iPhone */
+  .mant-modal-pie button { min-height: 44px; flex: 1; }
+}

@@ -704,14 +704,20 @@ async function cargarIncidenciasPendientesModal() {
     try {
       if (typeof mantAveriasPorIncidencia === 'function') averiasMap = await mantAveriasPorIncidencia(filtradas.map(f => f.id));
     } catch (e) { /* sin enlace de averías: la lista se muestra igual */ }
-    renderListaIncidenciasPendientes(filtradas, incidPendModalState.verResueltas, averiasMap);
+    // Fotos de los accidentes (js/mantenimiento.js)
+    let fotosMap = {};
+    try {
+      if (typeof mantFotosPorIncidencia === 'function') fotosMap = await mantFotosPorIncidencia(filtradas.filter(f => f.tipo === 'accidente').map(f => f.id));
+    } catch (e) { /* sin fotos: la lista se muestra igual */ }
+    renderListaIncidenciasPendientes(filtradas, incidPendModalState.verResueltas, averiasMap, fotosMap);
   } catch (e) {
     lista.innerHTML = `<div style="text-align:center;padding:40px;color:#e84545;font-size:13px">⚠️ Error al cargar las incidencias</div>`;
   }
 }
 
-function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
+function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap, fotosMap) {
   averiasMap = averiasMap || {};
+  fotosMap = fotosMap || {};
   const lista = document.getElementById('incidencias-pendientes-lista');
   const subt  = document.getElementById('incid-pend-subtitulo');
 
@@ -826,6 +832,10 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
           ${badgeAntig}
         </div>
         <div style="margin-top:10px;font-size:13px;color:#334;line-height:1.55;word-break:break-word;">${esc(f.descripcion||'—')}</div>
+        ${(fotosMap[f.id] || []).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${fotosMap[f.id].map(ft => `
+          <button type="button" onclick="abrirVisorDoc('${esc(ft.ref)}','${esc(ft.nombre || '')}','imagen')" aria-label="Ver foto del accidente"
+            style="all:unset;width:66px;height:50px;border-radius:7px;overflow:hidden;background:#eef1f5;box-shadow:0 0 0 1px #d5dbe4;cursor:zoom-in;flex-shrink:0;">
+            <img data-path="${esc(ft.path)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></button>`).join('')}</div>` : ''}
         ${footer}
       </div>`;
     return { html, gestionada };
@@ -833,6 +843,7 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
 
   if (modoResueltas) {
     lista.innerHTML = tarjetas.map(t => t.html).join('');
+    if (typeof docsPintarMiniaturas === 'function') docsPintarMiniaturas(lista);
     return;
   }
 
@@ -857,6 +868,7 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap) {
       ${columna('SIN GESTIONAR', '⚠️', sinGest, { fondo:'#fdf6f6', borde:'#f5d0d0', texto:'#b91c1c', chip:'#fde2e2' }, 'Ninguna sin gestionar')}
       ${columna('EN REPARACIÓN', '🔧', gest, { fondo:'#fffaf0', borde:'#f3dfb5', texto:'#a8620a', chip:'#fdecc8' }, 'Ninguna en reparación')}
     </div>`;
+  if (typeof docsPintarMiniaturas === 'function') docsPintarMiniaturas(lista);
 }
 
 function mostrarFormResolverModal(idx) {

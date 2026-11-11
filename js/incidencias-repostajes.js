@@ -67,7 +67,7 @@ function abrirModalIncidencia(matricula, opts) {
       </div>
 
       <!-- CUERPO -->
-      <div style="padding:22px 26px 24px;">
+      <div style="padding:22px 26px 24px;max-height:calc(96vh - 150px);overflow-y:auto;box-sizing:border-box;">
         <label style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:8px;">${tipoFijo === 'accidente' ? 'Descripción del accidente' : 'Descripción de la incidencia'}</label>
         <textarea id="incid-texto" rows="5"
           style="width:100%;padding:12px 14px;border:1.5px solid ${textoActual ? '#e8eaf0' : '#dde1ea'};border-radius:10px;font-family:Barlow,sans-serif;font-size:13px;line-height:1.6;color:${textoActual ? '#556' : '#1a1a2e'};resize:vertical;outline:none;background:${textoActual ? '#f8f9fc' : 'white'};transition:border-color .2s,box-shadow .2s;"
@@ -80,6 +80,20 @@ function abrirModalIncidencia(matricula, opts) {
              </div>`
           : `<div style="margin-top:8px;font-size:10px;color:#aab5c0;font-weight:600;">Se registrará la incidencia y se enviará por <strong style="color:#8899aa">correo electronico</strong>.</div>`
         }
+
+        ${!textoActual && tipoFijo === 'accidente' ? `
+        <!-- FOTOS DEL GOLPE (opcional) -->
+        <div style="margin-top:16px;">
+          <div style="font-size:10px;font-weight:800;color:#8899aa;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Fotos del golpe <span style="font-weight:700;letter-spacing:0.3px;text-transform:none;color:#aab5c0;">· opcional</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <label style="position:relative;display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border:1.5px solid #dde1ea;border-radius:9px;background:white;font-size:12px;font-weight:800;color:#1a1a2e;cursor:pointer;">📷 Hacer foto
+              <input type="file" accept="image/*" capture="environment" data-incid-fotos style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+            <label style="position:relative;display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border:1.5px solid #dde1ea;border-radius:9px;background:white;font-size:12px;font-weight:800;color:#1a1a2e;cursor:pointer;">🖼️ Elegir fotos
+              <input type="file" accept="image/*" multiple data-incid-fotos style="position:absolute;width:1px;height:1px;opacity:0;"></label>
+          </div>
+          <div id="incid-fotos-lista" style="display:none;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;margin-top:10px;"></div>
+          <div id="incid-fotos-nota" style="margin-top:8px;font-size:10px;color:#aab5c0;font-weight:600;">Quedan guardadas en la ficha del vehículo. También se pueden añadir después.</div>
+        </div>` : ''}
 
         ${!textoActual ? `
         <!-- TOGGLE BLOQUEAR VEHÍCULO -->
@@ -113,6 +127,37 @@ function abrirModalIncidencia(matricula, opts) {
     </div>`;
   document.body.appendChild(overlay);
   forzarMayusculas(overlay.querySelector('#incid-texto'));
+
+  // ── Fotos del accidente (se suben al registrar) ─────────────────────────
+  const fotosAcc = []; // [{ file, url }]
+  const pintarFotosAcc = () => {
+    const cont = overlay.querySelector('#incid-fotos-lista');
+    const nota = overlay.querySelector('#incid-fotos-nota');
+    if (!cont) return;
+    cont.style.display = fotosAcc.length ? 'grid' : 'none';
+    cont.innerHTML = fotosAcc.map((f, i) => `
+      <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#f1f3f6;border:1px solid #dde1ea;">
+        <img src="${f.url}" alt="Foto ${i + 1}" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <button type="button" data-quitar-foto="${i}" aria-label="Quitar foto ${i + 1}"
+          style="position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(26,26,46,0.85);color:white;font-size:12px;line-height:1;cursor:pointer;">✕</button>
+      </div>`).join('');
+    if (nota) nota.textContent = fotosAcc.length
+      ? `${fotosAcc.length} foto${fotosAcc.length === 1 ? '' : 's'} lista${fotosAcc.length === 1 ? '' : 's'} · se subirán al registrar el accidente.`
+      : 'Quedan guardadas en la ficha del vehículo. También se pueden añadir después.';
+  };
+  overlay.querySelectorAll('input[data-incid-fotos]').forEach(inp => inp.addEventListener('change', () => {
+    const files = (typeof mantSoloImagenes === 'function') ? mantSoloImagenes(inp.files) : [...inp.files];
+    inp.value = '';
+    files.forEach(f => fotosAcc.push({ file: f, url: URL.createObjectURL(f) }));
+    pintarFotosAcc();
+  }));
+  overlay.addEventListener('click', e => {
+    const b = e.target.closest('[data-quitar-foto]');
+    if (!b) return;
+    const [q] = fotosAcc.splice(Number(b.dataset.quitarFoto), 1);
+    if (q) URL.revokeObjectURL(q.url);
+    pintarFotosAcc();
+  });
 
   // ── Animar toggle bloqueo ──────────────────────────────────────────────
   const cbBloqueo = overlay.querySelector('#incid-bloquear-cb');
@@ -201,7 +246,7 @@ function abrirModalIncidencia(matricula, opts) {
       <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
         <div style="font-size:44px;margin-bottom:14px;">⚠️</div>
         <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Registrando incidencia</div>
-        <div style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema y enviando<br>notificación por correo…<br>Por favor, espere un momento.</div>
+        <div data-envio-txt style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema y enviando<br>notificación por correo…<br>Por favor, espere un momento.</div>
         <div style="display:flex;justify-content:center;gap:7px;align-items:center;">
           <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0s"></div>
           <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.2s"></div>
@@ -226,6 +271,30 @@ function abrirModalIncidencia(matricula, opts) {
       await mantRegistrarAveriaDesdeIncidencia(matricula, texto, quiereBloquear, resInc && resInc.id);
     }
 
+    // Accidente con fotos: se suben enlazadas a la incidencia recién creada
+    // y quedan en la ficha del vehículo (Averías → Accidentes, y Documentos → Fotos).
+    let resFotos = null;
+    if (tipoIncid === 'accidente' && fotosAcc.length && typeof mantSubirFotosAccidente === 'function') {
+      const txtEnvio = modalEnvio.querySelector('[data-envio-txt]');
+      let incId = resInc && resInc.id;
+      if (!incId) { // por si el alta no devolvió el identificador
+        try {
+          const { data } = await sb.from('incidencias').select('id').eq('matricula', matricula).eq('fecha', fechaActual).eq('turno', turnoActual)
+            .eq('tipo', 'accidente').order('timestamp', { ascending: false }).limit(1);
+          incId = data && data[0] && data[0].id;
+        } catch (e) {}
+      }
+      if (incId) {
+        resFotos = await mantSubirFotosAccidente(
+          { id: incId, matricula, fecha: fechaActual, turno: turnoActual, descripcion: texto },
+          fotosAcc.map(f => f.file),
+          (i, n) => { if (txtEnvio) txtEnvio.innerHTML = `Accidente registrado.<br>Subiendo foto ${i} de ${n}…<br>No cierres la ventana.`; });
+      } else {
+        resFotos = { ok: 0, fallos: ['No se pudo enlazar con el accidente. Añade las fotos desde la ficha del vehículo (Averías).'] };
+      }
+      fotosAcc.forEach(f => URL.revokeObjectURL(f.url));
+    }
+
     // Si se bloqueó el vehículo, reflejarlo YA en memoria local para que
     // la fila se pinte en rojo sin esperar a un "Recargar" manual.
     if (quiereBloquear) {
@@ -243,7 +312,12 @@ function abrirModalIncidencia(matricula, opts) {
     document.body.removeChild(modalEnvio);
     document.body.removeChild(overlay);
     renderTabla();
-    mostrarToast(quiereBloquear ? '✓ Incidencia registrada · Vehículo bloqueado' : '✓ Incidencia registrada', 'success');
+    const txtFotos = resFotos && resFotos.ok ? ` · ${resFotos.ok} foto${resFotos.ok === 1 ? '' : 's'}` : '';
+    mostrarToast((tipoIncid === 'accidente' ? '✓ Accidente registrado' : '✓ Incidencia registrada') + txtFotos + (quiereBloquear ? ' · Vehículo bloqueado' : ''), 'success');
+    if (resFotos && resFotos.fallos.length) {
+      appAlert(`El accidente se ha guardado, pero no se pudieron subir todas las fotos:<br><br>${resFotos.fallos.map(esc).join('<br>')}`, { titulo: 'Fotos sin subir', icono: '⚠️' });
+    }
+    if (resFotos && resFotos.ok && typeof _mantRefrescar === 'function') _mantRefrescar(matricula);
   };
 }
 

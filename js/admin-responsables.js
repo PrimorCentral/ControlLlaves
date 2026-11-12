@@ -110,6 +110,7 @@ function renderAdminResponsables() {
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
             <span style="font-size:13px;font-weight:900;color:#1a1a2e;">${esc(r.nombre||'—')}</span>
             ${esAdmin ? `<span style="font-size:8px;font-weight:900;color:#fff;background:#e84545;border-radius:4px;padding:2px 7px;letter-spacing:1px;">ADMIN</span>` : ''}
+            ${r.externo ? `<span title="Usuario externo: puede entrar desde fuera del centro de trabajo" style="font-size:9px;font-weight:800;color:#B4570B;background:#FFF1E3;border:1px solid #FFD2AE;border-radius:999px;padding:1px 8px;">🌍 Externo</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span style="font-size:10px;font-weight:800;color:#3b5bdb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 8px;">Nº ${esc(String(r.numUsuario||'—'))}</span>

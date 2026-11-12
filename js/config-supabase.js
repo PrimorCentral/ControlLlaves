@@ -118,22 +118,19 @@ async function manejarPeticionSupabase(urlStr, options) {
     }
 
     case 'loginResponsable': {
-      const { data, error } = await sb.from('responsables')
-        .select('*')
-        .eq('num_usuario', params.numUsuario)
-        .eq('hash_clave', params.hashClave)
-        .maybeSingle();
-      if (error) return { ok: false, error: error.message };
-      if (!data) return { ok: false, error: 'Usuario o clave incorrectos' };
-      return {
-        ok: true,
-        responsable: {
-          numUsuario: data.num_usuario,
-          nombre: data.nombre,
-          rol: data.rol || '',
-          admin: data.admin ? 'SI' : 'NO'
-        }
-      };
+      // Lo comprueba el servidor (función login_responsable): usuario, clave y
+      // que se entre desde la red del trabajo (tabla ips_permitidas), salvo
+      // los responsables marcados como usuario externo.
+      const { data, error } = await sb.rpc('login_responsable', {
+        p_num_usuario: String(params.numUsuario || ''), p_hash_clave: String(params.hashClave || '')
+      });
+      if (error) {
+        const msg = error.message || '';
+        if (msg.includes('Usuario o clave incorrectos')) return { ok: false, error: 'Usuario o clave incorrectos' };
+        if (msg.includes('Fuera del centro de trabajo')) return { ok: false, fueraDeRed: true, error: 'Fuera del centro de trabajo' };
+        return { ok: false, error: msg };
+      }
+      return { ok: true, responsable: data };
     }
 
     case 'cargarFlota': {
@@ -1079,7 +1076,8 @@ async function manejarPeticionSupabase(urlStr, options) {
         numUsuario: r.num_usuario,
         nombre:     r.nombre,
         rol:        r.rol || '',
-        admin:      r.admin ? 'SI' : ''
+        admin:      r.admin ? 'SI' : '',
+        externo:    !!r.externo   // puede entrar desde fuera del trabajo (se activa en Supabase)
       }));
       return { ok: true, responsables };
     }

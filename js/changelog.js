@@ -10,6 +10,23 @@
 // ---------------------------------------------------------------
 const CHANGELOG_FLOTA = [
   {
+    version: '3.11.0',
+    fecha: '2026-11-12',
+    cambios: [
+      { tipo: 'nuevo',  texto: 'Fotos en los accidentes: al dar parte de un accidente se pueden hacer o adjuntar fotos del golpe, y añadir más después desde la ficha del vehículo' },
+      { tipo: 'nuevo',  texto: 'Nuevo bloque "Accidentes y golpes" en la pestaña Averías de la ficha, con todos los accidentes del vehículo, sus fotos y su estado, y botón "+ Dar parte de accidente"' },
+      { tipo: 'nuevo',  texto: 'Un accidente se puede cerrar como "Reparado" o como "Revisado" (se ha mirado y no se repara), con comentario opcional. Un accidente revisado se puede marcar como reparado más adelante' },
+      { tipo: 'mejora', texto: 'Las fotos de los accidentes se ven también en Incidencias activas, y en las incidencias resueltas se distingue si el accidente se reparó o solo se revisó' },
+      { tipo: 'mejora', texto: 'Pestaña Averías de la ficha en dos columnas: averías a la izquierda y accidentes y golpes a la derecha' },
+      { tipo: 'mejora', texto: 'En un accidente ya cerrado no se pueden añadir más fotos' },
+      { tipo: 'nuevo',  texto: 'Antes de enviar cualquier correo de aviso (incidencia, accidente, avería o bloqueo) se pregunta si se quiere enviar al responsable' },
+      { tipo: 'nuevo',  texto: 'Acceso solo desde el centro de trabajo, igual que en SALIDAS y GIDT. Los responsables marcados como usuario externo pueden entrar desde fuera y llevan la etiqueta "🌍 Externo" en Responsables' },
+      { tipo: 'mejora', texto: 'Nueva pantalla de inicio de sesión con el mismo diseño que SALIDAS y GIDT. La app abre directamente en el inicio de sesión, sin pantalla de carga' },
+      { tipo: 'mejora', texto: 'App adaptada al móvil: cada vehículo del cuadrante se ve como una tarjeta, y el menú, la ficha del vehículo, Incidencias activas, el Panel Admin y las ventanas se ajustan a la pantalla. La app instalada se puede usar en vertical' },
+      { tipo: 'correccion', texto: 'La ventana "Acerca de" ya no va a tirones al abrirla, y la app va más ligera una vez dentro' }
+    ]
+  },
+  {
     version: '3.10.0',
     fecha: '2026-11-09',
     cambios: [

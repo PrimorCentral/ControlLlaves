@@ -674,7 +674,8 @@ async function manejarPeticionSupabase(urlStr, options) {
         estado:                'COMPLETADO',
         resuelto_por:           params.resueltoPor || '',
         fecha_resolucion:       new Date().toISOString(),
-        comentario_resolucion:  params.comentario || ''
+        comentario_resolucion:  params.comentario || '',
+        resolucion:             params.resolucion || null   // accidentes: reparado | revisado
       })
         .eq('timestamp', params.timestamp)
         .eq('matricula', params.matricula);

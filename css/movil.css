@@ -187,7 +187,8 @@
     flex: 0 0 auto; max-height: none; overflow: visible;
   }
   .mf-sec > .mf-head { border-radius: 12px 12px 0 0; }
-  .mf-tabla-wrap, .mf-lista { flex: none; overflow: visible; }
+  .mf-tabla-wrap, .mf-lista, .mf-cols-av .mf-tabla-wrap, .mf-cols-av .mf-lista { flex: none; overflow: visible; }
+  .mf-panel > .mf-columnas { flex: none; display: flex; flex-direction: column; gap: 12px; }
 
   /* Tablas de averías y mantenimientos: una ficha por fila, sin desplazar de lado */
   .mf-tabla, .mf-tabla tbody { display: block; min-width: 0 !important; }

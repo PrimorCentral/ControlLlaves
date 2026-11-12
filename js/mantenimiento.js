@@ -292,7 +292,8 @@ function _mantRenderAverias() {
     `<button type="button" class="mf-filtro${filtro === f ? ' on' : ''}" data-f="${f}" aria-pressed="${filtro === f}" onclick="mantFiltrarAverias('${f}')">${txt} · ${n}</button>`).join('')}</div>`;
   const lista = filtro === 'reparadas' ? reparadas : filtro === 'inmov' ? inmov : abiertas;
 
-  h += `<section class="mf-sec${lista.length ? ' mf-sec-llena' : ''}">
+  // Averías a la izquierda y accidentes y golpes a la derecha (en pantallas estrechas, uno debajo del otro)
+  h += `<div class="mf-columnas mf-cols-av"><section class="mf-sec${lista.length ? ' mf-sec-llena' : ''}">
     ${_mfCabecera(_MF_ICO_AVERIA, 'AVERÍAS', chips,
       `<button type="button" class="mf-btn-head rojo" onclick="mantAbrirFormAveria('${mat}')">+ Dar parte de avería</button>`)}`;
 
@@ -314,7 +315,7 @@ function _mantRenderAverias() {
   if (reparadas.length) resumen.push(`${reparadas.length} reparada${reparadas.length === 1 ? '' : 's'} en el historial`);
   h += `${averias.length ? `<div class="mf-pie"><span>${resumen.join(' · ')}</span></div>` : ''}</section>`;
 
-  h += _mantHtmlAccidentes(accidentes, admin);
+  h += _mantHtmlAccidentes(accidentes, admin) + `</div>`;
 
   cont.innerHTML = h;
   if (typeof docsPintarMiniaturas === 'function') docsPintarMiniaturas(cont);
@@ -345,22 +346,29 @@ function _mantHtmlAccidentes(accidentes, admin) {
     const hace = _mfHace(x.fecha);
     const turno = x.turno === 'MANANA' ? 'mañana' : x.turno === 'TARDE' ? 'tarde' : '';
     let sub = `Parte de ${esc(x.responsable || '—')} · ${_mantFecha(x.fecha)}${turno ? ' · turno de ' + turno : ''}${pendiente && hace.txt ? ' · ' + hace.txt : ''}`;
+    const revisado = !pendiente && x.resolucion === 'revisado';
     if (!pendiente) {
-      sub += ` · Reparado el ${_mantFecha(String(x.fecha_resolucion || '').substring(0, 10))} por ${esc(x.resuelto_por || '—')}${x.comentario_resolucion ? ' · ' + esc(x.comentario_resolucion) : ''}`;
+      sub += ` · ${revisado ? 'Revisado (sin reparar)' : 'Reparado'} el ${_mantFecha(String(x.fecha_resolucion || '').substring(0, 10))} por ${esc(x.resuelto_por || '—')}${x.comentario_resolucion ? ' · ' + esc(x.comentario_resolucion) : ''}`;
     }
     const av = x.averia;
     const avPill = av && pendiente ? `<span class="mant-pill av-${(MANT_ESTADOS[av.estado] || MANT_ESTADOS.abierta).cls}">Avería · ${(MANT_ESTADOS[av.estado] || MANT_ESTADOS.abierta).txt}</span>` : '';
     const fotos = x.fotos || [];
     const ico = n => (typeof _dIco === 'function') ? _dIco(n, 16, 2) : '';
+    // Reparado: ya no se pueden añadir fotos
+    const capado = pendiente ? '' : ' disabled';
+    const clsFoto = pendiente ? 'mf-btn mf-btn-file' : 'mf-btn mf-btn-file capado';
+    const tituloFoto = pendiente ? '' : ' title="Accidente reparado: ya no se pueden añadir fotos" aria-disabled="true"';
     h += `<div class="mf-acc${pendiente ? '' : ' cerrada'}">
       <div class="mf-acc-top">
-        <span class="mant-pill ${pendiente ? 'av-abierta' : 'av-reparada'}">${pendiente ? 'Pendiente' : 'Reparado'}</span>${avPill}
+        <span class="mant-pill ${pendiente ? 'av-abierta' : revisado ? 'acc-revisado' : 'av-reparada'}">${pendiente ? 'Pendiente' : revisado ? 'Revisado' : 'Reparado'}</span>${avPill}
         <div class="mf-incid-txt"><strong>${esc(x.descripcion || '—')}</strong><span>${sub}</span></div>
         <div class="mf-acciones">
-          <label class="mf-btn mf-btn-file">${ico('camara')}Hacer foto<input type="file" accept="image/*" capture="environment" onchange="mantAccAnadirFotos(this, ${idx})"></label>
-          <label class="mf-btn mf-btn-file">${ico('galeria')}Elegir fotos<input type="file" accept="image/*" multiple onchange="mantAccAnadirFotos(this, ${idx})"></label>
+          <label class="${clsFoto}"${tituloFoto}>${ico('camara')}Hacer foto<input type="file" accept="image/*" capture="environment"${capado} onchange="mantAccAnadirFotos(this, ${idx})"></label>
+          <label class="${clsFoto}"${tituloFoto}>${ico('galeria')}Elegir fotos<input type="file" accept="image/*" multiple${capado} onchange="mantAccAnadirFotos(this, ${idx})"></label>
           ${pendiente && !av ? `<button type="button" class="mf-btn" onclick="mantPasarIncidenciaAAveria(_mantFicha.accidentes[${idx}])">Pasar a avería</button>` : ''}
-          ${pendiente && admin ? `<button type="button" class="mf-btn oscuro" onclick="mantAccidenteReparado(${idx})">✓ Reparado</button>` : ''}
+          ${pendiente && admin && !(av && av.estado !== 'reparada') ? `<button type="button" class="mf-btn" onclick="mantCerrarAccidente(${idx},'revisado')" title="Se ha revisado y no se va a reparar">Revisado</button>` : ''}
+          ${pendiente && admin ? `<button type="button" class="mf-btn oscuro" onclick="mantCerrarAccidente(${idx},'reparado')">✓ Reparado</button>` : ''}
+          ${revisado && admin ? `<button type="button" class="mf-btn" onclick="mantAccidenteRevisadoAReparado(${idx})" title="Se revisó sin reparar y al final se ha reparado">✓ Marcar reparado</button>` : ''}
         </div>
       </div>
       <div class="mf-acc-fotos" id="mf-acc-fotos-${idx}">
@@ -455,6 +463,7 @@ async function mantAccAnadirFotos(input, idx) {
   const files = mantSoloImagenes(input.files);
   input.value = '';
   if (!inc || !files.length) return;
+  if (!_mantAccPendiente(inc)) { mostrarToast('El accidente ya está reparado: no se pueden añadir fotos', 'error'); return; }
   if (!usuarioActual) { mostrarToast('Inicia sesión para añadir fotos', 'error'); return; }
   const fila = input.closest('.mf-acc');
   const nota = fila && fila.querySelector('.mf-acc-nota');
@@ -465,28 +474,56 @@ async function mantAccAnadirFotos(input, idx) {
   _mantRefrescar(inc.matricula);
 }
 
-/** Ficha → Averías → Accidentes: marcar como reparado (resuelve la incidencia). Solo administradores. */
-function mantAccidenteReparado(idx) {
+/**
+ * Ficha → Averías → Accidentes: cerrar un accidente (resuelve la incidencia). Solo administradores.
+ * modo 'reparado': se ha arreglado · modo 'revisado': se ha revisado y no se va a reparar.
+ */
+function mantCerrarAccidente(idx, modo) {
   const inc = _mantFicha && _mantFicha.accidentes && _mantFicha.accidentes[idx];
   if (!inc || !_mantEsAdmin()) return;
+  const revisado = modo === 'revisado';
   const av = inc.averia && inc.averia.estado !== 'reparada';
   const cuerpo =
     `<div class="mant-resumen">${esc(inc.descripcion || '')}</div>` +
     `<div class="mant-item-meta" style="margin-top:-4px">Accidente del ${_mantFecha(inc.fecha)} · ${esc(inc.responsable || '—')}</div>` +
-    _mantCampo('Comentario (opcional)', `<textarea name="comentario" rows="3" placeholder="Taller, qué se ha reparado…"></textarea>`) +
-    (av ? `<div class="mant-nota">La avería enlazada se marcará también como reparada, con este comentario.</div>` : '');
-  _mantModal(`Accidente reparado · ${_fichaMatReal(inc.matricula)}`, '✓', cuerpo, 'Marcar como reparado', async form => {
+    _mantCampo('Comentario (opcional)', `<textarea name="comentario" rows="3" placeholder="${revisado ? 'Ej.: roce leve, no afecta…' : 'Taller, qué se ha reparado…'}"></textarea>`) +
+    (revisado ? `<div class="mant-nota">El accidente queda cerrado como <strong>revisado, sin reparar</strong>. Si más adelante se repara, se puede marcar como reparado.</div>`
+      : av ? `<div class="mant-nota">La avería enlazada se marcará también como reparada, con este comentario.</div>` : '');
+  _mantModal(`Accidente ${revisado ? 'revisado' : 'reparado'} · ${_fichaMatReal(inc.matricula)}`, revisado ? '👁' : '✓', cuerpo,
+    revisado ? 'Marcar como revisado' : 'Marcar como reparado', async form => {
     const comentario = form.comentario.value.trim();
     const resp = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ accion: 'resolverIncidencia', timestamp: inc.timestamp, matricula: inc.matricula, resueltoPor: _mantUsuario(), comentario })
+      body: JSON.stringify({ accion: 'resolverIncidencia', timestamp: inc.timestamp, matricula: inc.matricula, resueltoPor: _mantUsuario(), comentario, resolucion: revisado ? 'revisado' : 'reparado' })
     });
     const json = await resp.json();
     if (!json.ok) return 'No se pudo guardar: ' + (json.error || '');
     const desbloqueado = (typeof _aplicarDesbloqueoTrasResolver === 'function') && _aplicarDesbloqueoTrasResolver(json, inc.matricula);
-    registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion || '').substring(0, 60)}${desbloqueado ? ' · desbloqueado' : ''}`);
-    mostrarToast(`✓ Accidente marcado como reparado${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
+    registrarAccion('INCIDENCIA', revisado ? 'Accidente revisado' : 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion || '').substring(0, 60)}${desbloqueado ? ' · desbloqueado' : ''}`);
+    mostrarToast(`✓ Accidente marcado como ${revisado ? 'revisado' : 'reparado'}${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
     if (typeof actualizarBotonIncidenciasPendientes === 'function') actualizarBotonIncidenciasPendientes();
+    _mantRefrescar(inc.matricula);
+    return null;
+  });
+}
+
+/** Un accidente cerrado como «Revisado» que al final se ha reparado. Solo administradores. */
+function mantAccidenteRevisadoAReparado(idx) {
+  const inc = _mantFicha && _mantFicha.accidentes && _mantFicha.accidentes[idx];
+  if (!inc || !_mantEsAdmin() || inc.resolucion !== 'revisado') return;
+  const cuerpo =
+    `<div class="mant-resumen">${esc(inc.descripcion || '')}</div>` +
+    `<div class="mant-item-meta" style="margin-top:-4px">Revisado el ${_mantFecha(String(inc.fecha_resolucion || '').substring(0, 10))} por ${esc(inc.resuelto_por || '—')}${inc.comentario_resolucion ? ' · ' + esc(inc.comentario_resolucion) : ''}</div>` +
+    _mantCampo('Comentario (opcional)', `<textarea name="comentario" rows="3" placeholder="Taller, qué se ha reparado…"></textarea>`);
+  _mantModal(`Accidente reparado · ${_fichaMatReal(inc.matricula)}`, '✓', cuerpo, 'Marcar como reparado', async form => {
+    const comentario = form.comentario.value.trim();
+    const { error } = await sb.from('incidencias').update({
+      resolucion: 'reparado', resuelto_por: _mantUsuario(), fecha_resolucion: new Date().toISOString(),
+      comentario_resolucion: comentario || inc.comentario_resolucion || ''
+    }).eq('id', inc.id);
+    if (error) return 'No se pudo guardar: ' + error.message;
+    registrarAccion('INCIDENCIA', 'Accidente revisado pasado a reparado', `${inc.matricula} · ${(inc.descripcion || '').substring(0, 60)}`);
+    mostrarToast('✓ Accidente marcado como reparado', 'success');
     _mantRefrescar(inc.matricula);
     return null;
   });

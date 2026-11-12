@@ -251,6 +251,7 @@
 .incid-btn-averia:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
 
 /* ── Incidencias pendientes dentro de la pestaña Mantenimiento ── */
+.mant-pill.acc-revisado    { background: #E9EEF5; color: #34445C; }
 .mant-pill.incid-averia    { background: #FDECEA; color: #B42318; }
 .mant-pill.incid-accidente { background: #C93636; color: #fff; }
 .mant-pill.incid-revision  { background: #E8EEFC; color: #1D3FA8; }
@@ -373,6 +374,38 @@
 .mf-incid-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mf-incid-txt strong { font-size: 14.5px; font-weight: 700; }
 .mf-incid-txt span { font-size: 12.5px; color: #5B6576; }
+/* Averías | Accidentes y golpes: dos columnas iguales que ocupan el alto de la ficha */
+.mf-panel > .mf-columnas.mf-cols-av { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; }
+@media (max-width: 1100px) {
+  .mf-panel > .mf-columnas.mf-cols-av { grid-template-columns: 1fr; align-items: start; }
+}
+/* Cabecera de averías: título y botón arriba, filtros debajo */
+.mf-cols-av .mf-filtros { order: 5; width: 100%; margin-left: 0; padding-bottom: 2px; }
+.mf-cols-av > .mf-sec { max-height: none; }
+.mf-cols-av .mf-tabla-wrap, .mf-cols-av .mf-lista { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* En media pantalla la tabla de averías pasa a una ficha por avería */
+.mf-cols-av .mf-tabla-av { display: block; min-width: 0; }
+.mf-cols-av .mf-tabla-av thead { display: none; }
+.mf-cols-av .mf-tabla-av tbody { display: block; }
+.mf-cols-av .mf-tabla-av tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 12px 16px; border-bottom: 1px solid #EEF1F5; }
+.mf-cols-av .mf-tabla-av tbody tr:last-child { border-bottom: none; }
+.mf-cols-av .mf-tabla-av tbody td { display: block; padding: 0; border: none; background: transparent; text-align: left; min-width: 0; }
+.mf-cols-av .mf-tabla-av tr.inmov { background: #FFF7F6; }
+.mf-cols-av .mf-tabla-av td:nth-child(1) { grid-column: 1; grid-row: 1; }
+.mf-cols-av .mf-tabla-av td:nth-child(4) { grid-column: 2; grid-row: 1; text-align: right; }
+.mf-cols-av .mf-tabla-av td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+.mf-cols-av .mf-tabla-av td:nth-child(3) { grid-column: 1; grid-row: 3; font-size: 13px; }
+.mf-cols-av .mf-tabla-av td:nth-child(3)::before { content: 'Parte de '; font-weight: 600; color: #8593A8; }
+.mf-cols-av .mf-tabla-av td:nth-child(5) { grid-column: 2; grid-row: 3; text-align: right; }
+.mf-cols-av .mf-tabla-av td:nth-child(5)::before { content: 'Km '; font: 600 12px 'Barlow', sans-serif; color: #8593A8; }
+.mf-cols-av .mf-tabla-av td:nth-child(6) { grid-column: 1 / -1; grid-row: 4; }
+.mf-cols-av .mf-tabla-av td:nth-child(6):not(:has(button)) { display: none; }
+.mf-cols-av .mf-tabla-av .mf-acciones { justify-content: flex-start; }
+.mf-cols-av .mf-tabla-av tbody tr:hover td { background: transparent; }
+/* Fotos de un accidente reparado: botones desactivados */
+.mf-btn-file.capado { opacity: .45; cursor: not-allowed; background: #F4F6F9; }
+.mf-btn-file.capado:hover { background: #F4F6F9; border-color: #D5DBE4; }
+
 /* Accidentes y golpes (con fotos) */
 .mf-panel > .mf-sec-acc { max-height: 44%; }
 .mf-acc { padding: 12px 16px; border-bottom: 1px solid #EEF1F5; display: flex; flex-direction: column; gap: 10px; }

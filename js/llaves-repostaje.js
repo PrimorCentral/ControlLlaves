@@ -784,9 +784,11 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap, foto
     if (modoResueltas) {
       let fechaResLabel = '—';
       try { fechaResLabel = new Date(f.fecha_resolucion).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch(e){}
+      const accRevisado = f.tipo === 'accidente' && f.resolucion === 'revisado';
+      const txtRes = f.tipo !== 'accidente' ? '✅ Resuelto por' : accRevisado ? '👁 Revisado (sin reparar) por' : '✅ Reparado por';
       footer = `
         <div style="font-size:11px;color:#8899aa;margin-top:10px;">
-          ✅ Resuelto por <strong style="color:#1a6635">${esc(f.resuelto_por||'—')}</strong> · ${fechaResLabel}
+          ${txtRes} <strong style="color:${accRevisado ? '#34445C' : '#1a6635'}">${esc(f.resuelto_por||'—')}</strong> · ${fechaResLabel}
         </div>
         ${f.comentario_resolucion ? `
         <div style="margin-top:8px;padding:9px 12px;background:#f4f6fb;border:1px solid #e3e8f5;border-radius:9px;font-size:11.5px;color:#334;line-height:1.5;">
@@ -809,8 +811,13 @@ function renderListaIncidenciasPendientes(filas, modoResueltas, averiasMap, foto
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
             <button onclick="ocultarFormResolverModal(${idx})"
               style="padding:7px 14px;background:#f4f5f8;color:#556;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;">Cancelar</button>
-            <button id="btn-confirmar-resolver-${idx}" onclick="confirmarResolverModal(${idx})"
-              style="padding:7px 16px;background:#2ecc71;color:white;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;">✓ Confirmar resolución</button>
+            ${f.tipo === 'accidente' && !(av && av.estado !== 'reparada') ? `
+            <button data-res="revisado" onclick="confirmarResolverModal(${idx},'revisado')" title="Se ha revisado y no se va a reparar"
+              style="padding:7px 16px;background:#E9EEF5;color:#34445C;border:1.5px solid #CBD5E1;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;">👁 Revisado</button>
+            <button data-res="reparado" onclick="confirmarResolverModal(${idx},'reparado')"
+              style="padding:7px 16px;background:#2ecc71;color:white;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;">✓ Reparado</button>` : `
+            <button id="btn-confirmar-resolver-${idx}" data-res="${f.tipo === 'accidente' ? 'reparado' : ''}" onclick="confirmarResolverModal(${idx}${f.tipo === 'accidente' ? ",'reparado'" : ''})"
+              style="padding:7px 16px;background:#2ecc71;color:white;border:none;border-radius:7px;font-family:Barlow,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer;">✓ Confirmar resolución</button>`}
           </div>
         </div>`;
     }
@@ -885,13 +892,17 @@ function ocultarFormResolverModal(idx) {
   if (btn)  btn.style.display  = 'inline-block';
 }
 
-async function confirmarResolverModal(idx) {
+async function confirmarResolverModal(idx, resolucion) {
   const inc = incidPendModalFilas[idx];
   if (!inc || !APPS_SCRIPT_URL) return;
 
   const comentario = (document.getElementById(`comentario-resolver-${idx}`)?.value || '').trim();
-  const btnConfirmar = document.getElementById(`btn-confirmar-resolver-${idx}`);
-  if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Guardando…'; }
+  // Botones de confirmar (en accidentes: «Revisado» y «Reparado»)
+  const botones = [...document.querySelectorAll(`#form-resolver-${idx} button[data-res]`)];
+  const btnConfirmar = botones.find(b => (b.dataset.res || '') === (resolucion || '')) || botones[0];
+  const txtOriginal = botones.map(b => b.textContent);
+  botones.forEach(b => { b.disabled = true; });
+  if (btnConfirmar) btnConfirmar.textContent = 'Guardando…';
 
   try {
     const resp = await fetch(APPS_SCRIPT_URL, {
@@ -902,7 +913,8 @@ async function confirmarResolverModal(idx) {
         timestamp: inc.timestamp,
         matricula: inc.matricula,
         resueltoPor: usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—',
-        comentario: comentario
+        comentario: comentario,
+        resolucion: resolucion || null
       })
     });
     const json = await resp.json();
@@ -920,13 +932,14 @@ async function confirmarResolverModal(idx) {
 
     const desbloqueado = _aplicarDesbloqueoTrasResolver(json, inc.matricula);
     if (json.averiaCerrada && !desbloqueado && typeof mantCargarResumen === 'function') mantCargarResumen();
-    mostrarToast(`✅ Incidencia de ${inc.matricula} marcada como resuelta${json.averiaCerrada ? ' · avería reparada' : ''}${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
+    const txtResuelta = resolucion === 'revisado' ? 'accidente revisado' : resolucion === 'reparado' ? 'accidente reparado' : 'incidencia resuelta';
+    mostrarToast(`✅ ${inc.matricula}: ${txtResuelta}${json.averiaCerrada ? ' · avería reparada' : ''}${desbloqueado ? ' · vehículo disponible de nuevo' : ''}`, 'success');
     registrarAccion('INCIDENCIA', 'Resolver incidencia', `${inc.matricula} · ${(inc.descripcion||'').substring(0,60)}${desbloqueado ? ' · desbloqueado' : ''}`);
     actualizarBotonIncidenciasPendientes();
     cargarIncidenciasPendientesModal();
   } catch (e) {
     mostrarToast('Error al resolver la incidencia: ' + e.message, 'error');
-    if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '✓ Confirmar resolución'; }
+    botones.forEach((b, i) => { b.disabled = false; b.textContent = txtOriginal[i]; });
   }
 }
 

@@ -22,6 +22,9 @@
   transition: opacity .35s ease, visibility .35s ease;
 }
 #pantalla-login.oculto { opacity: 0; visibility: hidden; pointer-events: none; }
+/* Login oculto (ya dentro de la app): se paran sus animaciones (zoom de la foto,
+   partículas, camión…) para que no gasten recursos mientras se usa la app */
+#pantalla-login.oculto::before, #pantalla-login.oculto *, #pantalla-login.oculto *::before, #pantalla-login.oculto *::after { animation: none !important; }
 #pantalla-login *, #pantalla-login *::before, #pantalla-login *::after { box-sizing: border-box; }
 
 /* La foto (con su degradado) se copia en una capa que hace un zoom lento */

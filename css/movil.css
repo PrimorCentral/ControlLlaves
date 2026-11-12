@@ -111,6 +111,10 @@
   .sidebar .btn-logout, .sidebar .turno-btn { min-height: 42px; font-size: 13px !important; }
   .sidebar #fecha-input { min-height: 44px; font-size: 15px !important; }
   .sidebar .btn-action { min-height: 46px; }
+  /* Fondo oscuro de la página: lo que queda bajo la hora y bajo la barra de
+     inicio del iPhone se ve del color de las barras, no blanco */
+  html, body { background: #1a1a2e; }
+  .sidebar { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
   /* Barras: su relleno normal + el hueco de la hora / la barra de inicio del iPhone */
   #mob-topbar { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
   #mob-bottombar { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }

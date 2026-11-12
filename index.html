@@ -17,7 +17,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Flota Primor">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <!-- La app se dibuja también bajo la hora del iPhone (viewport-fit=cover) y las
+       barras dejan ese hueco con env(safe-area-inset-*) en css/movil.css -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- Cliente Supabase (sustituye a Google Apps Script como backend) -->

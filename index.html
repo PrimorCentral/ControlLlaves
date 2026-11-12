@@ -12,14 +12,15 @@
        número nuevo. No hace falta tocar nada en este archivo.
   ══════════════════════════════════════════════════════════════ -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
+  <!-- Icono al instalar la app en el iPhone (pantalla de inicio) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1a1a2e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Flota Primor">
-  <!-- La app se dibuja también bajo la hora del iPhone (viewport-fit=cover) y las
-       barras dejan ese hueco con env(safe-area-inset-*) en css/movil.css -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Igual que SALIDAS: barra de la hora negra; la app empieza debajo de ella -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- Cliente Supabase (sustituye a Google Apps Script como backend) -->

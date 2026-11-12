@@ -111,8 +111,9 @@
   .sidebar .btn-logout, .sidebar .turno-btn { min-height: 42px; font-size: 13px !important; }
   .sidebar #fecha-input { min-height: 44px; font-size: 15px !important; }
   .sidebar .btn-action { min-height: 46px; }
-  #mob-topbar { padding-top: env(safe-area-inset-top); }
-  #mob-bottombar { padding-bottom: env(safe-area-inset-bottom); }
+  /* Barras: su relleno normal + el hueco de la hora / la barra de inicio del iPhone */
+  #mob-topbar { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  #mob-bottombar { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
 
   /* Aviso emergente: por encima de la barra inferior */
   .toast { bottom: calc(74px + env(safe-area-inset-bottom)) !important; left: 12px; right: 12px; max-width: none; }

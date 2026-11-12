@@ -205,4 +205,11 @@
   #pantalla-login .lg-panel::before { right: 0; bottom: auto; width: auto; height: 4px; border-radius: 16px 16px 0 0; background: linear-gradient(90deg, #C93636, #8E1F1F); animation: none; }
   #pantalla-login .lg-pie { left: 28px; right: 28px; bottom: 20px; }
   #pantalla-login .lg-input input { font-size: 16px; } /* 16 px: el iPhone no hace zoom al escribir */
+
+  /* Con el teclado abierto (js/movil-teclado.js pone la clase y el alto del
+     hueco que queda encima del teclado): la tarjeta sube y se queda centrada
+     ahí, sin la marca de arriba, para que se vea entera hasta «Entrar». */
+  #pantalla-login.teclado-abierto { padding-top: 10px; padding-bottom: 10px; justify-content: center; }
+  #pantalla-login.teclado-abierto .lg-hero { display: none; }
+  #pantalla-login.teclado-abierto .lg-panel { padding-top: 26px; padding-bottom: 58px; }
 }

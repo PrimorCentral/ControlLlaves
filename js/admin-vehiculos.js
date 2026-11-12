@@ -145,7 +145,7 @@ function _admFilasVehiculos(hoy) {
       const itv = _admItvInfo(v, hoy);
 
       let estado;
-      if (v.archivado) estado = `<span class="adm-estado"><span class="adm-dot na"></span>De baja</span>`;
+      if (v.archivado) estado = `<span class="adm-estado"><span class="adm-dot na"></span>De baja</span>${v.fecha_archivado ? `<span class="adm-estado-motivo" style="color:#6b7280">Desde el ${esc(_admFechaBaja(v.fecha_archivado))}</span>` : ''}`;
       else if (v.bloqueado) {
         const quien = [v.bloqueado_por, v.fecha_bloqueo ? _fmtFechaHoraBloqueo(v.fecha_bloqueo) : ''].filter(Boolean).join(' · ');
         estado = `<span class="adm-estado"><span class="adm-dot bad"></span>Bloqueado</span>
@@ -631,6 +631,12 @@ function mostrarModalITVCaducada(matricula, fechaITV) {
   document.body.appendChild(overlay);
 }
 
+// '2026-10-26' → '26/10/2026'
+function _admFechaBaja(iso) {
+  const p = String(iso || '').substring(0, 10).split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(iso || '');
+}
+
 function eliminarVehiculo(gi, vi) {
   const v = GRUPOS[gi].vehiculos[vi];
   appConfirm(`El vehículo <strong>${v.matricula}</strong> desaparecerá del cuadrante activo pero seguirá visible en históricos anteriores.`, {
@@ -638,7 +644,9 @@ function eliminarVehiculo(gi, vi) {
   }).then(ok => {
     if (!ok) return;
     GRUPOS[gi].vehiculos[vi].archivado = true;
-    GRUPOS[gi].vehiculos[vi].fecha_archivado = fechaActual;
+    // Fecha de hoy (no la del cuadrante abierto, que puede ser otro día)
+    const _h = new Date();
+    GRUPOS[gi].vehiculos[vi].fecha_archivado = `${_h.getFullYear()}-${String(_h.getMonth()+1).padStart(2,'0')}-${String(_h.getDate()).padStart(2,'0')}`;
     renderAdminVehiculos(); renderAdminStats(); renderTabla();
     sincronizarVehiculosConSheets();
     registrarAccion('VEHICULO', 'Dar de baja (archivar) vehículo', v.matricula);

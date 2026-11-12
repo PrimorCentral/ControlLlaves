@@ -232,7 +232,7 @@ function _fichaPintarCabecera(v) {
   const e = _fichaEstado(v);
   const chips = [];
   const chip = (cls, txt) => `<span class="fv-chip ${cls}"><i aria-hidden="true"></i>${esc(txt)}</span>`;
-  if (v.archivado) chips.push(chip('gris', 'De baja'));
+  if (v.archivado) chips.push(chip('gris', v.fecha_archivado ? `De baja desde ${_fvFecha(v.fecha_archivado)}` : 'De baja'));
   if (v.bloqueado) chips.push(chip('mal', 'No disponible'));
   if (e.itv.cls === 'mal') chips.push(chip('mal', 'ITV caducada'));
   else if (e.itv.cls === 'aviso') chips.push(chip('aviso', `ITV en ${e.itv.dias} d`));
@@ -814,7 +814,7 @@ function _fichaHtmlGestion(v) {
       </div>
     </div>`;
   if (v.archivado) {
-    h += fila('ESTADO', '<i class="fv-gest-dot nada"></i>Dado de baja',
+    h += fila('ESTADO', `<i class="fv-gest-dot nada"></i>Dado de baja${v.fecha_archivado ? ` el ${esc(_fvFecha(v.fecha_archivado))}` : ''}`,
       'No aparece en el cuadrante. Al darlo de alta volverá a aparecer en su nave.',
       `<button type="button" class="fv-btn fv-btn-verde" onclick="fichaEditar('alta')">Dar de alta</button>`);
     return h;

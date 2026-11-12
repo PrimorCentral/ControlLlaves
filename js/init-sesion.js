@@ -172,50 +172,32 @@ document.querySelectorAll('.turno-btn').forEach(b => {
   actualizarHeader();
   actualizarBloqueoCuadrante();
 
-  // ── Arranque con splash animado: cada paso real mueve el camión ──
-  const _pausa   = ms => new Promise(r => setTimeout(r, ms));
-  const _limite  = (p, ms, porDefecto) => Promise.race([p, _pausa(ms).then(() => porDefecto)]);
-  const PASO_MIN = 380; // ms mínimos por paso para que la animación se lea
-
-  setSplashProgreso(8);
-  setSplashMsg('Cargando configuración…');
-  await Promise.all([inicializarAppsScriptUrl(), _pausa(PASO_MIN)]);
-  marcarSplashPaso('config');
-  setSplashProgreso(35);
-
-  setSplashMsg('Conectando con el servidor…');
-  const [servidorOk] = await Promise.all([_limite(verificarConfig(), 4000, false), _pausa(PASO_MIN)]);
-  marcarSplashPaso('servidor', servidorOk ? 'hecho' : 'aviso');
-  setSplashProgreso(65);
-  initBuscadorOperario();
-
-  setSplashMsg('Comprobando versión…');
-  const _versionLista = window.APP_VERSION ? Promise.resolve(true)
-    : new Promise(r => document.addEventListener('app-version', () => r(true), { once: true }));
-  await Promise.all([_limite(_versionLista, 2000, false), _pausa(PASO_MIN)]);
-  marcarSplashPaso('version');
-  setSplashProgreso(88);
-
-  // Datos de la pantalla de login: versión y fecha de hoy
-  const _vBadge = document.getElementById('login-version-badge');
-  if (_vBadge) {
-    const _vMeta = document.querySelector('meta[name="app-version"]');
-    if (_vMeta) _vBadge.textContent = 'v ' + _vMeta.getAttribute('content');
-  }
-  const _fHoy = document.getElementById('login-fecha-hoy');
-  if (_fHoy) _fHoy.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-
-  marcarSplashPaso('acceso');
-  setSplashProgreso(100);
-  setSplashMsg(servidorOk ? 'Todo listo' : 'Listo · sin conexión con el servidor', servidorOk);
-
-  // Duración mínima total para que la animación no parezca un parpadeo
-  const _resta = 2200 - (Date.now() - SPLASH_INICIO);
-  await _pausa(Math.max(450, _resta));
-
+  // ── Arranque: el login sale directamente (sin pantalla de carga) ──
+  // La configuración y la conexión se comprueban a la vez, por detrás.
+  // Si alguien pulsa «Entrar» antes de que termine, loginResponsable espera a la configuración.
+  _pintarPolvoLogin();
   mostrarPantallaLogin(true);
-  ocultarSplash();
+  initBuscadorOperario();
+  window._configLista = inicializarAppsScriptUrl();
+  window._configLista.then(() => verificarConfig()).catch(() => {});
 });
+
+// Partículas que suben por el fondo del login (igual que GIDT)
+function _pintarPolvoLogin() {
+  const polvo = document.getElementById('lg-polvo');
+  if (!polvo || polvo.childElementCount) return;
+  for (let i = 0; i < 26; i++) {
+    const s = document.createElement('span');
+    const tam = 2 + Math.random() * 4;
+    s.style.width = s.style.height = tam + 'px';
+    s.style.left = (Math.random() * 70) + '%';
+    s.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+    s.style.animationDuration = (14 + Math.random() * 16) + 's';
+    s.style.animationDelay = (-Math.random() * 25) + 's';
+    s.style.opacity = (0.3 + Math.random() * 0.6).toFixed(2);
+    polvo.appendChild(s);
+  }
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // PANTALLA LOGIN — mostrar / ocultar
@@ -249,6 +231,9 @@ async function loginResponsable() {
     errEl.style.display = 'block';
     return;
   }
+
+  // Primer arranque: que la configuración (URL del servidor) esté cargada
+  if (window._configLista) { try { await window._configLista; } catch (e) {} }
 
   const btnEntrar  = document.getElementById('btn-mlr-entrar');
   const loadingDiv = document.getElementById('mlr-loading');
@@ -416,8 +401,8 @@ function _cerrarSesionInterno() {
   document.getElementById('mlr-num').value = '';
   document.getElementById('mlr-clave').value = '';
   document.getElementById('mlr-error').style.display = 'none';
-  document.getElementById('login-preload-fill').style.width = '0%';
-  document.getElementById('login-preload-msg').textContent = '';
+  const _pf = document.getElementById('login-preload-fill'); if (_pf) _pf.style.width = '0%';
+  const _pm = document.getElementById('login-preload-msg'); if (_pm) _pm.textContent = '';
   document.getElementById('user-pill').style.display = 'none';
   const btnAdmin = document.getElementById('btn-panel-admin');
   if (btnAdmin) btnAdmin.style.display = 'none';

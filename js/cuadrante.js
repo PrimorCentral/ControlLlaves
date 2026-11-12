@@ -598,12 +598,13 @@ function abrirModalBloqueoRapido() {
     if (!mat)    { overlay.querySelector('#bloqueo-rapido-mat').style.borderColor='#e84545'; return; }
     if (!motivo) { overlay.querySelector('#bloqueo-rapido-motivo').style.borderColor='#e84545'; return; }
     const bloqueado_por = usuarioActual?.nombre || 'Responsable';
+    const enviarCorreo = await preguntarEnviarCorreo(`Aviso de vehículo bloqueado: ${mat}.`);
     const btnOk = overlay.querySelector('#btn-bloqueo-rapido-ok');
     btnOk.textContent = '⏳ Bloqueando…'; btnOk.disabled = true;
     try {
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST', headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({ accion:'bloquearVehiculo', matricula: mat, motivo, bloqueado_por }),
+        body: JSON.stringify({ accion:'bloquearVehiculo', matricula: mat, motivo, bloqueado_por, enviarCorreo }),
         redirect:'follow'
       });
       const json = await resp.json();
@@ -1165,6 +1166,16 @@ function _crearOverlayModal(html) {
   ov.innerHTML = `<div style="background:white;border-radius:18px;padding:32px 28px 24px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.4);font-family:Barlow,sans-serif;animation:nv-in 0.2s cubic-bezier(.34,1.56,.64,1)">${html}</div>`;
   document.body.appendChild(ov);
   return ov;
+}
+
+// Antes de cualquier acción que manda un correo de aviso se pregunta si
+// enviarlo. detalle: qué aviso es (p. ej. «Aviso de incidencia de IVECO 4035 KTR»).
+// → Promise<boolean> (true = enviar). Cerrar la ventana cuenta como «No enviar».
+function preguntarEnviarCorreo(detalle) {
+  return appConfirm(detalle ? esc(detalle) : 'Se enviará el aviso por correo electrónico.', {
+    titulo: '¿Deseas enviar el correo al responsable?', icono: '✉️',
+    labelOk: 'Sí, enviar', labelCancel: 'No enviar', colorOk: '#1a1a2e'
+  });
 }
 
 // appConfirm(msg, {titulo, icono, labelOk, colorOk}) → Promise<boolean>

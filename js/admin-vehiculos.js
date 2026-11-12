@@ -271,10 +271,11 @@ function abrirModalBloqueo(gi, vi) {
     const motivo = overlay.querySelector('#bloqueo-motivo-input').value.trim();
     if (!motivo) { overlay.querySelector('#bloqueo-motivo-input').style.borderColor='#e84545'; return; }
     const bloqueado_por = usuarioActual?.nombre || 'Admin';
+    const enviarCorreo = await preguntarEnviarCorreo(`Aviso de vehículo bloqueado: ${v.matricula}.`);
     try {
       const resp = await fetch(APPS_SCRIPT_URL, {
         method:'POST', headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({ accion:'bloquearVehiculo', matricula: v.matricula, motivo, bloqueado_por }),
+        body: JSON.stringify({ accion:'bloquearVehiculo', matricula: v.matricula, motivo, bloqueado_por, enviarCorreo }),
         redirect:'follow'
       });
       const json = await resp.json();

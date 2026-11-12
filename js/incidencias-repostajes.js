@@ -79,9 +79,9 @@ function abrirModalIncidencia(matricula, opts) {
 
         ${textoActual
           ? `<div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 12px;background:#fff8f0;border:1px solid #fde8d0;border-radius:8px;font-size:11px;color:#b07040;font-weight:600;">
-               <span style="font-size:13px;">✓</span> Incidencia registrada y enviada por correo electronico.
+               <span style="font-size:13px;">✓</span> Incidencia registrada.
              </div>`
-          : `<div style="margin-top:8px;font-size:10px;color:#aab5c0;font-weight:600;">Se registrará la incidencia y se enviará por <strong style="color:#8899aa">correo electronico</strong>.</div>`
+          : `<div style="margin-top:8px;font-size:10px;color:#aab5c0;font-weight:600;">Al registrar se te preguntará si quieres enviar el aviso por <strong style="color:#8899aa">correo electrónico</strong>.</div>`
         }
 
         ${!textoActual && tipoFijo === 'accidente' ? `
@@ -239,6 +239,9 @@ function abrirModalIncidencia(matricula, opts) {
       if (!confirmar) return;
     }
 
+    // ¿Enviar el correo de aviso?
+    const enviarCorreo = await preguntarEnviarCorreo(`Aviso de ${tipoIncid === 'accidente' ? 'accidente' : 'incidencia'} de ${matricula}.`);
+
     const btn = overlay.querySelector('#btn-guardar-incidencia');
     btn.disabled = true; btn.textContent = '⏳ Guardando…';
 
@@ -249,7 +252,7 @@ function abrirModalIncidencia(matricula, opts) {
       <div style="background:white;border-radius:16px;padding:36px 32px;width:360px;max-width:94vw;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.45);font-family:Barlow,sans-serif;animation:nv-in 0.25s cubic-bezier(.34,1.56,.64,1)">
         <div style="font-size:44px;margin-bottom:14px;">⚠️</div>
         <div style="font-size:16px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">Registrando incidencia</div>
-        <div data-envio-txt style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">Guardando en el sistema y enviando<br>notificación por correo…<br>Por favor, espere un momento.</div>
+        <div data-envio-txt style="font-size:12px;color:#8899aa;line-height:1.6;margin-bottom:22px;">${enviarCorreo ? 'Guardando en el sistema y enviando<br>notificación por correo…' : 'Guardando en el sistema…'}<br>Por favor, espere un momento.</div>
         <div style="display:flex;justify-content:center;gap:7px;align-items:center;">
           <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0s"></div>
           <div style="width:9px;height:9px;border-radius:50%;background:#e84545;animation:dot-bounce 1.2s ease-in-out infinite;animation-delay:0.2s"></div>
@@ -264,7 +267,7 @@ function abrirModalIncidencia(matricula, opts) {
     datos[key].incidencias = texto;
 
     // Guardar en hoja Incidencias (historial, correo y bloqueo si aplica, todo en una sola llamada)
-    const resInc = await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear, tipoIncid);
+    const resInc = await registrarIncidenciaEnSheets(matricula, texto, quiereBloquear, tipoIncid, enviarCorreo);
 
     // Tipo "Avería": se registra también en Mantenimiento (js/mantenimiento.js),
     // enlazada a esta incidencia. Si además se bloqueó, la avería queda como
@@ -325,7 +328,7 @@ function abrirModalIncidencia(matricula, opts) {
   };
 }
 
-async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear, tipo) {
+async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear, tipo, enviarCorreo) {
   if (!APPS_SCRIPT_URL) return;
   try {
     const respUsuario = usuarioActual ? (usuarioActual.nombre || usuarioActual.numUsuario) : '—';
@@ -335,6 +338,7 @@ async function registrarIncidenciaEnSheets(matricula, descripcion, bloquear, tip
       body: JSON.stringify({
         accion:           'registrarIncidencia',
         bloquearVehiculo: bloquear || false,
+        enviarCorreo:     enviarCorreo !== false,
         incidencia: {
           timestamp:   new Date().toISOString(),
           fecha:       fechaActual,

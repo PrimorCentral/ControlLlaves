@@ -356,7 +356,8 @@ async function manejarPeticionSupabase(urlStr, options) {
       if (error) return { ok: false, error: error.message };
 
       let emailError = null;
-      const destinatarios = await obtenerDestinatariosPorTipo('bloqueos');
+      // enviarCorreo === false: el usuario ha dicho que no quiere mandar el aviso
+      const destinatarios = params.enviarCorreo === false ? [] : await obtenerDestinatariosPorTipo('bloqueos');
       if (destinatarios.length) {
         emailError = await enviarCorreoBloqueoViaAppsScript({
           to:            destinatarios.join(','),
@@ -651,7 +652,8 @@ async function manejarPeticionSupabase(urlStr, options) {
       }
 
       let emailError = null;
-      const destinatarios = await obtenerDestinatariosPorTipo('incidencias');
+      // enviarCorreo === false: el usuario ha dicho que no quiere mandar el aviso
+      const destinatarios = params.enviarCorreo === false ? [] : await obtenerDestinatariosPorTipo('incidencias');
       if (destinatarios.length) {
         emailError = await enviarCorreoIncidenciaViaAppsScript({
           to:          destinatarios.join(','),

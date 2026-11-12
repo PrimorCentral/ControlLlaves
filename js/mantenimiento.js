@@ -742,6 +742,7 @@ function mantAbrirFormAveria(matricula) {
     const inmoviliza = form.inmoviliza.checked;
     const fecha = form.fecha.value || _mantHoyISO();
     const bloquearAhora = inmoviliza && !!v && !v.bloqueado;
+    const enviarCorreo = await preguntarEnviarCorreo(`Aviso de avería de ${_fichaMatReal(matricula)}.`);
 
     // 1) Incidencia de tipo Avería: así sale en "Incidencias pendientes", se
     //    envía el correo de aviso de siempre y, si no puede circular, se
@@ -752,6 +753,7 @@ function mantAbrirFormAveria(matricula) {
       body: JSON.stringify({
         accion: 'registrarIncidencia',
         bloquearVehiculo: bloquearAhora,
+        enviarCorreo,
         incidencia: {
           timestamp: new Date().toISOString(), fecha, turno: turnoActual, matricula,
           descripcion, responsable: _mantUsuario(), estado: 'PENDIENTE', tipo: 'averia'
@@ -1096,9 +1098,10 @@ function mantPasarIncidenciaAAveria(inc) {
     const inmoviliza = form.inmoviliza.checked;
     let bloqueoAplicado = inmoviliza && !!(v && v.bloqueado);
     if (inmoviliza && v && !v.bloqueado) {
+      const enviarCorreo = await preguntarEnviarCorreo(`Aviso de vehículo bloqueado: ${_fichaMatReal(inc.matricula)}.`);
       const resp = await fetch(APPS_SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' }, redirect: 'follow',
-        body: JSON.stringify({ accion: 'bloquearVehiculo', matricula: inc.matricula, motivo: 'Avería: ' + (inc.descripcion || ''), bloqueado_por: _mantUsuario() })
+        body: JSON.stringify({ accion: 'bloquearVehiculo', matricula: inc.matricula, motivo: 'Avería: ' + (inc.descripcion || ''), bloqueado_por: _mantUsuario(), enviarCorreo })
       });
       const json = await resp.json();
       if (!json.ok) return 'No se pudo bloquear el vehículo: ' + (json.error || '');

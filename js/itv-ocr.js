@@ -16,10 +16,24 @@ let _itvOcrCarga = null;
 const _itvManual = new Set();
 function itvEdicionManualPermitida(matricula) { return _itvManual.has(matricula); }
 
-function _itvPonerAMano(matricula, gi, vi) {
+/**
+ * Busca el vehículo en GRUPOS en este momento. La flota se recarga sola cada ~30 s
+ * y eso crea objetos nuevos: nunca hay que guardar el vehículo (ni sus índices)
+ * de antes de una espera (leer el informe, una pregunta…), sino volver a buscarlo.
+ */
+function _itvBuscarVehiculo(matricula) {
+  for (let gi = 0; gi < GRUPOS.length; gi++) {
+    const vi = GRUPOS[gi].vehiculos.findIndex(x => x.matricula === matricula);
+    if (vi >= 0) return { gi, vi, v: GRUPOS[gi].vehiculos[vi] };
+  }
+  return null;
+}
+
+function _itvPonerAMano(matricula) {
   _itvManual.add(matricula);
   if (typeof fichaRepintar === 'function') fichaRepintar(); // aparece «Editar fecha»
-  editarITV(gi, vi);
+  const p = _itvBuscarVehiculo(matricula);
+  if (p) editarITV(p.gi, p.vi);
 }
 
 function _itvCargarTesseract() {
@@ -105,16 +119,18 @@ function _itvModalCargando(matricula) {
  */
 async function itvActualizarDesdeInforme(matricula, file, statusEl) {
   if (typeof usuarioEsAdmin === 'function' && !usuarioEsAdmin()) return;
-  let gi = -1, vi = -1;
-  for (let i = 0; i < GRUPOS.length && vi < 0; i++) { vi = GRUPOS[i].vehiculos.findIndex(x => x.matricula === matricula); gi = i; }
-  if (vi < 0) return;
-  const v = GRUPOS[gi].vehiculos[vi];
+  const ini = _itvBuscarVehiculo(matricula);
+  if (!ini) return;
+  let v = ini.v;
 
   const cargando = _itvModalCargando(v.matricula);
   let datos;
   try { datos = await itvLeerInforme(file); }
   catch (e) { datos = { fecha: null, error: true }; }
   finally { cargando.remove(); }
+  // La flota puede haberse recargado mientras se leía: coger el vehículo actual
+  v = (_itvBuscarVehiculo(matricula) || {}).v;
+  if (!v) return;
 
   const fmt = iso => iso ? iso.split('-').reverse().join('/') : '—';
   if (!datos.fecha) {
@@ -122,7 +138,7 @@ async function itvActualizarDesdeInforme(matricula, file, statusEl) {
       (datos.error ? 'No se ha podido leer el informe.' : 'No he encontrado la <strong>fecha de próxima inspección</strong> en el informe (puede que el escaneo no se lea bien).') +
       '<br><br>El informe se ha guardado igualmente. ¿Pones la fecha a mano?',
       { titulo: 'Fecha de ITV no encontrada', icono: '📄', labelOk: 'Poner la fecha a mano', labelCancel: 'Ahora no', colorOk: '#1a1a2e' });
-    if (aMano) _itvPonerAMano(v.matricula, gi, vi);
+    if (aMano) _itvPonerAMano(v.matricula);
     else { _itvManual.add(v.matricula); if (typeof fichaRepintar === 'function') fichaRepintar(); }
     return;
   }
@@ -143,12 +159,28 @@ async function itvActualizarDesdeInforme(matricula, file, statusEl) {
     `<br><br>¿Actualizo la fecha de la ITV de <strong>${esc(v.matricula)}</strong>?`,
     { titulo: 'Fecha de ITV leída del informe', icono: '📋', labelOk: 'Sí, actualizar', labelCancel: 'No, está mal leída', colorOk: avisos.length ? '#e84545' : '#16a34a' });
   // Si la fecha leída no es buena, se abre la edición a mano
-  if (!ok) { _itvPonerAMano(v.matricula, gi, vi); return; }
+  if (!ok) { _itvPonerAMano(v.matricula); return; }
 
+  // Mientras la pregunta estaba abierta la flota ha podido recargarse otra vez:
+  // la fecha se pone en el vehículo que hay AHORA en GRUPOS (si se pusiera en el
+  // de antes, se guardaría la fecha vieja y la ficha no cambiaría).
+  v = (_itvBuscarVehiculo(matricula) || {}).v;
+  if (!v) { mostrarToast('No se pudo guardar la fecha de la ITV: vuelve a subir el informe', 'error'); return; }
+  const anterior = v.itv_fin;
   v.itv_fin = datos.fecha;
   _itvManual.delete(v.matricula); // leída bien: ya no hace falta editarla a mano
-  renderAdminVehiculos(); renderTabla();
-  sincronizarVehiculosConSheets();
-  registrarAccion('VEHICULO', 'Fecha ITV desde informe', `${v.matricula} · ${fmt(datos.fecha)}`);
+  const pintar = () => { renderAdminVehiculos(); renderTabla(); if (typeof fichaRepintar === 'function') fichaRepintar(); };
+  pintar();
+  const guardado = await sincronizarVehiculosConSheets();
+  if (guardado === false) { // no se guardó (ya ha avisado): no dar por actualizada la fecha
+    const act = (_itvBuscarVehiculo(matricula) || {}).v;
+    if (act && act.itv_fin === datos.fecha) act.itv_fin = anterior;
+    pintar();
+    return;
+  }
+  // Por si una recarga de la flota se cruzó con el guardado y trajo la fecha anterior
+  const fin = (_itvBuscarVehiculo(matricula) || {}).v;
+  if (fin && fin.itv_fin !== datos.fecha) { fin.itv_fin = datos.fecha; pintar(); }
+  registrarAccion('VEHICULO', 'Fecha ITV desde informe', `${matricula} · ${fmt(datos.fecha)}`);
   mostrarToast(`✓ ITV actualizada: ${fmt(datos.fecha)}`, 'success');
 }

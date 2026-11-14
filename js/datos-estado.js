@@ -37,7 +37,6 @@ const COLUMNAS = [
   { key: 'resp_recibe',     label: 'Resp. Recibe',       clase: '' },
   { key: 'hora_devolucion', label: 'H. Devolución',      clase: 'hora' },
   { key: 'num_tarjeta',     label: 'Nº Tarjeta',         clase: 'num' },
-  { key: 'itv',             label: 'ITV',                clase: 'num' },
   { key: 'incidencias',    label: 'Incidencias',         clase: '' },
 ];
 

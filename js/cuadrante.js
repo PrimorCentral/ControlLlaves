@@ -796,7 +796,7 @@ function renderTabla() {
     <th style="min-width:175px">Operario / Chofer</th>
     ${COLUMNAS.map(c => {
       if (c.key === 'itv' && !esHoy) return '';
-      return `<th>${c.label}</th>`;
+      return `<th${c.key === 'resp_entrega' ? ' style="min-width:190px"' : ''}>${c.label}</th>`;
     }).join('')}
     ${esHoy ? '<th>Orden</th>' : ''}
   </tr></thead><tbody>`;
@@ -978,8 +978,8 @@ function renderTabla() {
               // Hoy, sin ningún repostaje registrado y con conductor asignado → botón Registrar
               html += `<td style="text-align:center;"><button class="btn-print-row" style="background:#2a2a1a;color:#ffd54a;border-color:#5a5a2a;font-size:10px;padding:4px 8px;"
                 onclick="abrirModalRepostajeConMat('${esc(v.matricula)}')"
-                title="Registrar entrega de tarjeta GASOIL">
-                ⛽ Asignar tarjeta
+                title="Repostaje: registrar entrega de tarjeta GASOIL">
+                ⛽ Repostaje
               </button></td>`;
             } else {
               // Hoy, sin conductor asignado → nada que registrar todavía
@@ -1044,7 +1044,7 @@ function renderTabla() {
               onmouseover="this.style.background='#143022';this.style.boxShadow='0 0 0 3px rgba(74,222,128,0.2)'"
               onmouseout="this.style.background='#1a3a2a';this.style.boxShadow='none'"
               title="Confirmar recepción de llaves">
-              🔑 Registrar devolución
+              🔑 Devolución
             </button>
           </td>`;
           return;
@@ -1353,7 +1353,7 @@ function pedirReasignacion(matricula, forzarAdmin) {
           <span style="font-size:20px;line-height:1.4;flex-shrink:0;">🚫</span>
           <div>
             <div style="font-size:13px;font-weight:900;color:#dc2626;margin-bottom:3px;">Esto NO es una devolución de llaves</div>
-            <div style="font-size:12px;color:#7f1d1d;line-height:1.6;">Solo cambia el conductor asignado al vehículo. Para registrar que las llaves han sido devueltas, usa el botón <strong>«🔑 Registrar devolución»</strong>.</div>
+            <div style="font-size:12px;color:#7f1d1d;line-height:1.6;">Solo cambia el conductor asignado al vehículo. Para registrar que las llaves han sido devueltas, usa el botón <strong>«🔑 Devolución»</strong>.</div>
           </div>
         </div>
 

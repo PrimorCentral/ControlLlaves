@@ -1040,7 +1040,7 @@ function renderTabla() {
           html += `<td style="padding:4px 6px;">
             <button
               onclick="pedirConfirmacionRecibirLlave('${esc(v.matricula)}')"
-              style="display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:3px 10px;background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;border-radius:7px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s,box-shadow .15s;box-sizing:border-box;"
+              style="display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;white-space:nowrap;padding:3px 10px;background:#1a3a2a;color:#4ade80;border:1.5px solid #2a5a3a;border-radius:7px;font-family:Barlow,sans-serif;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:0.5px;transition:background .15s,box-shadow .15s;box-sizing:border-box;"
               onmouseover="this.style.background='#143022';this.style.boxShadow='0 0 0 3px rgba(74,222,128,0.2)'"
               onmouseout="this.style.background='#1a3a2a';this.style.boxShadow='none'"
               title="Confirmar recepción de llaves">

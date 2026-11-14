@@ -1020,7 +1020,7 @@ function renderTabla() {
           if (!esHoy) return; // no mostrar columna ITV en cuadrantes de otro día
           const itvInfo = itvCaducada(v.matricula);
           if (itvInfo.caducada) {
-            html += `<td><span style="font-size:9px;font-weight:700;color:#e84545;background:#fff0f0;border:1px solid #fcc;border-radius:5px;padding:2px 6px;">⛔ Caducada</span></td>`;
+            html += `<td style="white-space:nowrap;"><span style="display:inline-block;white-space:nowrap;font-size:9px;font-weight:700;color:#e84545;background:#fff0f0;border:1px solid #fcc;border-radius:5px;padding:2px 6px;">⛔ Caducada</span></td>`;
             return;
           }
           // Buscar el vehículo para comprobar si tiene ITV en vigor
@@ -1030,7 +1030,7 @@ function renderTabla() {
             if (veh && veh.itv_fin) { itvFin = veh.itv_fin; break; }
           }
           if (itvFin) {
-            html += `<td><span style="font-size:9px;font-weight:700;color:#2ecc71;background:#eafaf1;border:1px solid #a9dfbf;border-radius:5px;padding:2px 6px;">✅ En vigor</span></td>`;
+            html += `<td style="white-space:nowrap;"><span style="display:inline-block;white-space:nowrap;font-size:9px;font-weight:700;color:#2ecc71;background:#eafaf1;border:1px solid #a9dfbf;border-radius:5px;padding:2px 6px;">✅ En vigor</span></td>`;
             return;
           }
         }
